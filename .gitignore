@@ -1,0 +1,25 @@
+# --- OS / エディタ ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.iml
+
+# --- Java / Spring Boot (backend) ---
+backend/target/
+backend/build/
+backend/.mvn/
+backend/HELP.md
+backend/*.log
+*.class
+
+# --- Node (frontendでビルドツールを使う場合に備えて) ---
+node_modules/
+frontend/dist/
+npm-debug.log*
+
+# --- 環境変数・秘匿情報 ---
+.env
+.env.*
+application-local.properties
+application-local.yml
