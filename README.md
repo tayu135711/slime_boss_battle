@@ -6,7 +6,7 @@
 ## 動かし方
 
 1. このフォルダごと展開する
-2. `frontend/index.html` をブラウザで開く（ダブルクリックでOK）
+2. `index.html` をブラウザで開く（ダブルクリックでOK）
 3. 画面下の十字ボタン（▲◀▶▼）で移動、ボスに近づくと「こうげき！」ボタンが赤く光るので押す
    - PCなら矢印キー / WASD で移動、スペースキーで攻撃も可能
 
@@ -16,14 +16,11 @@
 
 ```
 slime_boss_battle/
-├── frontend/
-│   ├── index.html   … 画面のHTML構造のみ
-│   ├── style.css    … 見た目のスタイル
-│   ├── config.js    … 数値・調整パラメータ（ここを書き換えるだけでバランス調整できる）
-│   └── game.js       … ゲームロジック本体
-├── backend/          … Spring Bootプロジェクト（今後追加予定）
-├── .gitignore
-└── README.md          … このファイル
+├── index.html   … 画面のHTML構造のみ
+├── style.css    … 見た目のスタイル
+├── config.js    … 数値・調整パラメータ（ここを書き換えるだけでバランス調整できる）
+├── game.js      … ゲームロジック本体
+└── README.md    … このファイル
 ```
 
 意図的に「設定値（config.js）」と「ロジック（game.js）」を分離しています。

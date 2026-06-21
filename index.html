@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>スライム討伐戦 - 疑似3Dデモ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>スライム討伐戦</h1>
+<div class="sub">疑似3D版（TPS風カメラ・Three.js）</div>
+
+<div class="hp-bar-outer"><div class="hp-bar-inner" id="hpBarInner" style="width:100%"></div></div>
+<div class="hp-text" id="hpText">古龍スライム・ギガンテス　HP 5000 / 5000</div>
+
+<div id="sceneContainer"></div>
+<div class="controls-hint">十字ボタンで移動。ボスに近づくと攻撃ボタンが光る</div>
+
+<div class="dpad">
+  <button class="dpad-btn dpad-up" data-dir="up">▲</button>
+  <button class="dpad-btn dpad-left" data-dir="left">◀</button>
+  <div class="dpad-center"></div>
+  <button class="dpad-btn dpad-right" data-dir="right">▶</button>
+  <button class="dpad-btn dpad-down" data-dir="down">▼</button>
+</div>
+
+<button class="attack-btn" id="attackBtn">こうげき！</button>
+<div class="status-line" id="statusLine"></div>
+
+<div class="stats">
+  <span>与ダメージ合計: <span id="totalDamage">0</span></span>
+  <span>攻撃回数: <span id="attackCount">0</span></span>
+</div>
+
+<button class="reset-btn" id="resetBtn">リセット</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="config.js"></script>
+<script src="game.js"></script>
+
+</body>
+</html>
