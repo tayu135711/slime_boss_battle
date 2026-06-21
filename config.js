@@ -20,6 +20,11 @@ const CONFIG = {
     wanderIntervalMs: 3500, // 何msごとに目的地を変えるか
     floatHeight: 0.15,      // 浮遊演出の振れ幅
     floatSpeedMs: 400,      // 浮遊の周期
+    // --- ボス攻撃 ---
+    attackRangeZ: 2.0,      // この距離以内でボスが突進攻撃してくる
+    chargeCooldownMs: 2500, // 突進の最低間隔
+    chargeDamage: 300,      // 突進ヒット時のダメージ
+    chargeSpeed: 0.18,      // 突進速度
   },
 
   // --- プレイヤー ---
@@ -29,6 +34,7 @@ const CONFIG = {
     moveSpeed: 0.12,
     startX: 0,
     startZ: 2.5,
+    maxHp: 1000,  // プレイヤーHP追加
   },
 
   // --- 戦闘バランス ---
