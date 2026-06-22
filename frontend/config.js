@@ -1,28 +1,17 @@
-/**
- * config.js
- * ------------------------------------------------------------
- * ゲームバランス・演出周りの調整値をまとめた設定ファイル。
- * 数値をいじるだけで挙動を変えられるように、ロジック側(game.js)
- * からは極力ここの定数だけを参照する構成にしている。
- * ------------------------------------------------------------
- */
-
 const CONFIG = {
-  // --- ボスのステータス ---
   boss: {
     name: "古龍スライム・ギガンテス",
     maxHp: 5000,
     color: 0x9b5de5,
+    hitColor: 0xff2244,
     radius: 1.1,
-    homeZ: -2.5,        // ボスの定位置(z座標)
-    wanderRadius: 3.5,  // 定位置を中心にどれだけ徘徊するか
+    homeZ: -2.5,
+    wanderRadius: 3.5,
     moveSpeed: 0.025,
-    wanderIntervalMs: 3500, // 何msごとに目的地を変えるか
-    floatHeight: 0.15,      // 浮遊演出の振れ幅
-    floatSpeedMs: 400,      // 浮遊の周期
+    wanderIntervalMs: 3500,
+    floatHeight: 0.15,
+    floatSpeedMs: 400,
   },
-
-  // --- プレイヤー ---
   player: {
     color: 0x6ee7b7,
     radius: 0.55,
@@ -30,32 +19,30 @@ const CONFIG = {
     startX: 0,
     startZ: 2.5,
   },
-
-  // --- 戦闘バランス ---
   battle: {
     attackRange: 3.2,
     attackCooldownMs: 300,
     minDamage: 80,
     maxDamage: 150,
+    criticalThreshold: 135,
+    specialGaugePerHit: 18,
+    specialMultiplier: 1.8,
+    specialMinDamage: 400,
+    specialMaxDamage: 600,
   },
-
-  // --- フィールド ---
+  ELEMENT_WEAKNESS: {
+    dark: "light",
+  },
   field: {
-    halfSize: 6, // プレイヤーの可動範囲(中心から±)
+    halfSize: 8,          // 広いフィールドに合わせて拡張
   },
-
-  // --- カメラ(TPS風・低め視点) ---
   camera: {
-    fov: 55,
-    offsetY: 3.2,
-    offsetZ: 5.5,
-    lookAtY: 0.8,
-    lookAtZAhead: -2, // プレイヤーから見てどれだけ先を見るか
+    fov: 60,              // 少し広角に
+    offsetY: 4.5,
+    offsetZ: 7.0,
+    lookAtY: 0.5,
+    lookAtZAhead: -2.5,
+    shakeMs: 180,
   },
-
-  // --- 画面サイズ ---
-  screen: {
-    width: 320,
-    height: 280,
-  },
+  // screenは JS側で window.innerWidth/innerHeight から動的に決める
 };

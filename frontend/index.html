@@ -2,41 +2,59 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スライム討伐戦 - 疑似3Dデモ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>スライム討伐戦</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<h1>スライム討伐戦</h1>
-<div class="sub">疑似3D版（TPS風カメラ・Three.js）</div>
-
-<div class="hp-bar-outer"><div class="hp-bar-inner" id="hpBarInner" style="width:100%"></div></div>
-<div class="hp-text" id="hpText">古龍スライム・ギガンテス　HP 5000 / 5000</div>
-
+<!-- 3Dシーンがここに全画面で入る -->
 <div id="sceneContainer"></div>
-<div class="controls-hint">十字ボタンで移動。ボスに近づくと攻撃ボタンが光る</div>
 
-<div class="dpad">
-  <button class="dpad-btn dpad-up" data-dir="up">▲</button>
-  <button class="dpad-btn dpad-left" data-dir="left">◀</button>
-  <div class="dpad-center"></div>
-  <button class="dpad-btn dpad-right" data-dir="right">▶</button>
-  <button class="dpad-btn dpad-down" data-dir="down">▼</button>
+<!-- HUD：画面に重なるオーバーレイUI -->
+<div id="hud">
+  <!-- ボスHP -->
+  <div id="bossHpArea">
+    <div id="hpText">古龍スライム・ギガンテス　HP 5000 / 5000</div>
+    <div class="hp-bar-outer"><div class="hp-bar-inner" id="hpBarInner"></div></div>
+  </div>
+
+  <!-- 必殺技ゲージ -->
+  <div id="gaugeArea">
+    <div id="gaugeLabel">必殺技ゲージ: 0%</div>
+    <div class="gauge-outer"><div class="gauge-inner" id="gaugeInner"></div></div>
+  </div>
+
+  <!-- ステータス -->
+  <div id="statsArea">
+    <span>ダメージ: <b id="totalDamage">0</b></span>
+    <span>攻撃: <b id="attackCount">0</b>回</span>
+  </div>
+
+  <!-- ステータスライン -->
+  <div id="statusLine"></div>
+
+  <!-- 右下：攻撃ボタン群 -->
+  <div id="actionButtons">
+    <button class="special-btn" id="specialBtn">✨ 必殺技 ✨</button>
+    <button class="attack-btn" id="attackBtn">⚔️ こうげき！</button>
+  </div>
+
+  <!-- 左下：十字ボタン -->
+  <div class="dpad">
+    <button class="dpad-btn dpad-up"    data-dir="up">▲</button>
+    <button class="dpad-btn dpad-left"  data-dir="left">◀</button>
+    <div class="dpad-center"></div>
+    <button class="dpad-btn dpad-right" data-dir="right">▶</button>
+    <button class="dpad-btn dpad-down"  data-dir="down">▼</button>
+  </div>
+
+  <!-- リセット -->
+  <button class="reset-btn" id="resetBtn">↺</button>
 </div>
-
-<button class="attack-btn" id="attackBtn">こうげき！</button>
-<div class="status-line" id="statusLine"></div>
-
-<div class="stats">
-  <span>与ダメージ合計: <span id="totalDamage">0</span></span>
-  <span>攻撃回数: <span id="attackCount">0</span></span>
-</div>
-
-<button class="reset-btn" id="resetBtn">リセット</button>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="config.js"></script>
 <script src="game.js"></script>
-
 </body>
 </html>
