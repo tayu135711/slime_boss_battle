@@ -336,18 +336,99 @@ function buildForestDecor() {
 }
 
 // --- ボス ---
+// ============================================================
+// スライム顔パーツ生成ヘルパー
+// ============================================================
+
+/**
+ * スライムの顔（目×2 + 口）を作ってgroupに追加する。
+ * @param {THREE.Group|THREE.Mesh} parent - 追加先
+ * @param {number} r     - スライム本体の半径
+ * @param {number} eyeY  - 目の高さオフセット（0=赤道、1=頂点）
+ */
+function addSlimeFace(parent, r, eyeY = 0.25) {
+  const faceGroup = new THREE.Group();
+
+  // --- 白目 ---
+  const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+  const eyeBlackMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
+
+  function makeEye(side) {
+    const eyeGroup = new THREE.Group();
+
+    // 白目（少し大きめ）
+    const white = new THREE.Mesh(new THREE.SphereGeometry(r * 0.22, 12, 12), eyeWhiteMat);
+    eyeGroup.add(white);
+
+    // 黒目（白目の前面に重ねる）
+    const black = new THREE.Mesh(new THREE.SphereGeometry(r * 0.13, 10, 10), eyeBlackMat);
+    black.position.z = r * 0.11;
+    eyeGroup.add(black);
+
+    // 黒目の中のハイライト（小さな白い球）
+    const highlight = new THREE.Mesh(
+      new THREE.SphereGeometry(r * 0.05, 6, 6),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1 })
+    );
+    highlight.position.set(r * 0.04, r * 0.04, r * 0.18);
+    eyeGroup.add(highlight);
+
+    // 目の位置：正面やや上、左右に振り分け
+    const angle = side * 0.38;   // ラジアン（左右の開き）
+    eyeGroup.position.set(
+      Math.sin(angle) * r * 0.88,
+      r * (0.5 + eyeY),
+      Math.cos(angle) * r * 0.88
+    );
+    return eyeGroup;
+  }
+
+  faceGroup.add(makeEye(-1));   // 左目
+  faceGroup.add(makeEye( 1));   // 右目
+
+  // --- 口（弧状のポリライン → TubeGeometry） ---
+  const mouthPoints = [];
+  const mouthWidth = r * 0.38;
+  const segments   = 10;
+  for (let i = 0; i <= segments; i++) {
+    const t   = i / segments;          // 0〜1
+    const mx  = (t - 0.5) * mouthWidth * 2;
+    const my  = -Math.abs(t - 0.5) * r * 0.18;   // 中央が下がる弧
+    const mz  = Math.sqrt(Math.max(0, r * r - mx * mx - (r * (0.3 + eyeY) - r * 0.25) ** 2)) * 0.95;
+    mouthPoints.push(new THREE.Vector3(mx, r * (0.3 + eyeY) - r * 0.32 + my, mz));
+  }
+  const mouthCurve = new THREE.CatmullRomCurve3(mouthPoints);
+  const mouthMesh  = new THREE.Mesh(
+    new THREE.TubeGeometry(mouthCurve, 12, r * 0.04, 6, false),
+    new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.6 })
+  );
+  faceGroup.add(mouthMesh);
+
+  parent.add(faceGroup);
+  return faceGroup;
+}
+
 function buildBoss() {
   const s = getCurrentStage(state.stageIndex);
   three.bossMat = new THREE.MeshStandardMaterial({
     color: s.color, roughness: 0.4, metalness: 0.1
   });
+
+  // ボス本体をGroupでラップ（顔パーツを子にするため）
+  three.bossGroup = new THREE.Group();
+
   three.bossMesh = new THREE.Mesh(
     new THREE.SphereGeometry(s.radius, 28, 28),
     three.bossMat
   );
   three.bossMesh.castShadow = true;
-  three.bossMesh.position.set(state.boss.x, s.radius, state.boss.z);
-  three.scene.add(three.bossMesh);
+  three.bossGroup.add(three.bossMesh);
+
+  // 顔を追加（眼の高さはボスのサイズに応じて調整）
+  three.bossFaceGroup = addSlimeFace(three.bossGroup, s.radius, 0.15);
+
+  three.bossGroup.position.set(state.boss.x, s.radius, state.boss.z);
+  three.scene.add(three.bossGroup);
 }
 
 // --- プレイヤー ---
@@ -362,6 +443,9 @@ function buildPlayer() {
   body.position.y = CONFIG.player.radius;
   body.castShadow = true;
   three.playerGroup.add(body);
+
+  // 顔（体のMeshを親にして追加）
+  addSlimeFace(body, CONFIG.player.radius, 0.2);
 
   // 剣ピボット（スイング回転の軸）
   three.swordPivot = new THREE.Group();
@@ -559,7 +643,7 @@ function updateBossMovement() {
   }
 
   const floatY = s.radius + Math.sin(now / s.floatSpeedMs) * s.floatHeight;
-  three.bossMesh.position.set(state.boss.x, floatY, state.boss.z);
+  three.bossGroup.position.set(state.boss.x, floatY, state.boss.z);
   three.bossLight.position.set(state.boss.x, 1.5, state.boss.z);
 }
 
@@ -676,7 +760,7 @@ function updateAttackButtonState() {
 // ============================================================
 function getBossScreenPos() {
   const { w, h } = getSize();
-  const v = new THREE.Vector3(state.boss.x, getCurrentStage(state.stageIndex).radius, state.boss.z);
+  const v = new THREE.Vector3(state.boss.x, getCurrentStage(state.stageIndex).radius * 1.5, state.boss.z);
   v.project(three.camera);
   return { x: (v.x * 0.5 + 0.5) * w, y: (-v.y * 0.5 + 0.5) * h };
 }
@@ -934,8 +1018,8 @@ function attackBoss() {
   flashBossHit(isCrit ? 200 : 120);
   triggerCameraShake();
 
-  three.bossMesh.scale.set(0.85, 0.85, 0.85);
-  setTimeout(() => three.bossMesh.scale.set(1, 1, 1), 100);
+  three.bossGroup.scale.set(0.85, 0.85, 0.85);
+  setTimeout(() => three.bossGroup.scale.set(1, 1, 1), 100);
 
   dom.statusLine.textContent = isCrit ? `⚡ クリティカル！ ${damage} ダメージ！` : `${damage} ダメージ！`;
   refreshUi();
@@ -959,8 +1043,8 @@ function useSpecialMove() {
   triggerCameraShake();
   three.bossMat.color.set(0xffffff);
   setTimeout(() => three.bossMat.color.set(getCurrentStage(state.stageIndex).color), 350);
-  three.bossMesh.scale.set(0.6, 0.6, 0.6);
-  setTimeout(() => three.bossMesh.scale.set(1, 1, 1), 200);
+  three.bossGroup.scale.set(0.6, 0.6, 0.6);
+  setTimeout(() => three.bossGroup.scale.set(1, 1, 1), 200);
 
   dom.statusLine.textContent = `✨ 光の必殺技！ 弱点ヒット！ ${damage} ダメージ！！`;
   refreshUi();
@@ -1094,10 +1178,10 @@ function startStage() {
   three.scene.fog        = new THREE.FogExp2(stg.bgColor, stg.fogDensity);
   three.scene.background = new THREE.Color(stg.bgColor);
   three.bossMat.color.set(stg.color);
-  three.bossMesh.scale.set(1, 1, 1);
-  // ボスのサイズを更新
-  three.bossMesh.geometry.dispose();
-  three.bossMesh.geometry = new THREE.SphereGeometry(stg.radius, 28, 28);
+  if (three.bossGroup) three.bossGroup.scale.set(1, 1, 1);
+  // ボスのサイズを更新（Groupごと作り直し）
+  three.scene.remove(three.bossGroup);
+  buildBoss();
 }
 
 /** 次のステージへ進む */
@@ -1143,6 +1227,7 @@ function resetBattle() {
   three.playerGroup.position.set(state.player.x, 0, state.player.z);
   state.boss.x = 0;
   state.boss.z = -2.5;
+  if (three.bossGroup) three.bossGroup.position.set(0, getCurrentStage(state.stageIndex).radius, -2.5);
   pickNewBossTarget();
   dom.statusLine.textContent = "";
   dom.attackBtn.disabled = false;
