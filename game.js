@@ -24,6 +24,13 @@ const dom = {
   damageFlash:      document.getElementById("damageFlash"),
   gameOverScreen:   document.getElementById("gameOverScreen"),
   titleScreen:      document.getElementById("titleScreen"),
+  menuScreen:        document.getElementById("menuScreen"),
+  menuStageBtn:      document.getElementById("menuStageBtn"),
+  menuGachaBtn:      document.getElementById("menuGachaBtn"),
+  menuOtherBtn:      document.getElementById("menuOtherBtn"),
+  stageSelectScreen: document.getElementById("stageSelectScreen"),
+  stageList:         document.getElementById("stageList"),
+  stageSelectBackBtn:document.getElementById("stageSelectBackBtn"),
   stageStartScreen: document.getElementById("stageStartScreen"),
   stageStartBtn:    document.getElementById("stageStartBtn"),
   stageChapter:     document.getElementById("stageChapter"),
@@ -48,6 +55,8 @@ const state = {
   stageIndex:   0,             // 現在のステージインデックス（STAGES配列）
   stageStartAt: 0,             // ステージ開始時刻（クリアタイム計算用）
   battleStarted: false,         // trueになるまで攻撃・移動を受け付けない
+  titleShown: true,
+  unlockedStages: 1,            // 解放済みステージ数
   lastAttackAt: 0,
   specialGauge: 0,
   keys: { up: false, down: false, left: false, right: false },
@@ -430,14 +439,20 @@ function setupInput() {
   });
   dom.stageStartBtn.addEventListener("click", startStage);
   dom.titleScreen.addEventListener("click", dismissTitle);
+  dom.menuStageBtn.addEventListener("click", showStageSelect);
+  dom.menuGachaBtn.addEventListener("click", () => showComingSoon("コスチュームガチャ"));
+  dom.menuOtherBtn.addEventListener("click", () => showComingSoon("その他"));
+  dom.stageSelectBackBtn.addEventListener("click", () => {
+    dom.stageSelectScreen.classList.remove("visible");
+    dom.menuScreen.classList.add("visible");
+  });
   dom.titleScreen.addEventListener("touchend", (e) => { e.preventDefault(); dismissTitle(); }, { passive: false });
   dom.nextStageBtn.addEventListener("click", goNextStage);
   dom.endingRetryBtn.addEventListener("click", () => {
     state.stageIndex = 0;
     dom.endingScreen.classList.remove("visible");
     resetBattle();
-    state.titleShown = true;
-    dom.titleScreen.classList.add("visible");
+    showMenu();
   });
 
   // ウィンドウリサイズ対応
@@ -965,6 +980,11 @@ function handleBossDefeated() {
   const ss = String(elapsed % 60).padStart(2, "0");
   const stg = getCurrentStage(state.stageIndex);
 
+  // 次のステージを解放
+  if (state.stageIndex + 1 > state.unlockedStages) {
+    state.unlockedStages = state.stageIndex + 1;
+  }
+
   setTimeout(() => {
     if (state.stageIndex >= STAGES.length - 1) {
       dom.endingScreen.classList.add("visible");
@@ -988,14 +1008,70 @@ function handleBossDefeated() {
 function dismissTitle() {
   if (!state.titleShown) return;
   state.titleShown = false;
-  dom.titleScreen.style.transition = "opacity 0.6s ease";
+  dom.titleScreen.style.transition = "opacity 0.5s ease";
   dom.titleScreen.style.opacity = "0";
   setTimeout(() => {
     dom.titleScreen.classList.remove("visible");
     dom.titleScreen.style.transition = "";
     dom.titleScreen.style.opacity = "";
-    showStageStart();
-  }, 600);
+    showMenu();    // タイトル → メニュー画面へ
+  }, 500);
+}
+
+// ============================================================
+// メニュー画面
+// ============================================================
+
+function showMenu() {
+  dom.menuScreen.classList.add("visible");
+}
+
+function hideMenu() {
+  dom.menuScreen.classList.remove("visible");
+}
+
+/** 準備中トースト表示 */
+function showComingSoon(name) {
+  dom.statusLine.textContent = `🚧 ${name}は準備中です！`;
+  setTimeout(() => { dom.statusLine.textContent = ""; }, 2000);
+}
+
+/** ステージ選択画面を表示・ステージ一覧を生成 */
+function showStageSelect() {
+  hideMenu();
+  dom.stageSelectScreen.classList.add("visible");
+  buildStageList();
+}
+
+/** STAGES配列からステージカードを動的生成 */
+function buildStageList() {
+  dom.stageList.innerHTML = "";
+  STAGES.forEach((stg, idx) => {
+    const locked = idx >= state.unlockedStages;
+    const card = document.createElement("div");
+    card.className = "stage-card" + (locked ? " locked" : "");
+
+    card.innerHTML = `
+      <div class="stage-card-no">
+        Stage<b>${stg.stageNo}</b>
+      </div>
+      <div class="stage-card-info">
+        <div class="stage-card-name">${stg.name}</div>
+        <div class="stage-card-hp">HP ${stg.maxHp.toLocaleString()}</div>
+      </div>
+      <div class="stage-card-lock">${locked ? "🔒" : "▶"}</div>
+    `;
+
+    if (!locked) {
+      card.addEventListener("click", () => {
+        state.stageIndex = idx;
+        resetBattle();
+        dom.stageSelectScreen.classList.remove("visible");
+        showStageStart();
+      });
+    }
+    dom.stageList.appendChild(card);
+  });
 }
 
 /** ステージ開始画面を表示 */

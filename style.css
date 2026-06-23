@@ -574,3 +574,159 @@ html, body {
   from { opacity: 0.4; }
   to   { opacity: 1.0; }
 }
+
+/* ===== メニュー画面 ===== */
+#menuScreen {
+  position: fixed; inset: 0; z-index: 58;
+  display: none; align-items: center; justify-content: center;
+  pointer-events: auto;
+  background: linear-gradient(
+    180deg,
+    rgba(0,0,0,0.60) 0%,
+    rgba(0,0,0,0.30) 40%,
+    rgba(0,0,0,0.60) 100%
+  );
+}
+#menuScreen.visible { display: flex; }
+
+#menuBox {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 24px;
+  animation: titleFadeIn 0.5s ease forwards;
+  width: min(88vw, 340px);
+}
+
+#menuTitle {
+  font-size: 16px; font-weight: 900;
+  color: #ffd166;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 16px #ff8c42;
+}
+
+#menuBtns {
+  display: flex; flex-direction: column;
+  gap: 14px; width: 100%;
+}
+
+.menu-btn {
+  position: relative;
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 20px;
+  border: none; border-radius: 14px;
+  font-size: 16px; font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.1s, filter 0.1s;
+  text-align: left;
+  backdrop-filter: blur(6px);
+}
+.menu-btn:active { transform: scale(0.96); filter: brightness(1.1); }
+
+.menu-btn-icon { font-size: 24px; line-height: 1; }
+.menu-btn-label { flex: 1; color: #fff; }
+
+.menu-btn-badge {
+  font-size: 10px; font-weight: bold;
+  background: rgba(0,0,0,0.4);
+  color: #aaa; border-radius: 6px;
+  padding: 2px 7px;
+}
+
+/* ステージ選択ボタン */
+.btn-stage {
+  background: linear-gradient(135deg, rgba(30,80,30,0.9), rgba(50,120,50,0.9));
+  border: 1.5px solid rgba(100,200,100,0.4);
+  box-shadow: 0 4px 16px rgba(50,150,50,0.3);
+}
+
+/* ガチャボタン */
+.btn-gacha {
+  background: linear-gradient(135deg, rgba(80,20,80,0.9), rgba(140,60,140,0.9));
+  border: 1.5px solid rgba(200,100,200,0.4);
+  box-shadow: 0 4px 16px rgba(150,50,150,0.3);
+}
+
+/* その他ボタン */
+.btn-other {
+  background: linear-gradient(135deg, rgba(30,40,80,0.9), rgba(50,70,130,0.9));
+  border: 1.5px solid rgba(100,130,220,0.4);
+  box-shadow: 0 4px 16px rgba(60,100,200,0.3);
+}
+
+/* ===== ステージ選択画面 ===== */
+#stageSelectScreen {
+  position: fixed; inset: 0; z-index: 58;
+  display: none; align-items: center; justify-content: center;
+  pointer-events: auto;
+  background: rgba(0,0,0,0.75);
+}
+#stageSelectScreen.visible { display: flex; }
+
+#stageSelectBox {
+  width: min(92vw, 360px);
+  background: linear-gradient(160deg, #0a120a, #0f1f0f);
+  border: 1.5px solid rgba(80,160,80,0.4);
+  border-radius: 18px;
+  padding: 24px 20px;
+  display: flex; flex-direction: column; gap: 16px;
+  animation: titleFadeIn 0.4s ease forwards;
+  max-height: 85vh; overflow-y: auto;
+}
+
+#stageSelectTitle {
+  font-size: 18px; font-weight: 900;
+  color: #ffd166; text-align: center;
+  letter-spacing: 0.1em;
+}
+#stageSelectChapter {
+  font-size: 12px; color: #88cc88;
+  text-align: center; letter-spacing: 0.15em;
+}
+
+#stageList {
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+/* ステージ1件のカード */
+.stage-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.1s;
+}
+.stage-card:active { transform: scale(0.97); }
+.stage-card:hover  { background: rgba(255,255,255,0.10); }
+.stage-card.locked {
+  opacity: 0.4; cursor: not-allowed;
+}
+.stage-card.locked:active  { transform: none; }
+
+.stage-card-no {
+  font-size: 11px; color: #888;
+  min-width: 52px; text-align: center;
+}
+.stage-card-no b { display: block; font-size: 18px; color: #ffd166; }
+
+.stage-card-info { flex: 1; }
+.stage-card-name {
+  font-size: 14px; font-weight: bold; color: #fff;
+}
+.stage-card-hp {
+  font-size: 11px; color: #888; margin-top: 2px;
+}
+
+.stage-card-lock { font-size: 20px; }
+
+.back-btn {
+  padding: 10px 20px;
+  font-size: 13px;
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 8px;
+  color: #888; cursor: pointer;
+  align-self: flex-start;
+  transition: color 0.1s;
+}
+.back-btn:active { color: #fff; }
