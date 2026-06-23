@@ -8,50 +8,146 @@
 </head>
 <body>
 
-<!-- 3Dシーンがここに全画面で入る -->
 <div id="sceneContainer"></div>
 
-<!-- HUD：画面に重なるオーバーレイUI -->
 <div id="hud">
-  <!-- ボスHP -->
+
+  <!-- 上部：ボスHP＆ゲージ -->
   <div id="bossHpArea">
     <div id="hpText">古龍スライム・ギガンテス　HP 5000 / 5000</div>
     <div class="hp-bar-outer"><div class="hp-bar-inner" id="hpBarInner"></div></div>
   </div>
-
-  <!-- 必殺技ゲージ -->
   <div id="gaugeArea">
     <div id="gaugeLabel">必殺技ゲージ: 0%</div>
     <div class="gauge-outer"><div class="gauge-inner" id="gaugeInner"></div></div>
   </div>
 
-  <!-- ステータス -->
+  <!-- 左上：ステータス -->
   <div id="statsArea">
     <span>ダメージ: <b id="totalDamage">0</b></span>
     <span>攻撃: <b id="attackCount">0</b>回</span>
   </div>
 
+  <!-- プレイヤーHP（左下、コントローラーパネルの上） -->
+  <div id="playerHpArea">
+    <div id="playerHpText">勇者　HP 500 / 500</div>
+    <div class="player-hp-bar-outer"><div class="player-hp-bar-inner" id="playerHpBarInner"></div></div>
+  </div>
+
+  <!-- 画面赤フラッシュ（被弾時） -->
+  <div id="damageFlash"></div>
+
+  <!-- タイトル画面 -->
+  <div id="titleScreen" class="visible">
+    <div id="titleContent">
+      <div id="titleSub">〜 Chapter 1 〜</div>
+      <div id="titleLogo">
+        <span class="title-line1">不思議な</span>
+        <span class="title-line2">スライム大冒険</span>
+      </div>
+      <div id="titleDeco">✦ ✦ ✦</div>
+      <div id="titleStart">タップしてスタート</div>
+    </div>
+  </div>
+
+  <!-- ステージ開始画面 -->
+  <div id="stageStartScreen" class="visible">
+    <div id="stageStartBox">
+      <div id="stageChapter">Chapter 1</div>
+      <div id="stageNo">Stage 1</div>
+      <div id="stageBossName">ぷちスライム・ポヨ</div>
+      <button id="stageStartBtn">⚔️ バトル開始！</button>
+    </div>
+  </div>
+
+  <!-- リザルト画面 -->
+  <div id="resultScreen">
+    <div id="resultBox">
+      <div id="resultTitle">✨ STAGE CLEAR! ✨</div>
+      <div id="resultStats"></div>
+      <button id="nextStageBtn">次のステージへ ▶</button>
+    </div>
+  </div>
+
+  <!-- エンディング画面 -->
+  <div id="endingScreen">
+    <div id="endingBox">
+      <div id="endingTitle">👑 CHAPTER 1 CLEAR! 👑</div>
+      <div id="endingSub">古王スライム・ガガントスを討伐した！</div>
+      <button id="endingRetryBtn">最初から遊ぶ</button>
+    </div>
+  </div>
+
+  <!-- ゲームオーバー画面 -->
+  <div id="gameOverScreen">
+    <div id="gameOverBox">
+      <div id="gameOverTitle">💀 GAME OVER</div>
+      <div id="gameOverSub">ボスに倒されました…</div>
+      <button id="retryBtn">もう一度挑戦</button>
+    </div>
+  </div>
+
   <!-- ステータスライン -->
   <div id="statusLine"></div>
 
-  <!-- 右下：攻撃ボタン群 -->
-  <div id="actionButtons">
-    <button class="special-btn" id="specialBtn">✨ 必殺技 ✨</button>
-    <button class="attack-btn" id="attackBtn">⚔️ こうげき！</button>
-  </div>
-
-  <!-- 左下：十字ボタン -->
-  <div class="dpad">
-    <button class="dpad-btn dpad-up"    data-dir="up">▲</button>
-    <button class="dpad-btn dpad-left"  data-dir="left">◀</button>
-    <div class="dpad-center"></div>
-    <button class="dpad-btn dpad-right" data-dir="right">▶</button>
-    <button class="dpad-btn dpad-down"  data-dir="down">▼</button>
-  </div>
-
-  <!-- リセット -->
+  <!-- リセット（右上） -->
   <button class="reset-btn" id="resetBtn">↺</button>
-</div>
+
+  <!-- ============ コントローラーパネル（下部） ============ -->
+  <div id="controllerPanel">
+
+    <!-- 左：十字型Dパッド（SVGクリップ） -->
+    <div id="dpadWrap">
+      <!-- 十字型のSVGマスク定義 -->
+      <svg width="0" height="0" style="position:absolute">
+        <defs>
+          <clipPath id="crossClip" clipPathUnits="objectBoundingBox">
+            <!--
+              全体を 1×1 の正規化座標で描く十字型パス。
+              縦長の矩形と横長の矩形をunionして十字を作る。
+              くびれ幅 = 0.33（真ん中1/3だけ通す）
+            -->
+            <path d="
+              M 0.33,0   L 0.67,0   L 0.67,0.33
+              L 1,0.33   L 1,0.67   L 0.67,0.67
+              L 0.67,1   L 0.33,1   L 0.33,0.67
+              L 0,0.67   L 0,0.33   L 0.33,0.33 Z
+            "/>
+          </clipPath>
+        </defs>
+      </svg>
+
+      <!-- 十字パッド本体：4ボタンをgridで並べ、全体にclipPathをかける -->
+      <div class="dpad-cross">
+        <button class="dpad-btn dpad-up"    data-dir="up">▲</button>
+        <button class="dpad-btn dpad-left"  data-dir="left">◀</button>
+        <div    class="dpad-center-dot"></div>
+        <button class="dpad-btn dpad-right" data-dir="right">▶</button>
+        <button class="dpad-btn dpad-down"  data-dir="down">▼</button>
+      </div>
+    </div>
+
+    <!-- 中央：スタートっぽいロゴエリア（将来的にメニューなど） -->
+    <div id="controllerCenter">
+      <div id="gameTitle">⚔️<br><span>SLIME<br>BATTLE</span></div>
+    </div>
+
+    <!-- 右：アクションボタン（Nintendo式 菱形4配置の上2個を使用） -->
+    <div id="actionPad">
+      <!-- 必殺技：左上 → Ｙボタン位置（黄） -->
+      <button class="action-btn btn-y" id="specialBtn">
+        <span class="btn-label">Y</span>
+        <span class="btn-text">✨必殺</span>
+      </button>
+      <!-- 通常攻撃：右下 → Ａボタン位置（青） -->
+      <button class="action-btn btn-a" id="attackBtn">
+        <span class="btn-label">A</span>
+        <span class="btn-text">攻撃</span>
+      </button>
+    </div>
+
+  </div><!-- /controllerPanel -->
+</div><!-- /hud -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="config.js"></script>
