@@ -62,7 +62,6 @@
         <button class="menu-btn btn-gacha" id="menuGachaBtn">
           <span class="menu-btn-icon">🎰</span>
           <span class="menu-btn-label">コスチュームガチャ</span>
-          <span class="menu-btn-badge">準備中</span>
         </button>
         <button class="menu-btn btn-other" id="menuOtherBtn">
           <span class="menu-btn-icon">⚙️</span>
@@ -70,6 +69,22 @@
           <span class="menu-btn-badge">準備中</span>
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- ガチャ画面 -->
+  <div id="gachaScreen">
+    <div id="gachaBox">
+      <div id="gachaTitle">🎰 コスチュームガチャ</div>
+      <div id="gachaCurrentCostume"></div>
+      <div id="gachaBtns">
+        <button class="gacha-pull-btn" id="gachaPullBtn">🎲 ガチャを引く</button>
+        <button class="gacha-pull-btn gacha-pull-10btn" id="gachaPull10Btn">🎲×10 まとめて引く</button>
+      </div>
+      <div id="gachaResult"></div>
+      <div id="gachaCollectionTitle">── コレクション ──</div>
+      <div id="gachaCollection"></div>
+      <button class="back-btn" id="gachaBackBtn">← もどる</button>
     </div>
   </div>
 
@@ -84,7 +99,7 @@
   </div>
 
   <!-- ステージ開始画面 -->
-  <div id="stageStartScreen" class="visible">
+  <div id="stageStartScreen">
     <div id="stageStartBox">
       <div id="stageChapter">Chapter 1</div>
       <div id="stageNo">Stage 1</div>
@@ -135,11 +150,6 @@
       <svg width="0" height="0" style="position:absolute">
         <defs>
           <clipPath id="crossClip" clipPathUnits="objectBoundingBox">
-            <!--
-              全体を 1×1 の正規化座標で描く十字型パス。
-              縦長の矩形と横長の矩形をunionして十字を作る。
-              くびれ幅 = 0.33（真ん中1/3だけ通す）
-            -->
             <path d="
               M 0.33,0   L 0.67,0   L 0.67,0.33
               L 1,0.33   L 1,0.67   L 0.67,0.67
@@ -160,12 +170,12 @@
       </div>
     </div>
 
-    <!-- 中央：スタートっぽいロゴエリア（将来的にメニューなど） -->
+    <!-- 中央：スタートっぽいロゴエリア -->
     <div id="controllerCenter">
       <div id="gameTitle">⚔️<br><span>SLIME<br>BATTLE</span></div>
     </div>
 
-    <!-- 右：アクションボタン（Nintendo式 菱形4配置の上2個を使用） -->
+    <!-- 右：アクションボタン -->
     <div id="actionPad">
       <!-- 必殺技：左上 → Ｙボタン位置（黄） -->
       <button class="action-btn btn-y" id="specialBtn">

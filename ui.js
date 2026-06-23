@@ -119,6 +119,8 @@ function startStage() {
   // ボスのジオメトリをステージサイズに合わせて更新
   three.scene.remove(three.bossGroup);
   buildBoss();
+  // コスチュームを再適用（ステージ切り替え後も武器・色を維持）
+  applyCostume(state.equippedCostume);
 }
 
 function goNextStage() {
@@ -212,5 +214,7 @@ function resetBattle() {
   three.bossMat.color.set(getCurrentStage(state.stageIndex).color);
 
   pickNewBossTarget();
+  // コスチューム再適用（リセット後も装備状態を維持）
+  if (three.playerGroup) applyCostume(state.equippedCostume);
   refreshUi();
 }

@@ -224,7 +224,7 @@ function isInAttackRange() {
 }
 
 function attackBoss() {
-  if (!state.battleStarted || state.cleared || !isInAttackRange()) return;
+  if (!state.battleStarted || state.cleared || state.gameOver || !isInAttackRange()) return;
   const now = Date.now();
   if (now - state.lastAttackAt < CONFIG.battle.attackCooldownMs) return;
   state.lastAttackAt = now;
@@ -238,7 +238,7 @@ function attackBoss() {
   state.attackCount += 1;
   state.specialGauge = Math.min(100, state.specialGauge + specialGaugePerHit);
 
-  startDashAttack();   // デフォルト体当たり（装備によって後で分岐）
+  startAttackMotion(); // コスチューム装備によって体当たり/剣/槍を振り分け
   spawnDamageNumber(damage, isCrit);
   flashBossHit(isCrit ? 200 : 120);
   triggerCameraShake();
@@ -407,7 +407,7 @@ function applyPlayerDamage(damage) {
   const bodyMat = three.playerGroup.children[0]?.material;
   if (bodyMat) {
     bodyMat.color.set(0xffffff);
-    setTimeout(() => bodyMat.color.set(CONFIG.player.color), 200);
+    setTimeout(() => bodyMat.color.set(state.equippedCostume?.color ?? CONFIG.player.color), 200);
   }
   triggerCameraShake();
   refreshUi();

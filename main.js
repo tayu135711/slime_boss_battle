@@ -1,6 +1,6 @@
 /**
  * main.js
- * state・DOM参照・入力・メインループ・init
+ * state・DOM参照・入力・メインループ・init・ガチャ
  * 依存: scene.js, battle.js, ui.js, config.js
  */
 
@@ -43,6 +43,14 @@ const dom = {
   nextStageBtn:      document.getElementById("nextStageBtn"),
   endingScreen:      document.getElementById("endingScreen"),
   endingRetryBtn:    document.getElementById("endingRetryBtn"),
+  // ガチャ画面
+  gachaScreen:       document.getElementById("gachaScreen"),
+  gachaPullBtn:      document.getElementById("gachaPullBtn"),
+  gachaPull10Btn:    document.getElementById("gachaPull10Btn"),
+  gachaResult:       document.getElementById("gachaResult"),
+  gachaCollection:   document.getElementById("gachaCollection"),
+  gachaCurrentCostume: document.getElementById("gachaCurrentCostume"),
+  gachaBackBtn:      document.getElementById("gachaBackBtn"),
 };
 
 // ============================================================
@@ -73,10 +81,44 @@ const state = {
     phase: 1, nextAttackAt: 0,
     mode: "wander", chargeTarget: null,
   },
+  // コスチューム
+  equippedCostume: COSTUMES[0],   // デフォルト: ノーマルスライム
+  ownedCostumes:   [COSTUMES[0]], // 最初はノーマルのみ所持
 };
 
 // Three.js オブジェクト群
 const three = {};
+
+// ============================================================
+// コスチューム適用
+// ============================================================
+function applyCostume(costume) {
+  state.equippedCostume = costume;
+
+  // プレイヤー体色を変更
+  const body = three.playerGroup?.children[0];
+  if (body && body.material) {
+    body.material.color.set(costume.color);
+  }
+
+  // 武器表示切り替え
+  if (three.swordPivot) three.swordPivot.visible = (costume.weapon === "sword");
+  if (three.spearPivot) three.spearPivot.visible = (costume.weapon === "spear");
+}
+
+// ============================================================
+// 攻撃モーション振り分け（コスチューム依存）
+// ============================================================
+function startAttackMotion() {
+  const weapon = state.equippedCostume?.weapon || "none";
+  if (weapon === "sword") {
+    startSwordSwing();
+  } else if (weapon === "spear") {
+    startSpearThrust();
+  } else {
+    startDashAttack();
+  }
+}
 
 // ============================================================
 // 移動・ボス徘徊
@@ -154,12 +196,20 @@ function setupInput() {
 
   // メニュー
   dom.menuStageBtn.addEventListener("click", showStageSelect);
-  dom.menuGachaBtn.addEventListener("click", () => showComingSoon("コスチュームガチャ"));
+  dom.menuGachaBtn.addEventListener("click", showGacha);
   dom.menuOtherBtn.addEventListener("click", () => showComingSoon("その他"));
   dom.stageSelectBackBtn.addEventListener("click", () => {
     dom.stageSelectScreen.classList.remove("visible");
     dom.menuScreen.classList.add("visible");
   });
+
+  // ガチャ
+  dom.gachaBackBtn.addEventListener("click", () => {
+    dom.gachaScreen.classList.remove("visible");
+    dom.menuScreen.classList.add("visible");
+  });
+  dom.gachaPullBtn.addEventListener("click", () => doPull(1));
+  dom.gachaPull10Btn.addEventListener("click", () => doPull(10));
 
   // エンディング
   dom.endingRetryBtn.addEventListener("click", () => {
@@ -176,6 +226,117 @@ function setupInput() {
     three.camera.aspect = w / h;
     three.camera.updateProjectionMatrix();
     three.renderer.setSize(w, h);
+  });
+}
+
+// ============================================================
+// ガチャロジック
+// ============================================================
+function showGacha() {
+  hideMenu();
+  dom.gachaScreen.classList.add("visible");
+  renderGachaCollection();
+  renderCurrentCostume();
+}
+
+function renderCurrentCostume() {
+  const c = state.equippedCostume;
+  const stars = "⭐".repeat(c.stars);
+  dom.gachaCurrentCostume.innerHTML = `
+    <div class="gacha-equipped-label">現在の装備</div>
+    <div class="gacha-equipped-card">
+      <span class="gacha-card-stars">${stars}</span>
+      <span class="gacha-card-name">${c.name}</span>
+      <span class="gacha-card-weapon">${weaponLabel(c.weapon)}</span>
+    </div>
+  `;
+}
+
+function weaponLabel(w) {
+  return w === "sword" ? "🗡️ 剣" : w === "spear" ? "🔱 槍" : "👊 素手";
+}
+
+function drawOne() {
+  const pool = getGachaPool();
+  const r = Math.random();
+  let acc = 0;
+  for (const item of pool) {
+    acc += item.weight;
+    if (r <= acc) return item;
+  }
+  return pool[pool.length - 1];
+}
+
+function doPull(count) {
+  const results = [];
+  for (let i = 0; i < count; i++) {
+    const got = drawOne();
+    results.push(got);
+    if (!state.ownedCostumes.find(c => c.id === got.id)) {
+      state.ownedCostumes.push(got);
+    }
+  }
+
+  // 結果表示
+  const stars3 = results.filter(c => c.stars === 3);
+  const stars2 = results.filter(c => c.stars === 2);
+  let html = `<div class="gacha-result-title">${count === 1 ? "結果" : "まとめ結果"}</div><div class="gacha-result-cards">`;
+  results.forEach(c => {
+    const cls = c.stars === 3 ? "gacha-card-r3" : c.stars === 2 ? "gacha-card-r2" : "gacha-card-r1";
+    html += `<div class="gacha-card ${cls}">
+      <div class="gacha-card-stars">${"⭐".repeat(c.stars)}</div>
+      <div class="gacha-card-name">${c.name}</div>
+      <div class="gacha-card-weapon">${weaponLabel(c.weapon)}</div>
+    </div>`;
+  });
+  html += "</div>";
+  if (stars3.length > 0) html += `<div class="gacha-jackpot">🎉 星3が出た！ ${stars3.map(c=>c.name).join("、")}</div>`;
+  dom.gachaResult.innerHTML = html;
+
+  // 最高レアリティを自動装備
+  const best = results.sort((a,b) => b.stars - a.stars)[0];
+  if (best.stars >= state.equippedCostume.stars) {
+    equipCostume(best);
+  }
+
+  renderGachaCollection();
+  renderCurrentCostume();
+}
+
+function equipCostume(costume) {
+  state.equippedCostume = costume;
+  // 3Dシーンが起動中なら即反映
+  if (three.playerGroup) applyCostume(costume);
+  renderCurrentCostume();
+  renderGachaCollection();
+}
+
+function renderGachaCollection() {
+  let html = "";
+  COSTUMES.forEach(c => {
+    const owned = state.ownedCostumes.find(o => o.id === c.id);
+    const equipped = state.equippedCostume?.id === c.id;
+    const cls = owned
+      ? (c.stars === 3 ? "gacha-coll-r3" : c.stars === 2 ? "gacha-coll-r2" : "gacha-coll-r1")
+      : "gacha-coll-locked";
+    html += `<div class="gacha-coll-card ${cls}" data-id="${c.id}">
+      <div class="gacha-coll-stars">${"⭐".repeat(c.stars)}</div>
+      <div class="gacha-coll-name">${owned ? c.name : "????"}</div>
+      ${equipped ? '<div class="gacha-coll-equipped">装備中</div>' : ""}
+      ${owned && !equipped ? `<div class="gacha-coll-equip-btn">装備する</div>` : ""}
+    </div>`;
+  });
+  dom.gachaCollection.innerHTML = html;
+
+  // 「装備する」ボタンのクリック
+  dom.gachaCollection.querySelectorAll(".gacha-coll-card[data-id]").forEach(card => {
+    card.addEventListener("click", () => {
+      const id = card.dataset.id;
+      const costume = COSTUMES.find(c => c.id === id);
+      if (costume && state.ownedCostumes.find(o => o.id === id)) {
+        equipCostume(costume);
+      }
+    });
   });
 }
 
@@ -199,6 +360,8 @@ function animate() {
 // ============================================================
 function init() {
   initScene();
+  // シーン構築後にコスチューム適用（初期装備をノーマルに）
+  applyCostume(state.equippedCostume);
   setupInput();
   pickNewBossTarget();
   refreshUi();
