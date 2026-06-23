@@ -144,3 +144,33 @@ const CONFIG = {
 function getCurrentStage(stageIndex) {
   return STAGES[stageIndex] || STAGES[STAGES.length - 1];
 }
+
+// ============================================================
+// COSTUMES: ガチャのコスチューム定義
+// stars:    1=色変化のみ 2=色+装備 3=色+装備+新スキル
+// color:    プレイヤーの体の色
+// weapon:   "none" | "sword" | "spear"
+// skillId:  null | "wave" | "ice" | "thunder"（将来実装）
+// ============================================================
+const COSTUMES = [
+  // ---- ⭐ 星1 ----
+  { id:"c01", no:"No.01", name:"ノーマルスライム",     stars:1, color:0x6ee7b7, weapon:"none",  skillId:null,      rarity:0.40 },
+  { id:"c02", no:"No.02", name:"みどりスライム",       stars:1, color:0x5adb5a, weapon:"none",  skillId:null,      rarity:0.25 },
+  { id:"c03", no:"No.03", name:"きいろスライム",       stars:1, color:0xffe066, weapon:"none",  skillId:null,      rarity:0.20 },
+  { id:"c04", no:"No.04", name:"あかスライム",         stars:1, color:0xff6b6b, weapon:"none",  skillId:null,      rarity:0.15 },
+  // ---- ⭐⭐ 星2 ----
+  { id:"c11", no:"No.11", name:"まほうつかいスライム", stars:2, color:0xc084fc, weapon:"none",  skillId:null,      rarity:0.08 },
+  { id:"c12", no:"No.12", name:"ナイトスライム",       stars:2, color:0x94a3b8, weapon:"sword", skillId:null,      rarity:0.08 },
+  { id:"c13", no:"No.13", name:"もりのスライム",       stars:2, color:0x4ade80, weapon:"none",  skillId:null,      rarity:0.08 },
+  // ---- ⭐⭐⭐ 星3 ----
+  { id:"c21", no:"No.21", name:"キングスライム",       stars:3, color:0x38bdf8, weapon:"none",  skillId:"wave",    rarity:0.03 },
+  { id:"c22", no:"No.22", name:"ライリンスライム",     stars:3, color:0xa5f3fc, weapon:"none",  skillId:"ice",     rarity:0.03 },
+  { id:"c23", no:"No.23", name:"イカズチスライム",     stars:3, color:0xfde047, weapon:"none",  skillId:"thunder", rarity:0.03 },
+  { id:"c24", no:"No.24", name:"スライムスピア",       stars:3, color:0x818cf8, weapon:"spear", skillId:null,      rarity:0.03 },
+];
+
+// 確率テーブルの合計が1.0になるよう正規化して返す
+function getGachaPool() {
+  const total = COSTUMES.reduce((s, c) => s + c.rarity, 0);
+  return COSTUMES.map(c => ({ ...c, weight: c.rarity / total }));
+}
