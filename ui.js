@@ -1,12 +1,8 @@
 /**
- * ui.js
- * HUD更新・画面遷移・ステージ管理・メニュー
- * 依存: state, dom, three, CONFIG, STAGES, getCurrentStage
+ * ui.js — HUD更新・画面遷移・ステージ管理
  */
 
-// ============================================================
-// HUD更新
-// ============================================================
+// ── HUD ──────────────────────────────────────────────────────
 function refreshUi() {
   const cs = getCurrentStage(state.stageIndex);
   // ボスHP
@@ -24,34 +20,33 @@ function refreshUi() {
   dom.totalDamageEl.textContent = state.totalDamage;
   dom.attackCountEl.textContent = state.attackCount;
   // プレイヤーHP
-  const playerHpPct = Math.max(0, (state.player.hp / CONFIG.player.maxHp) * 100);
-  dom.playerHpBarInner.style.width = playerHpPct + "%";
+  const pct = Math.max(0, (state.player.hp / CONFIG.player.maxHp) * 100);
+  dom.playerHpBarInner.style.width = pct + "%";
   dom.playerHpText.textContent = `勇者　HP ${state.player.hp} / ${CONFIG.player.maxHp}`;
-  if      (playerHpPct < 25) dom.playerHpBarInner.style.background = "linear-gradient(90deg,#cc0000,#ff4444)";
-  else if (playerHpPct < 50) dom.playerHpBarInner.style.background = "linear-gradient(90deg,#ff8c00,#ffcc00)";
-  else                        dom.playerHpBarInner.style.background = "linear-gradient(90deg,#44cc88,#88ffcc)";
+  if      (pct < 25) dom.playerHpBarInner.style.background = "linear-gradient(90deg,#cc0000,#ff4444)";
+  else if (pct < 50) dom.playerHpBarInner.style.background = "linear-gradient(90deg,#ff8c00,#ffcc00)";
+  else               dom.playerHpBarInner.style.background = "linear-gradient(90deg,#44cc88,#88ffcc)";
 }
 
 function updateAttackButtonState() {
-  if (state.cleared) return;
+  // ★ バトル中でないとき・クリア後・ゲームオーバー後は何もしない
+  if (!state.battleStarted || state.cleared || state.gameOver) return;
   const inRange = isInAttackRange();
   dom.attackBtn.classList.toggle("disabled-look", !inRange);
   three.rangeRingMat.color.set(inRange ? 0x4466cc : 0xffffff);
   three.rangeRingMat.opacity = inRange ? 0.35 : 0.12;
 }
 
-// ============================================================
-// タイトル・メニュー
-// ============================================================
+// ── タイトル・メニュー ────────────────────────────────────────
 function dismissTitle() {
   if (!state.titleShown) return;
   state.titleShown = false;
   dom.titleScreen.style.transition = "opacity 0.5s ease";
-  dom.titleScreen.style.opacity = "0";
+  dom.titleScreen.style.opacity    = "0";
   setTimeout(() => {
     dom.titleScreen.classList.remove("visible");
     dom.titleScreen.style.transition = "";
-    dom.titleScreen.style.opacity = "";
+    dom.titleScreen.style.opacity    = "";
     showMenu();
   }, 500);
 }
@@ -74,7 +69,7 @@ function buildStageList() {
   dom.stageList.innerHTML = "";
   STAGES.forEach((stg, idx) => {
     const locked = idx >= state.unlockedStages;
-    const card = document.createElement("div");
+    const card   = document.createElement("div");
     card.className = "stage-card" + (locked ? " locked" : "");
     card.innerHTML = `
       <div class="stage-card-no">Stage<b>${stg.stageNo}</b></div>
@@ -82,13 +77,12 @@ function buildStageList() {
         <div class="stage-card-name">${stg.name}</div>
         <div class="stage-card-hp">HP ${stg.maxHp.toLocaleString()}</div>
       </div>
-      <div class="stage-card-lock">${locked ? "🔒" : "▶"}</div>
-    `;
+      <div class="stage-card-lock">${locked ? "🔒" : "▶"}</div>`;
     if (!locked) {
       card.addEventListener("click", () => {
         state.stageIndex = idx;
-        resetBattle();
         dom.stageSelectScreen.classList.remove("visible");
+        resetBattle();
         showStageStart();
       });
     }
@@ -96,9 +90,7 @@ function buildStageList() {
   });
 }
 
-// ============================================================
-// ステージ管理
-// ============================================================
+// ── ステージ管理 ──────────────────────────────────────────────
 function showStageStart() {
   const stg = getCurrentStage(state.stageIndex);
   dom.stageChapter.textContent  = `Chapter ${stg.chapter}`;
@@ -108,97 +100,121 @@ function showStageStart() {
 }
 
 function startStage() {
+  // ★ 連打されてもbossGroupが増殖しないようにガード
+  if (state.battleStarted) return;
+
   dom.stageStartScreen.classList.remove("visible");
   state.stageStartAt  = Date.now();
   state.battleStarted = true;
+
+  // ★ バトル開始時に初回攻撃を2秒後に設定
+  state.bossAI.nextAttackAt = Date.now() + 2000;
+
   const stg = getCurrentStage(state.stageIndex);
   three.scene.fog        = new THREE.FogExp2(stg.bgColor, stg.fogDensity);
   three.scene.background = new THREE.Color(stg.bgColor);
-  three.bossMat.color.set(stg.color);
-  three.bossGroup.scale.set(1, 1, 1);
-  // ボスのジオメトリをステージサイズに合わせて更新
+
+  // ボスを再構築（ステージサイズに合わせる）
   three.scene.remove(three.bossGroup);
   buildBoss();
-  // コスチュームを再適用（ステージ切り替え後も武器・色を維持）
+
+  // ★ 再構築後にコスチュームを再適用（武器・色を引き継ぐ）
   applyCostume(state.equippedCostume);
 }
 
 function goNextStage() {
+  // ★ stageIndexが上限を超えないよう境界チェック
+  if (state.stageIndex >= STAGES.length - 1) return;
   dom.resultScreen.classList.remove("visible");
   state.stageIndex++;
   resetBattle();
   showStageStart();
 }
 
-// ============================================================
-// クリア・ゲームオーバー
-// ============================================================
+// ── クリア・ゲームオーバー ─────────────────────────────────────
 function handleBossDefeated() {
   state.cleared = true;
   dom.attackBtn.disabled = true;
   dom.attackBtn.classList.add("disabled-look");
   dom.specialBtn.classList.remove("visible");
   three.bossMesh.material.transparent = true;
-  three.bossMesh.material.opacity = 0.3;
+  three.bossMesh.material.opacity     = 0.3;
 
-  // 次のステージを解放
-  if (state.stageIndex + 1 > state.unlockedStages) {
-    state.unlockedStages = state.stageIndex + 1;
+  // ★ 次ステージを正しく解放（現在+1 を unlockedStages に反映）
+  const nextIdx = state.stageIndex + 1;
+  if (nextIdx < STAGES.length && nextIdx > state.unlockedStages) {
+    state.unlockedStages = nextIdx;
   }
 
   const elapsed = Math.floor((Date.now() - state.stageStartAt) / 1000);
-  const mm = String(Math.floor(elapsed / 60)).padStart(2, "0");
-  const ss = String(elapsed % 60).padStart(2, "0");
-  const stg = getCurrentStage(state.stageIndex);
+  const mm      = String(Math.floor(elapsed / 60)).padStart(2, "0");
+  const ss      = String(elapsed % 60).padStart(2, "0");
+  const stg     = getCurrentStage(state.stageIndex);
 
+  // ★ タイムアウト時点のステージ番号をキャプチャして保持
+  const clearedStageIndex = state.stageIndex;
   setTimeout(() => {
+    // ★ リセットや別ステージへの遷移が起きていたら何もしない
+    if (!state.cleared || state.stageIndex !== clearedStageIndex) return;
     if (state.stageIndex >= STAGES.length - 1) {
       dom.endingScreen.classList.add("visible");
     } else {
       dom.resultTitle.textContent = `✨ Stage ${stg.stageNo} CLEAR! ✨`;
-      dom.resultStats.innerHTML = `
+      dom.resultStats.innerHTML   = `
         <div>🏆 討伐: <b>${stg.name}</b></div>
         <div>⏱ クリアタイム: <b>${mm}:${ss}</b></div>
         <div>⚔️ 与ダメージ: <b>${state.totalDamage}</b></div>
-        <div>🔢 攻撃回数: <b>${state.attackCount}</b>回</div>
-      `;
+        <div>🔢 攻撃回数: <b>${state.attackCount}</b>回</div>`;
       dom.resultScreen.classList.add("visible");
     }
   }, 800);
 }
 
-// ============================================================
-// リセット
-// ============================================================
+// ── リセット ──────────────────────────────────────────────────
 function resetBattle() {
-  state.currentHp    = getCurrentStage(state.stageIndex).maxHp;
-  state.totalDamage  = 0;
-  state.attackCount  = 0;
-  state.cleared      = false;
-  state.gameOver     = false;
+  state.currentHp     = getCurrentStage(state.stageIndex).maxHp;
+  state.totalDamage   = 0;
+  state.attackCount   = 0;
+  state.cleared       = false;
+  state.gameOver      = false;
   state.battleStarted = false;
-  state.lastAttackAt = 0;
-  state.specialGauge = 0;
+  state.lastAttackAt  = 0;
+  state.specialGauge  = 0;
 
+  // ★ Dパッドの押下状態をリセット（キーが押しっぱなしにならないように）
   state.keys = { up: false, down: false, left: false, right: false };
-  document.querySelectorAll(".dpad-btn").forEach(btn => btn.classList.remove("pressed"));
+  document.querySelectorAll(".dpad-btn").forEach(b => b.classList.remove("pressed"));
 
+  // モーションをすべてリセット
   if (three.swordPivot) three.swordPivot.rotation.z = 0;
   if (three.swordSwing)  three.swordSwing  = { active: false, progress: 0 };
-  if (three.dashAttack)  { three.dashAttack  = { active: false, progress: 0 }; three.playerGroup?.scale.set(1,1,1); }
-  if (three.spearThrust) { three.spearThrust = { active: false, progress: 0 }; three.spearPivot && (three.spearPivot.position.z = 0); }
+  if (three.dashAttack) {
+    three.dashAttack = { active: false, progress: 0 };
+    three.playerGroup?.scale.set(1, 1, 1);
+  }
+  if (three.spearThrust) {
+    three.spearThrust = { active: false, progress: 0 };
+    if (three.spearPivot) three.spearPivot.position.z = 0;
+  }
 
+  // 魔法陣をすべてキャンセル
   three.magicCircles.forEach(g => { g.userData.cancelled = true; three.scene.remove(g); });
   three.magicCircles = [];
 
-  state.player.hp = CONFIG.player.maxHp;
+  state.player.hp              = CONFIG.player.maxHp;
   state.player.invincibleUntil = 0;
-  state.bossAI = { phase: 1, nextAttackAt: Date.now() + 2000, mode: "wander", chargeTarget: null };
 
+  // ★ nextAttackAt を Infinity に戻す（startStage() で正式に設定する）
+  state.bossAI = { phase: 1, nextAttackAt: Infinity, mode: "wander", chargeTarget: null };
+
+  // UI
   dom.gameOverScreen.classList.remove("visible");
+  dom.resultScreen.classList.remove("visible");   // ★ リセット時にリザルトも閉じる
   dom.statusLine.textContent = "";
-  dom.attackBtn.disabled = false;
+  dom.attackBtn.disabled     = false;
+  dom.attackBtn.classList.remove("disabled-look");
 
+  // 座標リセット
   state.player.x = CONFIG.player.startX;
   state.player.z = CONFIG.player.startZ;
   if (three.playerGroup) three.playerGroup.position.set(state.player.x, 0, state.player.z);
@@ -210,11 +226,11 @@ function resetBattle() {
     three.bossGroup.scale.set(1, 1, 1);
   }
   three.bossMesh.material.transparent = false;
-  three.bossMesh.material.opacity = 1;
+  three.bossMesh.material.opacity     = 1;
   three.bossMat.color.set(getCurrentStage(state.stageIndex).color);
 
   pickNewBossTarget();
-  // コスチューム再適用（リセット後も装備状態を維持）
+  // ★ コスチューム再適用（リセット後も装備状態を維持）
   if (three.playerGroup) applyCostume(state.equippedCostume);
   refreshUi();
 }

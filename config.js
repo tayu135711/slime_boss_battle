@@ -151,18 +151,19 @@ function getCurrentStage(stageIndex) {
 // color:    プレイヤーの体の色
 // weapon:   "none" | "sword" | "spear"
 // skillId:  null | "wave" | "ice" | "thunder"（将来実装）
+// rarity:   排出重みの合計が1.0になるよう設定
 // ============================================================
 const COSTUMES = [
-  // ---- ⭐ 星1 ----
-  { id:"c01", no:"No.01", name:"ノーマルスライム",     stars:1, color:0x6ee7b7, weapon:"none",  skillId:null,      rarity:0.40 },
-  { id:"c02", no:"No.02", name:"みどりスライム",       stars:1, color:0x5adb5a, weapon:"none",  skillId:null,      rarity:0.25 },
-  { id:"c03", no:"No.03", name:"きいろスライム",       stars:1, color:0xffe066, weapon:"none",  skillId:null,      rarity:0.20 },
-  { id:"c04", no:"No.04", name:"あかスライム",         stars:1, color:0xff6b6b, weapon:"none",  skillId:null,      rarity:0.15 },
-  // ---- ⭐⭐ 星2 ----
+  // ---- ⭐ 星1 (合計 0.64) ----
+  { id:"c01", no:"No.01", name:"ノーマルスライム",     stars:1, color:0x6ee7b7, weapon:"none",  skillId:null,      rarity:0.22 },
+  { id:"c02", no:"No.02", name:"みどりスライム",       stars:1, color:0x5adb5a, weapon:"none",  skillId:null,      rarity:0.18 },
+  { id:"c03", no:"No.03", name:"きいろスライム",       stars:1, color:0xffe066, weapon:"none",  skillId:null,      rarity:0.14 },
+  { id:"c04", no:"No.04", name:"あかスライム",         stars:1, color:0xff6b6b, weapon:"none",  skillId:null,      rarity:0.10 },
+  // ---- ⭐⭐ 星2 (合計 0.24) ----
   { id:"c11", no:"No.11", name:"まほうつかいスライム", stars:2, color:0xc084fc, weapon:"none",  skillId:null,      rarity:0.08 },
   { id:"c12", no:"No.12", name:"ナイトスライム",       stars:2, color:0x94a3b8, weapon:"sword", skillId:null,      rarity:0.08 },
   { id:"c13", no:"No.13", name:"もりのスライム",       stars:2, color:0x4ade80, weapon:"none",  skillId:null,      rarity:0.08 },
-  // ---- ⭐⭐⭐ 星3 ----
+  // ---- ⭐⭐⭐ 星3 (合計 0.12) ----
   { id:"c21", no:"No.21", name:"キングスライム",       stars:3, color:0x38bdf8, weapon:"none",  skillId:"wave",    rarity:0.03 },
   { id:"c22", no:"No.22", name:"ライリンスライム",     stars:3, color:0xa5f3fc, weapon:"none",  skillId:"ice",     rarity:0.03 },
   { id:"c23", no:"No.23", name:"イカズチスライム",     stars:3, color:0xfde047, weapon:"none",  skillId:"thunder", rarity:0.03 },

@@ -270,10 +270,28 @@ function addSlimeFace(parent, r, eyeY = 0.25) {
 
 // --- ボス ---
 function buildBoss() {
+  // ★ 古いbossGroupのgeometry・materialをdispose（メモリリーク防止）
+  if (three.bossMesh) {
+    three.bossMesh.geometry.dispose();
+    // bossMat は三.bossMat として別途参照されているので後でdispose
+  }
+  if (three.bossMat) {
+    three.bossMat.dispose();
+  }
+  // ★ bossFaceGroupの全子メッシュをdispose
+  if (three.bossFaceGroup) {
+    three.bossFaceGroup.traverse(child => {
+      if (child.isMesh) {
+        child.geometry?.dispose();
+        child.material?.dispose();
+      }
+    });
+  }
+
   const s = getCurrentStage(state.stageIndex);
-  three.bossMat = new THREE.MeshStandardMaterial({ color: s.color, roughness: 0.4, metalness: 0.1 });
+  three.bossMat   = new THREE.MeshStandardMaterial({ color: s.color, roughness: 0.4, metalness: 0.1 });
   three.bossGroup = new THREE.Group();
-  three.bossMesh = new THREE.Mesh(new THREE.SphereGeometry(s.radius, 28, 28), three.bossMat);
+  three.bossMesh  = new THREE.Mesh(new THREE.SphereGeometry(s.radius, 28, 28), three.bossMat);
   three.bossMesh.castShadow = true;
   three.bossGroup.add(three.bossMesh);
   three.bossFaceGroup = addSlimeFace(three.bossGroup, s.radius, 0.15);
