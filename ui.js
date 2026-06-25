@@ -43,10 +43,15 @@ function dismissTitle() {
   state.titleShown = false;
   dom.titleScreen.style.transition = "opacity 0.5s ease";
   dom.titleScreen.style.opacity    = "0";
-  setTimeout(() => {
+  setTimeout(async () => {
     dom.titleScreen.classList.remove("visible");
     dom.titleScreen.style.transition = "";
     dom.titleScreen.style.opacity    = "";
+    const loaded = await loadFromServer();
+    if (loaded) {
+      dom.statusLine.textContent = "📂 セーブデータを読み込みました！";
+      setTimeout(() => dom.statusLine.textContent = "", 2500);
+    }
     showHomePlaza();
   }, 500);
 }
@@ -63,6 +68,8 @@ function showHomePlaza() {
   dom.homePlazaScreen.classList.add("visible");
   // 広場を初期化
   if (typeof initHomePlaza === "function") initHomePlaza();
+  // セーブ
+  saveToServer();
 }
 
 function showComingSoon(name) {
@@ -362,7 +369,12 @@ function renderGachaCollection() {
 
 function applyCostume(costume) {
   state.equippedCostume = costume;
-  const body = three.playerGroup?.children[0];
-  if (body?.material) body.material.color.set(costume.color);
+  // ボディ・触角の色変更
+  if (three.slimeParts?.bodyMat)  three.slimeParts.bodyMat.color.set(costume.color);
+  if (three.slimeParts?.stickMat) three.slimeParts.stickMat.color.set(costume.color);
+  // 武器の表示切替
   if (three.swordPivot) three.swordPivot.visible = (costume.weapon === "sword");
+  if (three.spearPivot) three.spearPivot.visible = (costume.weapon === "spear");
+  // 帽子差し替え
+  rebuildHat(costume);
 }
