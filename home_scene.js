@@ -53,18 +53,16 @@ let plazaDialog = null;
 
 function initHomePlaza() {
   three.scene.background = new THREE.Color(0x87ceeb);
-  three.scene.fog = new THREE.FogExp2(0x87ceeb, 0.012);
+  three.scene.fog = new THREE.FogExp2(0x87ceeb, 0.007);
 
   if (!plaza.initialized) {
     buildPlazaScene();
     plaza.initialized = true;
+    setBattleObjectsVisible(false);
   } else {
     setPlazaObjectsVisible(true);
+    setBattleObjectsVisible(false);
   }
-
-  setBattleObjectsVisible(false);
-  if (three.sunLight) three.sunLight.visible = false;
-  if (three.ambientLight) three.ambientLight.visible = false;
 
   plazaPlayer.x = 0;
   plazaPlayer.z = 0;
@@ -92,7 +90,7 @@ function buildPlazaScene() {
   three.scene.add(plaza.ambientLight);
 
   plaza.ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(60, 60, 1, 1),
+    new THREE.PlaneGeometry(200, 200, 1, 1),
     new THREE.MeshStandardMaterial({ color: 0x5cb85c, roughness: 0.9 })
   );
   plaza.ground.rotation.x = -Math.PI / 2;
@@ -111,6 +109,7 @@ function buildPlazaScene() {
   buildPlazaPlayer();
   buildFishingSpot();
   buildFlowerField();   // 花畑
+  buildDistantTrees(); // 遠景の木々
 }
 
 function buildFountain() {
@@ -347,6 +346,21 @@ function buildFlowerField() {
   }
 }
 
+
+// 遠景の木々（オープンワールド感）
+function buildDistantTrees() {
+  const positions = [];
+  for (let i = 0; i < 40; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 22 + Math.random() * 30;
+    positions.push([Math.cos(angle) * dist, Math.sin(angle) * dist]);
+  }
+  positions.forEach(([x, z]) => {
+    const h = 3.5 + Math.random() * 5;
+    three.scene.add(makeFirTree(x, z, h));
+  });
+}
+
 function updateHomePlazaLoop() {
   updatePlazaPlayer();
   updatePlazaNPCs();
@@ -374,8 +388,8 @@ function updatePlazaPlayer() {
 }
 
 function updatePlazaCameraFollow() {
-  three.camera.position.set(plazaPlayer.x, 8.0, plazaPlayer.z + 11.0);
-  three.camera.lookAt(plazaPlayer.x, 0.5, plazaPlayer.z - 1.5);
+  three.camera.position.set(plazaPlayer.x, 3.5, plazaPlayer.z + 10.0);
+  three.camera.lookAt(plazaPlayer.x, 0.5, plazaPlayer.z - 5.0);
 }
 
 function updatePlazaNPCs() {

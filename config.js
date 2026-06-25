@@ -84,8 +84,8 @@ const CONFIG = {
   },
   field: { halfSize: 14 },
   camera: {
-    fov: 65, offsetY: 6.0, offsetZ: 9.0,
-    lookAtY: 0.5, lookAtZAhead: -2.5, shakeMs: 180,
+    fov: 70, offsetY: 3.8, offsetZ: 9.5,
+    lookAtY: 0.0, lookAtZAhead: -4.0, shakeMs: 180,
   },
 };
 
