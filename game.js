@@ -47,6 +47,10 @@ const dom = {
   homePlazaScreen:   document.getElementById("homePlazaScreen"),
   npcBubble:         document.getElementById("npcBubble"),
   plazaActionPrompt: document.getElementById("plazaActionPrompt"),
+  npcDialog:         document.getElementById("npcDialog"),
+  npcDialogName:     document.getElementById("npcDialogName"),
+  npcDialogText:     document.getElementById("npcDialogText"),
+  npcDialogNext:     document.getElementById("npcDialogNext"),
   titleStartBtn:     document.getElementById("titleStartBtn"),
 };
 
@@ -260,41 +264,168 @@ function buildForestDecor() {
   }
 }
 
+// ============================================================
+// ぷにぷに勇者 顔パーツ（カービィ風・虹彩+瞳孔+まつ毛3層+ほっぺ）
+// ============================================================
 function addSlimeFace(parent, r, eyeY = 0.25) {
   const faceGroup = new THREE.Group();
-  const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
-  const eyeBlackMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
+
+  // ── マテリアル ──────────────────────────────────────────────
+  const eyeWhiteMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff, roughness: 0.05,
+    emissive: 0xeeeeff, emissiveIntensity: 0.08,
+  });
+  const irisMat = new THREE.MeshStandardMaterial({
+    color: 0x1a6fcc, roughness: 0.2,
+    emissive: 0x0d3d88, emissiveIntensity: 0.30,
+  });
+  const pupilMat   = new THREE.MeshStandardMaterial({ color: 0x0a0a18, roughness: 0.3 });
+  const hlMainMat  = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.0, emissive: 0xffffff, emissiveIntensity: 1.2 });
+  const hlSubMat   = new THREE.MeshStandardMaterial({ color: 0xddeeff, roughness: 0.0, emissive: 0x88ccff, emissiveIntensity: 0.8 });
+  const lashMat    = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.8 });
+  const mouthMat   = new THREE.MeshStandardMaterial({ color: 0x331122, roughness: 0.5 });
+  const cheekMat   = new THREE.MeshStandardMaterial({ color: 0xff8888, roughness: 1.0, transparent: true, opacity: 0.40 });
+
   function makeEye(side) {
     const eyeGroup = new THREE.Group();
-    const white = new THREE.Mesh(new THREE.SphereGeometry(r * 0.22, 12, 12), eyeWhiteMat);
+
+    // 白目（縦長楕円でぱっちり感）
+    const white = new THREE.Mesh(new THREE.SphereGeometry(r * 0.26, 14, 14), eyeWhiteMat);
+    white.scale.set(1.0, 1.28, 0.72);
     eyeGroup.add(white);
-    const black = new THREE.Mesh(new THREE.SphereGeometry(r * 0.13, 10, 10), eyeBlackMat);
-    black.position.z = r * 0.11;
-    eyeGroup.add(black);
-    const highlight = new THREE.Mesh(new THREE.SphereGeometry(r * 0.05, 6, 6), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1 }));
-    highlight.position.set(r * 0.04, r * 0.04, r * 0.18);
-    eyeGroup.add(highlight);
+
+    // 虹彩
+    const iris = new THREE.Mesh(new THREE.SphereGeometry(r * 0.17, 12, 12), irisMat);
+    iris.scale.set(1.0, 1.22, 0.68);
+    iris.position.z = r * 0.09;
+    eyeGroup.add(iris);
+
+    // 瞳孔
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(r * 0.095, 10, 10), pupilMat);
+    pupil.scale.set(1.0, 1.15, 0.65);
+    pupil.position.z = r * 0.155;
+    eyeGroup.add(pupil);
+
+    // メインハイライト（左上・大）
+    const hl1 = new THREE.Mesh(new THREE.SphereGeometry(r * 0.072, 7, 7), hlMainMat);
+    hl1.scale.set(1.0, 1.3, 0.7);
+    hl1.position.set(-r * 0.07, r * 0.10, r * 0.21);
+    eyeGroup.add(hl1);
+
+    // サブハイライト（右下・小）
+    const hl2 = new THREE.Mesh(new THREE.SphereGeometry(r * 0.036, 6, 6), hlSubMat);
+    hl2.position.set(r * 0.07, -r * 0.04, r * 0.22);
+    eyeGroup.add(hl2);
+
+    // まつ毛（3本のアーチ）
+    for (let li = -1; li <= 1; li++) {
+      const pts = [];
+      for (let k = 0; k <= 5; k++) {
+        const kt = k / 5;
+        pts.push(new THREE.Vector3(
+          li * r * 0.07 + (li === 0 ? 0 : li * r * 0.035 * kt),
+          r * 0.21 + kt * r * 0.15,
+          r * 0.17 - kt * r * 0.04
+        ));
+      }
+      eyeGroup.add(new THREE.Mesh(
+        new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 5, r * 0.016, 4, false),
+        lashMat
+      ));
+    }
+
     const angle = side * 0.38;
-    eyeGroup.position.set(Math.sin(angle) * r * 0.88, r * (0.5 + eyeY), Math.cos(angle) * r * 0.88);
+    eyeGroup.position.set(
+      Math.sin(angle) * r * 0.83,
+      r * (0.46 + eyeY),
+      Math.cos(angle) * r * 0.83
+    );
+    eyeGroup.rotation.z = side * 0.07;
     return eyeGroup;
   }
+
   faceGroup.add(makeEye(-1));
   faceGroup.add(makeEye( 1));
+
+  // 口（大きなニコッとした笑顔）
   const mouthPoints = [];
-  const mouthWidth = r * 0.38;
-  const segments   = 10;
-  for (let i = 0; i <= segments; i++) {
-    const t = i / segments;
+  const mouthWidth = r * 0.42;
+  for (let i = 0; i <= 14; i++) {
+    const t = i / 14;
     const mx = (t - 0.5) * mouthWidth * 2;
-    const my = -Math.abs(t - 0.5) * r * 0.18;
-    const mz = Math.sqrt(Math.max(0, r * r - mx * mx - (r * (0.3 + eyeY) - r * 0.25) ** 2)) * 0.95;
-    mouthPoints.push(new THREE.Vector3(mx, r * (0.3 + eyeY) - r * 0.32 + my, mz));
+    const my = (4 * (t - 0.5) ** 2 - 1) * r * 0.13;
+    const mz = Math.sqrt(Math.max(0, r * r - mx * mx - (r * (0.26 + eyeY)) ** 2)) * 0.93;
+    mouthPoints.push(new THREE.Vector3(mx, r * (0.26 + eyeY) - r * 0.34 + my, mz));
   }
-  const mouthCurve = new THREE.CatmullRomCurve3(mouthPoints);
-  const mouthMesh = new THREE.Mesh(new THREE.TubeGeometry(mouthCurve, 12, r * 0.04, 6, false), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.6 }));
-  faceGroup.add(mouthMesh);
+  faceGroup.add(new THREE.Mesh(
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(mouthPoints), 14, r * 0.036, 6, false),
+    mouthMat
+  ));
+
+  // ほっぺたの赤み（左右）
+  [-1, 1].forEach(side => {
+    const cheek = new THREE.Mesh(new THREE.SphereGeometry(r * 0.13, 8, 6), cheekMat);
+    cheek.scale.set(1.4, 0.65, 0.5);
+    const angle = side * 0.64;
+    cheek.position.set(
+      Math.sin(angle) * r * 0.74,
+      r * (0.22 + eyeY),
+      Math.cos(angle) * r * 0.76
+    );
+    faceGroup.add(cheek);
+  });
+
   parent.add(faceGroup);
   return faceGroup;
+}
+
+// ============================================================
+// buildCuteSlimeBody — ぷにぷに体形＋触角＋帽子グループ を構築
+// 戻り値 { body, bodyMat, hatGroup, stickMat } を呼び出し元で保存する
+// ============================================================
+function buildCuteSlimeBody(group, r, color) {
+  // ── 本体（わずかに縦つぶれでぷにぷに感） ──────────────────
+  const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.42, metalness: 0.05 });
+  const body = new THREE.Mesh(new THREE.SphereGeometry(r, 22, 22), bodyMat);
+  body.scale.set(1.0, 0.90, 1.0);
+  body.position.y = r;
+  body.castShadow = true;
+  group.add(body);
+
+  // ── 顔パーツ ────────────────────────────────────────────────
+  addSlimeFace(body, r, 0.22);
+
+  // ── 触角（左上に1本） ─────────────────────────────────────
+  const stickMat = new THREE.MeshStandardMaterial({ color, roughness: 0.65 });
+  const tipMat   = new THREE.MeshStandardMaterial({
+    color: 0xaaddf8, roughness: 0.22,
+    emissive: 0x44aace, emissiveIntensity: 0.35,
+  });
+  const tipHLMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.9, roughness: 0.0,
+  });
+
+  const stick = new THREE.Mesh(
+    new THREE.CylinderGeometry(r * 0.044, r * 0.044, r * 0.62, 7), stickMat
+  );
+  stick.position.set(-r * 0.17, r * 0.85, r * 0.38);
+  stick.rotation.z = 0.28;
+  body.add(stick);
+
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(r * 0.115, 9, 9), tipMat);
+  tip.position.set(-r * 0.36, r * 1.22, r * 0.33);
+  body.add(tip);
+
+  const tipHL = new THREE.Mesh(new THREE.SphereGeometry(r * 0.044, 6, 6), tipHLMat);
+  tipHL.position.set(-r * 0.43, r * 1.30, r * 0.31);
+  body.add(tipHL);
+
+  // ── 帽子グループ（コスチューム差し替え用・空） ────────────
+  const hatGroup = new THREE.Group();
+  hatGroup.position.set(0, r * 0.88, 0);
+  body.add(hatGroup);
+
+  return { body, bodyMat, hatGroup, stickMat };
 }
 
 function buildBoss() {
@@ -318,23 +449,60 @@ function buildBoss() {
 
 function buildPlayer() {
   three.playerGroup = new THREE.Group();
-  const playerColor = state.equippedCostume?.color ?? CONFIG.player.color;
-  const body = new THREE.Mesh(new THREE.SphereGeometry(CONFIG.player.radius, 20, 20), new THREE.MeshStandardMaterial({ color: playerColor, roughness: 0.5 }));
-  body.position.y = CONFIG.player.radius;
-  body.castShadow = true;
-  three.playerGroup.add(body);
-  addSlimeFace(body, CONFIG.player.radius, 0.2);
+  const r     = CONFIG.player.radius;
+  const color = state.equippedCostume?.color ?? CONFIG.player.color;
+
+  // ── かわいいスライム本体を構築し three.slimeParts に保存 ──
+  three.slimeParts = buildCuteSlimeBody(three.playerGroup, r, color);
+
+  // ── 剣ピボット ─────────────────────────────────────────────
   three.swordPivot = new THREE.Group();
-  three.swordPivot.position.set(0.5, 0.8, 0);
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.7, 0.04), new THREE.MeshStandardMaterial({ color: 0xddeeff, metalness: 0.9, roughness: 0.1, emissive: 0x88bbff, emissiveIntensity: 0.3 }));
-  blade.position.y = 0.35;
-  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.06, 0.08), new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.7, roughness: 0.3 }));
-  guard.position.y = 0.02;
-  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.22, 6), new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.9 }));
-  grip.position.y = -0.12;
-  three.swordPivot.add(blade, guard, grip);
+  three.swordPivot.position.set(r * 0.9, r * 1.4, 0);
+  three.swordPivot.visible = false;
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.68, 0.038),
+    new THREE.MeshStandardMaterial({ color: 0xddeeff, metalness: 0.92, roughness: 0.08, emissive: 0x88bbff, emissiveIntensity: 0.35 }));
+  blade.position.y = 0.34;
+  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.055, 0.075),
+    new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.75, roughness: 0.25 }));
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.20, 6),
+    new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.9 }));
+  grip.position.y = -0.11;
+  const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.055, 7, 7),
+    new THREE.MeshStandardMaterial({ color: 0xddbb33, metalness: 0.88, roughness: 0.18 }));
+  pommel.position.y = -0.22;
+  three.swordPivot.add(blade, guard, grip, pommel);
   three.playerGroup.add(three.swordPivot);
-  three.swordSwing = { active: false, progress: 0 };
+
+  // ── 槍ピボット ─────────────────────────────────────────────
+  three.spearPivot = new THREE.Group();
+  three.spearPivot.position.set(r * 0.9, r * 0.9, 0);
+  three.spearPivot.visible = false;
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.046, 0.040, 2.2, 8),
+    new THREE.MeshStandardMaterial({ color: 0x6b3d0f, roughness: 0.75 }));
+  shaft.position.y = 1.1;
+  [0.5, 0.9, 1.3].forEach(py => {
+    const wrap = new THREE.Mesh(new THREE.CylinderGeometry(0.054, 0.054, 0.065, 8),
+      new THREE.MeshStandardMaterial({ color: 0x3a1a05, roughness: 0.95 }));
+    wrap.position.y = py;
+    three.spearPivot.add(wrap);
+  });
+  const spearTip = new THREE.Mesh(new THREE.ConeGeometry(0.105, 0.52, 8),
+    new THREE.MeshStandardMaterial({ color: 0xd0e8ff, metalness: 0.96, roughness: 0.05, emissive: 0x3388ff, emissiveIntensity: 0.65 }));
+  spearTip.position.y = 2.46;
+  const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.058, 0.13, 8),
+    new THREE.MeshStandardMaterial({ color: 0x99aacc, metalness: 0.88, roughness: 0.16 }));
+  socket.position.y = 2.17;
+  const spearButt = new THREE.Mesh(new THREE.ConeGeometry(0.052, 0.20, 8),
+    new THREE.MeshStandardMaterial({ color: 0x778899, metalness: 0.82, roughness: 0.22 }));
+  spearButt.position.y = -0.10;
+  spearButt.rotation.z = Math.PI;
+  three.spearPivot.add(shaft, spearTip, socket, spearButt);
+  three.playerGroup.add(three.spearPivot);
+
+  three.swordSwing  = { active: false, progress: 0 };
+  three.spearThrust = { active: false, progress: 0 };
+  three.dashAttack  = { active: false, progress: 0 };
+
   three.playerGroup.position.set(state.player.x, 0, state.player.z);
   three.scene.add(three.playerGroup);
 }
@@ -696,10 +864,15 @@ function dismissTitle() {
   state.titleShown = false;
   dom.titleScreen.style.transition = "opacity 0.5s ease";
   dom.titleScreen.style.opacity = "0";
-  setTimeout(() => {
+  setTimeout(async () => {
     dom.titleScreen.classList.remove("visible");
     dom.titleScreen.style.transition = "";
     dom.titleScreen.style.opacity = "";
+    const loaded = await loadFromServer();
+    if (loaded) {
+      dom.statusLine.textContent = "📂 セーブデータを読み込みました！";
+      setTimeout(() => dom.statusLine.textContent = "", 2500);
+    }
     showHomePlaza();
   }, 500);
 }
@@ -711,6 +884,7 @@ function showHomePlaza() {
   document.querySelectorAll(".screen").forEach(el => el.classList.remove("visible"));
   dom.homePlazaScreen.classList.add("visible");
   initHomePlaza();
+  saveToServer();
 }
 function showStageSelect() { hideMenu(); dom.stageSelectScreen.classList.add("visible"); buildStageList(); }
 function buildStageList() {

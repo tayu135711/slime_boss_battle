@@ -94,17 +94,17 @@ function getCurrentStage(stageIndex) {
 }
 
 const COSTUMES = [
-  { id:"c01", no:"No.01", name:"ノーマルスライム",     stars:1, color:0x6ee7b7, weapon:"none",  skillId:null,      rarity:0.22 },
-  { id:"c02", no:"No.02", name:"みどりスライム",       stars:1, color:0x5adb5a, weapon:"none",  skillId:null,      rarity:0.18 },
-  { id:"c03", no:"No.03", name:"きいろスライム",       stars:1, color:0xffe066, weapon:"none",  skillId:null,      rarity:0.14 },
-  { id:"c04", no:"No.04", name:"あかスライム",         stars:1, color:0xff6b6b, weapon:"none",  skillId:null,      rarity:0.10 },
-  { id:"c11", no:"No.11", name:"まほうつかいスライム", stars:2, color:0xc084fc, weapon:"none",  skillId:null,      rarity:0.08 },
-  { id:"c12", no:"No.12", name:"ナイトスライム",       stars:2, color:0x94a3b8, weapon:"sword", skillId:null,      rarity:0.08 },
-  { id:"c13", no:"No.13", name:"もりのスライム",       stars:2, color:0x4ade80, weapon:"none",  skillId:null,      rarity:0.08 },
-  { id:"c21", no:"No.21", name:"キングスライム",       stars:3, color:0x38bdf8, weapon:"none",  skillId:"wave",    rarity:0.03 },
-  { id:"c22", no:"No.22", name:"ライリンスライム",     stars:3, color:0xa5f3fc, weapon:"none",  skillId:"ice",     rarity:0.03 },
-  { id:"c23", no:"No.23", name:"イカズチスライム",     stars:3, color:0xfde047, weapon:"none",  skillId:"thunder", rarity:0.03 },
-  { id:"c24", no:"No.24", name:"スライムスピア",       stars:3, color:0x818cf8, weapon:"spear", skillId:null,      rarity:0.03 },
+  { id:"c01", no:"No.01", name:"ノーマルスライム",     stars:1, color:0x6ee7b7, weapon:"none",  hat:null,      skillId:null,      rarity:0.22 },
+  { id:"c02", no:"No.02", name:"みどりスライム",       stars:1, color:0x5adb5a, weapon:"none",  hat:null,      skillId:null,      rarity:0.18 },
+  { id:"c03", no:"No.03", name:"きいろスライム",       stars:1, color:0xffe066, weapon:"none",  hat:null,      skillId:null,      rarity:0.14 },
+  { id:"c04", no:"No.04", name:"あかスライム",         stars:1, color:0xff6b6b, weapon:"none",  hat:null,      skillId:null,      rarity:0.10 },
+  { id:"c11", no:"No.11", name:"まほうつかいスライム", stars:2, color:0xc084fc, weapon:"none",  hat:"witch",   skillId:null,      rarity:0.08 },
+  { id:"c12", no:"No.12", name:"ナイトスライム",       stars:2, color:0x94a3b8, weapon:"sword", hat:"knight",  skillId:null,      rarity:0.08 },
+  { id:"c13", no:"No.13", name:"もりのスライム",       stars:2, color:0x4ade80, weapon:"none",  hat:"leaf",    skillId:null,      rarity:0.08 },
+  { id:"c21", no:"No.21", name:"キングスライム",       stars:3, color:0x38bdf8, weapon:"none",  hat:"crown",   skillId:"wave",    rarity:0.03 },
+  { id:"c22", no:"No.22", name:"ライリンスライム",     stars:3, color:0xa5f3fc, weapon:"none",  hat:"ice",     skillId:"ice",     rarity:0.03 },
+  { id:"c23", no:"No.23", name:"イカズチスライム",     stars:3, color:0xfde047, weapon:"none",  hat:"thunder", skillId:"thunder", rarity:0.03 },
+  { id:"c24", no:"No.24", name:"スライムスピア",       stars:3, color:0x818cf8, weapon:"spear", hat:null,      skillId:null,      rarity:0.03 },
 ];
 
 function getGachaPool() {

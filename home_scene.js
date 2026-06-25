@@ -72,6 +72,15 @@ function initHomePlaza() {
 
   npcState.forEach(n => n.waitUntil = Date.now() + 1000);
   closeNpcDialog();
+
+  // 花畑の場所を案内（初回のみ）
+  if (!plaza._flowerHintShown) {
+    plaza._flowerHintShown = true;
+    setTimeout(() => {
+      dom.statusLine.textContent = "🌸 左奥に花畑があるよ！花を摘んで料理の素材にしよう";
+      setTimeout(() => dom.statusLine.textContent = "", 3500);
+    }, 1500);
+  }
 }
 
 function buildPlazaScene() {
@@ -158,11 +167,7 @@ function buildPlazaNPCs() {
   npcState.forEach(npc => {
     const costume = COSTUMES.find(c => c.id === npc.costumeId) || COSTUMES[0];
     const group = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.SphereGeometry(0.45, 14, 14), new THREE.MeshStandardMaterial({ color: costume.color, roughness: 0.5 }));
-    body.position.y = 0.45;
-    body.castShadow = true;
-    addSlimeFace(body, 0.45, 0.2);
-    group.add(body);
+    buildCuteSlimeBody(group, 0.45, costume.color);
     group.position.set(npc.x, 0, npc.z);
     three.scene.add(group);
     npc.mesh = group;
@@ -172,11 +177,7 @@ function buildPlazaNPCs() {
 function buildPlazaPlayer() {
   const group = new THREE.Group();
   const color = state.equippedCostume ? state.equippedCostume.color : CONFIG.player.color;
-  const body = new THREE.Mesh(new THREE.SphereGeometry(CONFIG.player.radius, 16, 16), new THREE.MeshStandardMaterial({ color, roughness: 0.5 }));
-  body.position.y = CONFIG.player.radius;
-  body.castShadow = true;
-  addSlimeFace(body, CONFIG.player.radius, 0.2);
-  group.add(body);
+  buildCuteSlimeBody(group, CONFIG.player.radius, color);
   group.position.set(0, 0, 0);
   three.scene.add(group);
   plaza.playerMesh = group;
@@ -277,6 +278,46 @@ function buildFishingSpot() {
 function buildFlowerField() {
   const fieldCenter = { x: -16, z: 14 };
   const fieldRadius = 5;
+
+  // 看板（花畑の入口）
+  const signPost = new THREE.Mesh(
+    new THREE.BoxGeometry(0.1, 1.5, 0.1),
+    new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.9 })
+  );
+  signPost.position.set(fieldCenter.x + 5.5, 0.75, fieldCenter.z - 1);
+  three.scene.add(signPost);
+
+  const signBoard = new THREE.Mesh(
+    new THREE.BoxGeometry(1.8, 0.7, 0.1),
+    new THREE.MeshStandardMaterial({ color: 0xF5DEB3, roughness: 0.8 })
+  );
+  signBoard.position.set(fieldCenter.x + 5.5, 1.6, fieldCenter.z - 1);
+  three.scene.add(signBoard);
+
+  // 柵（花畑のまわり）
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    const fence = new THREE.Mesh(
+      new THREE.BoxGeometry(0.1, 0.6, 0.1),
+      new THREE.MeshStandardMaterial({ color: 0xDEB887, roughness: 0.9 })
+    );
+    fence.position.set(
+      fieldCenter.x + Math.cos(angle) * (fieldRadius + 0.5),
+      0.3,
+      fieldCenter.z + Math.sin(angle) * (fieldRadius + 0.5)
+    );
+    three.scene.add(fence);
+  }
+
+  // 地面（花畑エリアを緑で強調）
+  const fieldGround = new THREE.Mesh(
+    new THREE.CircleGeometry(fieldRadius, 24),
+    new THREE.MeshStandardMaterial({ color: 0x7ec850, roughness: 0.9 })
+  );
+  fieldGround.rotation.x = -Math.PI / 2;
+  fieldGround.position.set(fieldCenter.x, 0.01, fieldCenter.z);
+  three.scene.add(fieldGround);
+
   for (let i = 0; i < 25; i++) {
     const angle = Math.random() * Math.PI * 2;
     const dist = Math.random() * fieldRadius;
@@ -502,6 +543,22 @@ function startNPCConversation(npc) {
   }
   if (lines.length === 0 && npc.lines?.length) lines = npc.lines.slice();
   if (lines.length === 0) lines = [npc.line || "…"];
+
+  // クエスト受注セリフを末尾に追加
+  if (npc.questId && QUESTS[npc.questId]) {
+    const quest = QUESTS[npc.questId];
+    const alreadyAccepted = state.quests[npc.questId];
+    if (!alreadyAccepted) {
+      lines.push("【依頼】" + quest.description);
+      lines.push("報酬：" + quest.rewardText + " — 受けてくれる？");
+    } else if (alreadyAccepted.completed) {
+      lines.push("クエストはもう達成してくれたね！ありがとう！");
+    } else {
+      const q = state.quests[npc.questId];
+      lines.push("今 " + q.collected + "/" + q.goal + " 達成中。引き続きよろしく！");
+    }
+  }
+
   plazaDialog = { npc, currentLineIndex: 0, lines };
   const costume = COSTUMES.find(c => c.id === npc.costumeId);
   dom.npcDialogName.textContent = costume ? costume.name : "???";
@@ -523,6 +580,15 @@ function advanceDialog() {
 }
 
 function closeNpcDialog() {
+  // ダイアログを閉じるとき、クエストを受注する
+  if (plazaDialog?.npc?.questId) {
+    const qid = plazaDialog.npc.questId;
+    if (QUESTS[qid] && !state.quests[qid]) {
+      acceptQuest(qid);
+      dom.statusLine.textContent = "✨ クエスト「" + QUESTS[qid].name + "」を受注した！";
+      setTimeout(() => dom.statusLine.textContent = "", 2500);
+    }
+  }
   plazaDialog = null;
   dom.npcDialog.classList.remove("visible");
 }

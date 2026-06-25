@@ -13,7 +13,7 @@ const HOME_NPCS = [
     conditionalLines: [
       { condition: () => state.equippedCostume?.id === "c04", line: "おそろいの色だね！" }
     ],
-    moveSpeed: 0.02, moveRadius: 2.0, pauseTime: 3000, questId: "tutorial_defeat"
+    moveSpeed: 0.02, moveRadius: 2.0, pauseTime: 3000, questId: "fish_delivery"
   },
   {
     id: 3, startX: 8, startZ: 4, costumeId: "c01",
@@ -33,7 +33,7 @@ const HOME_NPCS = [
     id: 5, startX: 3, startZ: 8, costumeId: "c03",
     lines: ["お腹すいたな〜", "食堂に行きたい", "今日のオススメは何かな"],
     conditionalLines: [],
-    moveSpeed: 0.018, moveRadius: 2.8, pauseTime: 2200, questId: "restaurant_intro"
+    moveSpeed: 0.018, moveRadius: 2.8, pauseTime: 2200, questId: "flower_beginner"
   },
   {
     id: 6, startX: -9, startZ: 2, costumeId: "c21",
@@ -41,7 +41,7 @@ const HOME_NPCS = [
     conditionalLines: [
       { condition: () => state.quests?.king_slime_defeated, line: "先日はお見事だったぞ" }
     ],
-    moveSpeed: 0.022, moveRadius: 2.0, pauseTime: 3000, questId: "king_slime"
+    moveSpeed: 0.022, moveRadius: 2.0, pauseTime: 3000, questId: "stone_collect"
   },
   {
     id: 7, startX: 6, startZ: -9, costumeId: "c13",
