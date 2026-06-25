@@ -526,9 +526,10 @@ function buildBossModel(group, stage, mat) {
     }
   } else {
     // Chapter2+ は異形モンスターを順番に出す
-    // Chapter2の1体目→インデックス0、2体目→1、...
-    const chapterStageIndex = stage.stageNo - 1; // Chapter内でのステージ番号（0始まり）
-    const builder = CHAPTER2_MONSTERS[chapterStageIndex % CHAPTER2_MONSTERS.length];
+    // ステージ1～5はそれぞれ異なるモンスター、ステージ6以降はガガントスを繰り返す
+    const chapterStageIndex = stage.stageNo - 1; // 0始まり
+    const idx = Math.min(chapterStageIndex, 4);   // 4以上はすべてガガントス
+    const builder = CHAPTER2_MONSTERS[idx];
     return builder(group, stage, mat);
   }
 }

@@ -5,6 +5,9 @@
 
 // ベーススライム描画ヘルパー
 function _slimeSVG({ id, body, shadow, eyes, mouth, extras = "", badge = "", size = 80 }) {
+  // ★ バッジ内の仮フィルタIDを正しいIDに置換
+  badge = badge.replace(/glow_tmp/g, `glow_${id}`);
+
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}">
   <defs>
     <radialGradient id="bg_${id}" cx="50%" cy="60%" r="50%">
@@ -65,7 +68,7 @@ function _smile(x, y, w = 14, color = "#2d0a3e") {
   return `<path d="M ${x - w/2} ${y} Q ${x} ${y + 7} ${x + w/2} ${y}" stroke="${color}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
 }
 
-// 星バッジヘルパー
+// 星バッジヘルパー（内部で仮ID "glow_tmp" を使う → _slimeSVG で置換）
 function _stars(count, color = "#ffd700") {
   const starPositions = [
     [[50, 10]],

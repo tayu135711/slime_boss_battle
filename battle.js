@@ -18,34 +18,29 @@ function startDashAttack() {
 
 function updateDashAttack() {
   if (!three.dashAttack?.active) return;
-  three.dashAttack.progress += 0.075; // やや遅めにして距離感を出す
+  three.dashAttack.progress += 0.075;
   const t = three.dashAttack.progress;
 
   let offset, squishX, squishY, squishZ, rotY = 0;
 
   if (t < 0.08) {
-    // 予備動作：小さく引く
     const s = t / 0.08;
     offset  = -s * 0.18;
     squishX = 1 + s * 0.15; squishY = 1 - s * 0.12; squishZ = 1 + s * 0.15;
   } else if (t < 0.45) {
-    // 突進：体を縦に伸ばしてダッシュ（距離1.2）
     const s = (t - 0.08) / 0.37;
     const ease = s < 0.5 ? 4*s*s*s : 1 - Math.pow(-2*s+2,3)/2;
     offset  = -0.18 + ease * 1.38;
     squishX = 1.15 - s * 0.25; squishY = 0.88 + s * 0.15; squishZ = 1.35 - s * 0.25;
   } else if (t < 0.58) {
-    // ヒット：横につぶれて衝撃を表現
     const s = (t - 0.45) / 0.13;
     offset  = 1.2 - s * 0.25;
     squishX = 1.4 + s * 0.2; squishY = 0.6 - s * 0.1; squishZ = 1.4 + s * 0.2;
   } else if (t < 0.72) {
-    // バウンド：跳ね返り
     const s = (t - 0.58) / 0.14;
     offset  = 0.95 - s * 0.6;
     squishX = 1.6 - s * 0.3; squishY = 0.5 + s * 0.3; squishZ = 1.6 - s * 0.3;
   } else {
-    // 戻り
     const s = (t - 0.72) / 0.28;
     const ease = 1 - (1-s)*(1-s);
     offset  = 0.35 - ease * 0.35;
@@ -65,7 +60,7 @@ function updateDashAttack() {
   }
 }
 
-// 剣モーション：大振りかぶり → 高速振り下ろし → 体も回転
+// 剣モーション：豪快な縦振り（X軸まわりで振りかぶり→振り下ろし）
 function startSwordSwing() {
   if (!three.swordPivot) return;
   three.swordSwing.active   = true;
@@ -74,115 +69,115 @@ function startSwordSwing() {
 
 function updateSwordSwing() {
   if (!three.swordSwing?.active) return;
-  three.swordSwing.progress += 0.055; // ゆっくり振りかぶって速く振り下ろす
+  three.swordSwing.progress += 0.055;
   const t = three.swordSwing.progress;
-  let angle, bodyRotZ = 0, bodyScaleX = 1, bodyScaleY = 1;
+  let angle, bodyTilt = 0, bodyScaleX = 1, bodyScaleY = 1;
 
-  if (t < 0.25) {
-    // 大きく振りかぶる（後ろへ）
-    const s = t / 0.25;
-    angle = s * 2.2;                        // 振りかぶり最大 2.2rad
-    bodyRotZ = -s * 0.25;                   // 体を少し傾ける
-    bodyScaleX = 1 - s * 0.08;
-    bodyScaleY = 1 + s * 0.12;
-  } else if (t < 0.55) {
-    // 高速振り下ろし（前へ ＋ 大きく回転）
-    const s = (t - 0.25) / 0.30;
-    const ease = s * s * (3 - 2*s);         // smoothstep で加速
-    angle = 2.2 - ease * 5.8;              // -3.6rad（前方へ大きく）
-    bodyRotZ = -0.25 + s * 0.45;           // 体が振られる
-    bodyScaleX = 1 - 0.08 + s * 0.25;     // 横にぶれる
-    bodyScaleY = 1 + 0.12 - s * 0.22;
-  } else if (t < 0.72) {
-    // 行き過ぎ→ちょっと戻る
-    const s = (t - 0.55) / 0.17;
-    angle = -3.6 + s * 1.1;
-    bodyRotZ = 0.2 - s * 0.2;
-    bodyScaleX = 1.17 - s * 0.12;
-    bodyScaleY = 0.9  + s * 0.08;
+  if (t < 0.2) {
+    // 大きく振りかぶる（上へ）
+    const s = t / 0.2;
+    angle = s * 2.5;                    // 剣先が上後方へ（＋角度）
+    bodyTilt = -s * 0.3;                // 体を後ろに反らす
+    bodyScaleX = 1 - s * 0.1;
+    bodyScaleY = 1 + s * 0.15;
+  } else if (t < 0.5) {
+    // 振り下ろし（高速）
+    const s = (t - 0.2) / 0.3;
+    const ease = s * s * (3 - 2*s);
+    angle = 2.5 - ease * 6.0;          // -3.5rad（前下方へ）
+    bodyTilt = -0.3 + s * 0.7;         // 体を前に倒す
+    bodyScaleX = 0.9 + s * 0.3;
+    bodyScaleY = 1.15 - s * 0.25;
+  } else if (t < 0.65) {
+    // 衝撃のめり込み
+    const s = (t - 0.5) / 0.15;
+    angle = -3.5 + s * 0.8;
+    bodyTilt = 0.4 - s * 0.2;
+    bodyScaleX = 1.2 - s * 0.15;
+    bodyScaleY = 0.9 + s * 0.05;
   } else {
-    // 元に戻す
-    const s = (t - 0.72) / 0.28;
-    angle = -2.5 + s * 2.5;
-    bodyRotZ = 0;
+    // 戻り
+    const s = (t - 0.65) / 0.35;
+    const ease = 1 - (1-s)*(1-s);
+    angle = -2.7 + ease * 2.7;
+    bodyTilt = 0.2 * (1 - ease);
+    bodyScaleX = 1.05 - ease * 0.05;
+    bodyScaleY = 0.95 + ease * 0.05;
   }
 
-  three.swordPivot.rotation.z = angle;
-  // 体全体を少し傾けて迫力を出す
-  three.playerGroup.rotation.z = bodyRotZ;
+  three.swordPivot.rotation.x = angle;   // 縦回転（X軸）
+  three.playerGroup.rotation.x = bodyTilt; // 体の前後傾き
   three.playerGroup.scale.set(bodyScaleX, bodyScaleY, bodyScaleX);
 
   if (t >= 1.0) {
     three.swordSwing.active = false;
-    three.swordPivot.rotation.z = 0;
-    three.playerGroup.rotation.z = 0;
+    three.swordPivot.rotation.x = 0;
+    three.playerGroup.rotation.x = 0;
     three.playerGroup.scale.set(1, 1, 1);
   }
 }
 
-// 槍モーション：大きく引いて→全力突き（2段）→戻る
+// 槍モーション：頭上から豪快に突き下ろす（オーバーヘッドスラム）
 function startSpearThrust() {
   if (!three.spearPivot) return;
   three.spearThrust.active   = true;
   three.spearThrust.progress = 0;
-  three.spearThrust.stage    = 0;  // 0=引き, 1=1段目, 2=戻し, 3=2段目, 4=戻り
 }
 
 function updateSpearThrust() {
   if (!three.spearThrust?.active) return;
   three.spearThrust.progress += 0.065;
   const t = three.spearThrust.progress;
-  let pz = 0, px = 0, bodyTilt = 0, bodyScaleX = 1, bodyScaleY = 1;
+  let px = 0, pz = 0, py = 0, bodyTilt = 0, bodyScaleX = 1, bodyScaleY = 1;
 
   if (t < 0.15) {
-    // 大きく後ろへ引く
+    // 槍を頭上に引き上げる
     const s = t / 0.15;
-    pz = s * 0.55;                  // 後方へ引く（+z方向）
-    px = -s * 0.1;
-    bodyTilt = -s * 0.2;
-    bodyScaleX = 1 + s * 0.1;
-    bodyScaleY = 1 - s * 0.08;
-  } else if (t < 0.30) {
-    // 1段目：鋭く突く
-    const s = (t - 0.15) / 0.15;
-    const ease = s * s;             // 加速しながら突く
-    pz = 0.55 - ease * 1.45;       // -0.9まで前進
-    px = -0.1 + s * 0.15;
-    bodyTilt = -0.2 + s * 0.35;
-    bodyScaleX = 1.1 - s * 0.15;
-    bodyScaleY = 0.92 + s * 0.1;
-  } else if (t < 0.42) {
-    // 少し戻す
-    const s = (t - 0.30) / 0.12;
-    pz = -0.9 + s * 0.65;
-    bodyTilt = 0.15 - s * 0.3;
-  } else if (t < 0.57) {
-    // 2段目：さらに速く！
-    const s = (t - 0.42) / 0.15;
+    py = s * 0.8;
+    pz = -s * 0.2;
+    bodyTilt = s * 0.3;
+    bodyScaleX = 1 - s * 0.05;
+    bodyScaleY = 1 + s * 0.1;
+  } else if (t < 0.35) {
+    // １段目の振り下ろし
+    const s = (t - 0.15) / 0.2;
+    const ease = s * s * (3 - 2*s);
+    py = 0.8 - ease * 1.3;          // 下へ
+    pz = -0.2 + ease * 0.8;         // 前に突き出す
+    bodyTilt = 0.3 - ease * 0.6;
+    bodyScaleX = 0.95 + ease * 0.2;
+    bodyScaleY = 1.1 - ease * 0.15;
+  } else if (t < 0.5) {
+    // 戻し
+    const s = (t - 0.35) / 0.15;
+    py = -0.5 + s * 0.6;
+    pz = 0.6 - s * 0.4;
+    bodyTilt = -0.3 + s * 0.2;
+  } else if (t < 0.7) {
+    // ２段目の突き下ろし（さらに深く）
+    const s = (t - 0.5) / 0.2;
     const ease = s * s * s;
-    pz = -0.25 - ease * 1.1;       // -1.35（さらに深く）
-    bodyTilt = -0.15 + s * 0.4;
-    bodyScaleX = 0.95 + s * 0.2;
-    bodyScaleY = 1.02 - s * 0.15;
-  } else if (t < 0.70) {
-    // 2段目ヒット：体ごとのめり込む
-    const s = (t - 0.57) / 0.13;
-    pz = -1.35 + s * 0.45;
-    bodyTilt = 0.25;
-    bodyScaleX = 1.15 - s * 0.1;
-    bodyScaleY = 0.87 + s * 0.08;
-  } else {
-    // ゆっくり元の構えへ
-    const s = (t - 0.70) / 0.30;
-    const ease = 1 - (1-s)*(1-s);
-    pz = -0.9 + ease * 0.9;
-    bodyTilt = 0.25 * (1 - ease);
-    bodyScaleX = 1.05 - ease * 0.05;
+    py = 0.1 - ease * 0.8;
+    pz = 0.2 + ease * 0.7;
+    bodyTilt = -0.1 + ease * 0.6;
+    bodyScaleX = 1.15 - ease * 0.2;
     bodyScaleY = 0.95 + ease * 0.05;
+  } else if (t < 0.85) {
+    // 衝撃のめり込み
+    const s = (t - 0.7) / 0.15;
+    py = -0.7 + s * 0.3;
+    pz = 0.9 - s * 0.1;
+    bodyTilt = 0.5 - s * 0.1;
+  } else {
+    // 構えに戻る
+    const s = (t - 0.85) / 0.15;
+    const ease = 1 - (1-s)*(1-s);
+    py = -0.4 + ease * 0.4;
+    pz = 0.8 - ease * 0.8;
+    bodyTilt = 0.4 * (1 - ease);
   }
 
-  three.spearPivot.position.z = pz;
-  three.spearPivot.position.x = px;
+  three.spearPivot.position.set(px, py, pz);
   three.playerGroup.rotation.x = bodyTilt;
   three.playerGroup.scale.set(bodyScaleX, bodyScaleY, bodyScaleX);
 
@@ -276,7 +271,6 @@ function spawnDamageNumber(damage, isCrit) {
 }
 
 function flashBossHit(ms = 120) {
-  // ★ クリア後のタイムアウト誤発動を防ぐためにstageIndexをクロージャで保持
   const idx = state.stageIndex;
   three.bossMat.color.set(getCurrentStage(idx).hitColor);
   setTimeout(() => {
@@ -328,7 +322,6 @@ function attackBoss() {
 }
 
 function useSpecialMove() {
-  // ★ gameOver チェックを追加
   if (!state.battleStarted || state.cleared || state.gameOver || state.specialGauge < 100) return;
   const { specialMinDamage, specialMaxDamage, specialMultiplier } = CONFIG.battle;
   const base   = Math.floor(Math.random() * (specialMaxDamage - specialMinDamage + 1)) + specialMinDamage;
@@ -362,14 +355,12 @@ function updateBossMovement() {
   const s   = getCurrentStage(state.stageIndex);
   const hpR = state.currentHp / s.maxHp;
 
-  // フェーズ判定
   const prev = state.bossAI.phase;
   if      (hpR <= s.phase3At) state.bossAI.phase = 3;
   else if (hpR <= s.phase2At) state.bossAI.phase = 2;
   else                        state.bossAI.phase = 1;
   if (state.bossAI.phase > prev) onPhaseChange(state.bossAI.phase);
 
-  // 攻撃タイミング
   const interval = s.attackIntervalMs / state.bossAI.phase;
   if (now >= state.bossAI.nextAttackAt && state.bossAI.mode === "wander") {
     const roll = Math.random();
@@ -386,7 +377,6 @@ function updateBossMovement() {
     state.bossAI.nextAttackAt = now + interval;
   }
 
-  // 移動
   if (state.bossAI.mode === "charge" && state.bossAI.chargeTarget) {
     const dx   = state.bossAI.chargeTarget.x - state.boss.x;
     const dz   = state.bossAI.chargeTarget.z - state.boss.z;
@@ -439,7 +429,6 @@ function startBossShockwave() {
 function spawnShockwave() {
   const cx  = state.boss.x, cz = state.boss.z;
   const mat = new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
-  // ★ 固定サイズのRingGeometryを1回だけ作り、scaleで拡大（毎フレームdispose+再生成をやめる）
   const maxR = getCurrentStage(state.stageIndex).shockwaveRadius;
   const ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.35, 36), mat);
   ring.rotation.x = -Math.PI / 2;
@@ -452,8 +441,7 @@ function spawnShockwave() {
     frame++;
     const t = frame / 30;
     const r = t * maxR;
-    // ★ scaleで半径を表現（geometry再生成なし）
-    ring.scale.set(r, 1, r);
+    ring.scale.set(r / 1.35, 1, r / 1.35);
     ring.material.opacity = 0.9 * (1 - t);
     if (!hit && !state.cleared && !state.gameOver) {
       const pd = Math.hypot(state.player.x - cx, state.player.z - cz);
@@ -493,7 +481,6 @@ function applyPlayerDamage(damage) {
   const bodyMat = three.playerGroup?.children[0]?.material;
   if (bodyMat) {
     bodyMat.color.set(0xffffff);
-    // ★ 被弾後の色戻しをequippedCostumeから取得
     setTimeout(() => bodyMat.color.set(state.equippedCostume?.color ?? CONFIG.player.color), 200);
   }
   triggerCameraShake();

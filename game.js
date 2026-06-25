@@ -447,10 +447,13 @@ function buildBoss() {
 function buildPlayer() {
   three.playerGroup = new THREE.Group();
 
+  // コスチュームカラーを反映（装備中のコスチュームから取得）
+  const playerColor = state.equippedCostume?.color ?? CONFIG.player.color;
+
   // 体
   const body = new THREE.Mesh(
     new THREE.SphereGeometry(CONFIG.player.radius, 20, 20),
-    new THREE.MeshStandardMaterial({ color: CONFIG.player.color, roughness: 0.5 })
+    new THREE.MeshStandardMaterial({ color: playerColor, roughness: 0.5 })
   );
   body.position.y = CONFIG.player.radius;
   body.castShadow = true;
@@ -705,12 +708,11 @@ function startBossShockwave() {
   }, 600);
 }
 
-// 衝撃波エフェクト＆当たり判定
+// 衝撃波エフェクト＆当たり判定（修正：ジオメトリを固定してスケール変更）
 function spawnShockwave() {
   const cx = state.boss.x;
   const cz = state.boss.z;
 
-  // Three.jsリング（広がっていく）
   const ringGeo = new THREE.RingGeometry(0.1, 0.4, 36);
   const ringMat = new THREE.MeshBasicMaterial({
     color: 0xff6600, transparent: true, opacity: 0.9, side: THREE.DoubleSide,
@@ -718,24 +720,21 @@ function spawnShockwave() {
   const ring = new THREE.Mesh(ringGeo, ringMat);
   ring.rotation.x = -Math.PI / 2;
   ring.position.set(cx, 0.08, cz);
+  ring.scale.set(0.1, 1, 0.1);
   three.scene.add(ring);
 
   let frame = 0;
   const maxFrame = 30;
   const maxR = getCurrentStage(state.stageIndex).shockwaveRadius;
-  let hit = false;   // 1回だけ当たり判定を取る
+  let hit = false;
 
   function animateWave() {
     frame++;
     const t = frame / maxFrame;
     const r = t * maxR;
-
-    // リングを広げる
-    ring.geometry.dispose();
-    ring.geometry = new THREE.RingGeometry(r, r + 0.35, 36);
+    ring.scale.set(r, 1, r);
     ring.material.opacity = 0.9 * (1 - t);
 
-    // 当たり判定：プレイヤーとリングの距離が近いとき
     if (!hit && !state.cleared && !state.gameOver) {
       const pd = Math.hypot(state.player.x - cx, state.player.z - cz);
       if (pd < r + 0.5 && pd > r - 1.2) {
@@ -878,7 +877,8 @@ function applyPlayerDamage(damage) {
   const bodyMat = three.playerGroup.children[0]?.material;
   if (bodyMat) {
     bodyMat.color.set(0xffffff);
-    setTimeout(() => bodyMat.color.set(CONFIG.player.color), 200);
+    // コスチュームの色に戻す
+    setTimeout(() => bodyMat.color.set(state.equippedCostume?.color ?? CONFIG.player.color), 200);
   }
 
   triggerCameraShake();
@@ -1149,7 +1149,29 @@ function showComingSoon(name) {
   setTimeout(() => { dom.statusLine.textContent = ""; }, 2000);
 }
 
-/** ステージ選択画面を表示・ステージ一覧を生成 */
+// ============================================================
+// 広場遷移（仮実装）
+// ============================================================
+
+function showHomePlaza() {
+  // バトル状態を解除
+  state.battleStarted = false;
+  // 全画面を非表示
+  document.querySelectorAll(".screen").forEach(el => el.classList.remove("visible"));
+  // 広場画面を表示
+  dom.homePlazaScreen.classList.add("visible");
+  // TODO: initHomePlaza() が実装されたらここで呼ぶ
+}
+
+function handlePlazaAction() {
+  // TODO: 広場内でのアクションボタン処理
+  // 例: 冒険の門なら showStageSelect() など
+}
+
+// ============================================================
+// ステージ選択画面
+// ============================================================
+
 function showStageSelect() {
   hideMenu();
   dom.stageSelectScreen.classList.add("visible");
