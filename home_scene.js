@@ -522,6 +522,8 @@ function checkPlazaEntrances() {
 
 function handlePlazaAction() {
   if (plazaDialog) { advanceDialog(); return; }
+  // ベンチ座り中にAでお弁当を食べる
+  if (state._benchBentoReady && eatBentoOnBench()) return;
   if (plazaNearBuilding) {
     if (plazaNearBuilding.type === "stage") { exitHomePlaza(); showStageSelect(); }
     else if (plazaNearBuilding.type === "restaurant") { showCooking(); }
@@ -545,8 +547,39 @@ function sitOnBench() {
   state.keys = { up: false, down: false, left: false, right: false, action: false };
   three.camera.position.set(plaza.bench.position.x + 2, 2.0, plaza.bench.position.z + 3);
   three.camera.lookAt(plaza.bench.position.x, 1.0, plaza.bench.position.z);
-  dom.statusLine.textContent = "🪑 ベンチに座ってのんびり…";
-  setTimeout(() => { dom.statusLine.textContent = ""; updatePlazaCameraFollow(); }, 2000);
+
+  if (state.bento.length > 0) {
+    // お弁当がある → 食べるか聞く
+    const recipe = state.bento[0];
+    dom.statusLine.textContent = `🪑 ベンチに座った。🍱 ${recipe.name}を食べる？（Ａ）`;
+    // Aボタンで食べられるよう一時フラグ
+    state._benchBentoReady = true;
+    setTimeout(() => {
+      if (state._benchBentoReady) {
+        dom.statusLine.textContent = "";
+        state._benchBentoReady = false;
+        updatePlazaCameraFollow();
+      }
+    }, 4000);
+  } else {
+    dom.statusLine.textContent = "🪑 ベンチに座ってのんびり…　お弁当があればここで食べられる";
+    setTimeout(() => { dom.statusLine.textContent = ""; updatePlazaCameraFollow(); }, 3000);
+  }
+}
+
+function eatBentoOnBench() {
+  if (!state._benchBentoReady || state.bento.length === 0) return false;
+  const recipe = state.bento.shift();
+  state._benchBentoReady = false;
+  const msg = recipe.buff?.hpRecover
+    ? `HP が ${recipe.buff.hpRecover} 回復した！`
+    : "なんだか元気が出てきた！";
+  state.player.hp = Math.min(CONFIG.player.maxHp, state.player.hp + (recipe.buff?.hpRecover || 0));
+  dom.statusLine.textContent = `${recipe.icon} ${recipe.name} を食べた。${msg}`;
+  setTimeout(() => { dom.statusLine.textContent = ""; updatePlazaCameraFollow(); }, 3000);
+  refreshUi();
+  saveToServer();
+  return true;
 }
 
 function startNPCConversation(npc) {

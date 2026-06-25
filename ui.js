@@ -378,3 +378,11 @@ function applyCostume(costume) {
   // 帽子差し替え
   rebuildHat(costume);
 }
+
+// ── お弁当 ───────────────────────────────────────────────────
+// お弁当はベンチ・ピクニックなど広場での使用のみ（home_scene.js）
+// バトル中の使用は想定しない
+function updateBentoBtn() {
+  // 将来の拡張用（現在は広場UIで管理）
+}
+

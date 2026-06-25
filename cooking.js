@@ -1,6 +1,6 @@
 let cookingUI = null;
 let selectedIngredients = [];
-const MAX_BENTO = 3;
+// ※ お弁当の最大数は state.maxBento で管理（quest.jsのクエスト報酬で増加）
 
 function initCookingUI() {
   if (document.getElementById("cookingUI")) return;
