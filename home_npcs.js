@@ -1,8 +1,3 @@
-/**
- * home_npcs.js
- * ホーム広場のNPC定義と状態管理
- */
-
 const HOME_NPCS = [
   {
     id: 1, startX: 5, startZ: -5, costumeId: "c12",
@@ -56,18 +51,15 @@ const HOME_NPCS = [
   },
 ];
 
-// 実行時の NPC 状態（Three.js メッシュと現在位置を保持）
 const npcState = HOME_NPCS.map(n => ({
   ...n,
   x: n.startX,
   z: n.startZ,
   mesh: null,
-  // 移動用の状態
   targetX: n.startX,
   targetZ: n.startZ,
-  moveState: "idle",      // "idle" | "moving"
-  waitUntil: 0,           // 待機終了時刻
-  // セリフ表示用
+  moveState: "idle",
+  waitUntil: 0,
   lastLine: null,
   lastLineTime: 0,
 }));

@@ -73,20 +73,14 @@
 
   <!-- ホーム広場画面 -->
   <div id="homePlazaScreen">
-    <!-- 広場画面内に追加 -->
-<div id="homePlazaScreen">
-  <div id="npcBubble"></div>
-  <div id="plazaActionPrompt">Ａ で入る</div>
-  
-  <!-- NPC会話ウィンドウ -->
-  <div id="npcDialog">
-    <div id="npcDialogName"></div>
-    <div id="npcDialogText"></div>
-    <button id="npcDialogNext">次へ ▶</button>
-  </div>
-</div>
     <div id="npcBubble"></div>
     <div id="plazaActionPrompt">Ａ で入る</div>
+    <!-- NPC会話ウィンドウ -->
+    <div id="npcDialog">
+      <div id="npcDialogName"></div>
+      <div id="npcDialogText"></div>
+      <button id="npcDialogNext">次へ ▶</button>
+    </div>
   </div>
 
   <!-- コレクション画面 -->
@@ -161,9 +155,8 @@
   <!-- ============ コントローラーパネル（下部） ============ -->
   <div id="controllerPanel">
 
-    <!-- 左：十字型Dパッド（SVGクリップ） -->
+    <!-- 左：十字型Dパッド -->
     <div id="dpadWrap">
-      <!-- 十字型のSVGマスク定義 -->
       <svg width="0" height="0" style="position:absolute">
         <defs>
           <clipPath id="crossClip" clipPathUnits="objectBoundingBox">
@@ -177,7 +170,6 @@
         </defs>
       </svg>
 
-      <!-- 十字パッド本体：4ボタンをgridで並べ、全体にclipPathをかける -->
       <div class="dpad-cross">
         <button class="dpad-btn dpad-up"    data-dir="up">▲</button>
         <button class="dpad-btn dpad-left"  data-dir="left">◀</button>
@@ -187,19 +179,17 @@
       </div>
     </div>
 
-    <!-- 中央：スタートっぽいロゴエリア -->
+    <!-- 中央：ロゴエリア -->
     <div id="controllerCenter">
       <div id="gameTitle">⚔️<br><span>SLIME<br>BATTLE</span></div>
     </div>
 
     <!-- 右：アクションボタン -->
     <div id="actionPad">
-      <!-- 必殺技：左上 → Ｙボタン位置（黄） -->
       <button class="action-btn btn-y" id="specialBtn">
         <span class="btn-label">Y</span>
         <span class="btn-text">✨必殺</span>
       </button>
-      <!-- 通常攻撃：右下 → Ａボタン位置（青） -->
       <button class="action-btn btn-a" id="attackBtn">
         <span class="btn-label">A</span>
         <span class="btn-text">攻撃</span>
@@ -217,6 +207,10 @@
 <script src="ui.js"></script>
 <script src="home_npcs.js"></script>
 <script src="home_scene.js"></script>
+<script src="fishing.js"></script>
+<script src="cooking.js"></script>
+<script src="flower.js"></script>
+<script src="quest.js"></script>
 <script src="game.js"></script>
 <script src="admin.js"></script>
 </body>
