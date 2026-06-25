@@ -36,13 +36,11 @@ const dom = {
   resultScreen:        document.getElementById("resultScreen"),
   resultTitle:         document.getElementById("resultTitle"),
   resultStats:         document.getElementById("resultStats"),
+  rewardCards:         document.getElementById("rewardCards"),
   nextStageBtn:        document.getElementById("nextStageBtn"),
   endingScreen:        document.getElementById("endingScreen"),
   endingRetryBtn:      document.getElementById("endingRetryBtn"),
   gachaScreen:         document.getElementById("gachaScreen"),
-  gachaPullBtn:        document.getElementById("gachaPullBtn"),
-  gachaPull10Btn:      document.getElementById("gachaPull10Btn"),
-  gachaResult:         document.getElementById("gachaResult"),
   gachaCollection:     document.getElementById("gachaCollection"),
   gachaCurrentCostume: document.getElementById("gachaCurrentCostume"),
   gachaBackBtn:        document.getElementById("gachaBackBtn"),
@@ -72,7 +70,7 @@ const state = {
   bossTarget: { x: 0, z: -2.5 },
   bossAI: {
     phase: 1,
-    nextAttackAt: Infinity, // ★ バトル開始前は絶対に攻撃しない
+    nextAttackAt: Infinity,
     mode: "wander",
     chargeTarget: null,
   },
@@ -133,17 +131,39 @@ function updateCameraFollow() {
 
 // ── 入力 ──────────────────────────────────────────────────────
 function setupInput() {
-  // Dパッド
+  // Dパッド：タッチ＋マウス両対応
+  // mouseupをwindowでもキャッチしてボタン外でマウスを離しても止まるようにする
+  const pressedDirs = new Set();
+
   document.querySelectorAll(".dpad-btn[data-dir]").forEach(btn => {
-    const dir     = btn.dataset.dir;
-    const press   = e => { e.preventDefault(); state.keys[dir] = true;  btn.classList.add("pressed"); };
-    const release = e => { e.preventDefault(); state.keys[dir] = false; btn.classList.remove("pressed"); };
+    const dir = btn.dataset.dir;
+    const press = e => {
+      e.preventDefault();
+      state.keys[dir] = true;
+      btn.classList.add("pressed");
+      pressedDirs.add(dir);
+    };
+    const release = e => {
+      e.preventDefault();
+      state.keys[dir] = false;
+      btn.classList.remove("pressed");
+      pressedDirs.delete(dir);
+    };
     btn.addEventListener("touchstart",  press,   { passive: false });
     btn.addEventListener("touchend",    release, { passive: false });
     btn.addEventListener("touchcancel", release, { passive: false });
     btn.addEventListener("mousedown",   press);
-    btn.addEventListener("mouseup",     release);
-    btn.addEventListener("mouseleave",  release);
+    btn.addEventListener("mouseleave",  release); // ボタンから外れたら止める
+  });
+
+  // ウィンドウ全体でmouseupをキャッチ → どこで離してもDパッドが止まる
+  window.addEventListener("mouseup", () => {
+    pressedDirs.forEach(dir => {
+      state.keys[dir] = false;
+      document.querySelectorAll(`.dpad-btn[data-dir="${dir}"]`)
+        .forEach(b => b.classList.remove("pressed"));
+    });
+    pressedDirs.clear();
   });
 
   // キーボード
@@ -165,15 +185,12 @@ function setupInput() {
   dom.attackBtn.addEventListener("click", attackBoss);
   dom.specialBtn.addEventListener("click", useSpecialMove);
 
-  // ★ resetBtn: 開いている可能性のある画面をすべて閉じてからリセット
+  // リセット
   dom.resetBtn.addEventListener("click", () => {
-    dom.resultScreen.classList.remove("visible");
-    dom.stageStartScreen.classList.remove("visible");
-    dom.gameOverScreen.classList.remove("visible");
     resetBattle();
     showStageStart();
   });
-  // ★ retryBtn: ゲームオーバー画面は resetBattle() 内で閉じる
+  // リトライ（ゲームオーバー画面から）
   dom.retryBtn.addEventListener("click", () => {
     resetBattle();
     showStageStart();
@@ -200,8 +217,6 @@ function setupInput() {
     dom.gachaScreen.classList.remove("visible");
     dom.menuScreen.classList.add("visible");
   });
-  dom.gachaPullBtn.addEventListener("click",   () => doPull(1));
-  dom.gachaPull10Btn.addEventListener("click", () => doPull(10));
 
   // エンディング→タイトルへ
   dom.endingRetryBtn.addEventListener("click", () => {
@@ -221,10 +236,9 @@ function setupInput() {
   });
 }
 
-// ── ガチャ ────────────────────────────────────────────────────
+// ── コレクション図鑑 ──────────────────────────────────────────
 function showGacha() {
   hideMenu();
-  dom.gachaResult.innerHTML = ""; // ★ 前回の結果をクリア
   dom.gachaScreen.classList.add("visible");
   renderGachaCollection();
   renderCurrentCostume();
@@ -232,12 +246,17 @@ function showGacha() {
 
 function renderCurrentCostume() {
   const c = state.equippedCostume;
+  const rareCls = c.stars === 3 ? "gacha-card-r3" : c.stars === 2 ? "gacha-card-r2" : "gacha-card-r1";
   dom.gachaCurrentCostume.innerHTML = `
-    <div class="gacha-equipped-label">現在の装備</div>
-    <div class="gacha-equipped-card">
-      <span class="gacha-card-stars">${"⭐".repeat(c.stars)}</span>
-      <span class="gacha-card-name">${c.name}</span>
-      <span class="gacha-card-weapon">${weaponLabel(c.weapon)}</span>
+    <div class="gacha-equipped-label">── 現在の装備 ──</div>
+    <div class="gacha-equipped-card ${rareCls}">
+      <div class="gacha-equipped-art">${getSlimeSVG(c.id, 72)}</div>
+      <div class="gacha-equipped-info">
+        <div class="gacha-equipped-no">${c.no}</div>
+        <div class="gacha-equipped-name">${c.name}</div>
+        <div class="gacha-equipped-stars">${"⭐".repeat(c.stars)}</div>
+        <div class="gacha-equipped-weapon">${weaponLabel(c.weapon)}</div>
+      </div>
     </div>`;
 }
 
@@ -245,54 +264,6 @@ function weaponLabel(w) {
   return w === "sword" ? "🗡️ 剣" : w === "spear" ? "🔱 槍" : "👊 素手";
 }
 
-function drawOne() {
-  const pool = getGachaPool();
-  const r    = Math.random();
-  let acc    = 0;
-  for (const item of pool) {
-    acc += item.weight;
-    if (r <= acc) return item;
-  }
-  return pool[pool.length - 1];
-}
-
-function doPull(count) {
-  const results = [];
-  for (let i = 0; i < count; i++) {
-    const got = drawOne();
-    results.push(got);
-    if (!state.ownedCostumes.find(c => c.id === got.id)) {
-      state.ownedCostumes.push(got);
-    }
-  }
-
-  // 結果HTML
-  const stars3 = results.filter(c => c.stars === 3);
-  let html = `<div class="gacha-result-title">${count === 1 ? "結果" : "まとめ結果"}</div>
-    <div class="gacha-result-cards">`;
-  results.forEach(c => {
-    const cls = c.stars === 3 ? "gacha-card-r3" : c.stars === 2 ? "gacha-card-r2" : "gacha-card-r1";
-    html += `<div class="gacha-card ${cls}">
-      <div class="gacha-card-stars">${"⭐".repeat(c.stars)}</div>
-      <div class="gacha-card-name">${c.name}</div>
-      <div class="gacha-card-weapon">${weaponLabel(c.weapon)}</div>
-    </div>`;
-  });
-  html += "</div>";
-  if (stars3.length > 0) {
-    html += `<div class="gacha-jackpot">🎉 星3が出た！ ${stars3.map(c => c.name).join("、")}</div>`;
-  }
-  dom.gachaResult.innerHTML = html;
-
-  // ★ コピーしてからsort（元配列を破壊しない）
-  const best = [...results].sort((a, b) => b.stars - a.stars)[0];
-  if (best.stars >= state.equippedCostume.stars) {
-    equipCostume(best);
-  } else {
-    renderGachaCollection();
-    renderCurrentCostume();
-  }
-}
 
 function equipCostume(costume) {
   state.equippedCostume = costume;
@@ -308,8 +279,11 @@ function renderGachaCollection() {
     const equipped = state.equippedCostume?.id === c.id;
     const rareCls  = c.stars === 3 ? "gacha-coll-r3" : c.stars === 2 ? "gacha-coll-r2" : "gacha-coll-r1";
     const cls      = owned ? rareCls : "gacha-coll-locked";
+    const art      = owned ? getSlimeSVG(c.id, 64) : `<div class="gacha-coll-mystery">？</div>`;
     html += `<div class="gacha-coll-card ${cls}" data-id="${c.id}" data-owned="${owned}">
+      <div class="gacha-coll-art">${art}</div>
       <div class="gacha-coll-stars">${"⭐".repeat(c.stars)}</div>
+      <div class="gacha-coll-no">${c.no}</div>
       <div class="gacha-coll-name">${owned ? c.name : "????"}</div>
       ${equipped ? '<div class="gacha-coll-equipped">装備中</div>' : ""}
       ${owned && !equipped ? '<div class="gacha-coll-equip-btn">装備する</div>' : ""}
@@ -317,7 +291,6 @@ function renderGachaCollection() {
   });
   dom.gachaCollection.innerHTML = html;
 
-  // ★ innerHTML書き換え後に一度だけリスナー登録（重複なし）
   dom.gachaCollection.querySelectorAll(".gacha-coll-card[data-owned='true']").forEach(card => {
     card.addEventListener("click", () => {
       const costume = COSTUMES.find(c => c.id === card.dataset.id);

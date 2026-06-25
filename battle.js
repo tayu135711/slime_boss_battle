@@ -3,6 +3,8 @@
  */
 
 // ── 攻撃モーション ────────────────────────────────────────────
+
+// ダッシュ攻撃：ボスめがけて高速突進→弾む→戻る
 function startDashAttack() {
   if (!three.dashAttack) return;
   three.dashAttack.active   = true;
@@ -16,21 +18,46 @@ function startDashAttack() {
 
 function updateDashAttack() {
   if (!three.dashAttack?.active) return;
-  three.dashAttack.progress += 0.09;
+  three.dashAttack.progress += 0.075; // やや遅めにして距離感を出す
   const t = three.dashAttack.progress;
-  let offset, squishX, squishY;
-  if (t < 0.4) {
-    const s = t / 0.4;
-    offset = s * s * 0.55; squishX = 1 + s * 0.25; squishY = 1 - s * 0.18;
+
+  let offset, squishX, squishY, squishZ, rotY = 0;
+
+  if (t < 0.08) {
+    // 予備動作：小さく引く
+    const s = t / 0.08;
+    offset  = -s * 0.18;
+    squishX = 1 + s * 0.15; squishY = 1 - s * 0.12; squishZ = 1 + s * 0.15;
+  } else if (t < 0.45) {
+    // 突進：体を縦に伸ばしてダッシュ（距離1.2）
+    const s = (t - 0.08) / 0.37;
+    const ease = s < 0.5 ? 4*s*s*s : 1 - Math.pow(-2*s+2,3)/2;
+    offset  = -0.18 + ease * 1.38;
+    squishX = 1.15 - s * 0.25; squishY = 0.88 + s * 0.15; squishZ = 1.35 - s * 0.25;
+  } else if (t < 0.58) {
+    // ヒット：横につぶれて衝撃を表現
+    const s = (t - 0.45) / 0.13;
+    offset  = 1.2 - s * 0.25;
+    squishX = 1.4 + s * 0.2; squishY = 0.6 - s * 0.1; squishZ = 1.4 + s * 0.2;
+  } else if (t < 0.72) {
+    // バウンド：跳ね返り
+    const s = (t - 0.58) / 0.14;
+    offset  = 0.95 - s * 0.6;
+    squishX = 1.6 - s * 0.3; squishY = 0.5 + s * 0.3; squishZ = 1.6 - s * 0.3;
   } else {
-    const s = (t - 0.4) / 0.6;
-    offset = (1 - s) * 0.55; squishX = 1.25 - s * 0.25; squishY = 0.82 + s * 0.18;
+    // 戻り
+    const s = (t - 0.72) / 0.28;
+    const ease = 1 - (1-s)*(1-s);
+    offset  = 0.35 - ease * 0.35;
+    squishX = 1.3 - s * 0.3; squishY = 0.8 + s * 0.2; squishZ = 1.3 - s * 0.3;
   }
+
   three.playerGroup.position.set(
     state.player.x + three.dashAttack.dirX * offset, 0,
     state.player.z + three.dashAttack.dirZ * offset
   );
-  three.playerGroup.scale.set(squishX, squishY, squishX);
+  three.playerGroup.scale.set(squishX, squishY, squishZ);
+
   if (t >= 1.0) {
     three.dashAttack.active = false;
     three.playerGroup.position.set(state.player.x, 0, state.player.z);
@@ -38,6 +65,7 @@ function updateDashAttack() {
   }
 }
 
+// 剣モーション：大振りかぶり → 高速振り下ろし → 体も回転
 function startSwordSwing() {
   if (!three.swordPivot) return;
   three.swordSwing.active   = true;
@@ -46,37 +74,123 @@ function startSwordSwing() {
 
 function updateSwordSwing() {
   if (!three.swordSwing?.active) return;
-  three.swordSwing.progress += 0.06;
+  three.swordSwing.progress += 0.055; // ゆっくり振りかぶって速く振り下ろす
   const t = three.swordSwing.progress;
-  let angle;
-  if      (t < 0.3) angle = (t / 0.3) * 1.2;
-  else if (t < 0.8) angle = 1.2 - ((t - 0.3) / 0.5) * 3.2;
-  else              angle = -2.0 + ((t - 0.8) / 0.2) * 2.0;
+  let angle, bodyRotZ = 0, bodyScaleX = 1, bodyScaleY = 1;
+
+  if (t < 0.25) {
+    // 大きく振りかぶる（後ろへ）
+    const s = t / 0.25;
+    angle = s * 2.2;                        // 振りかぶり最大 2.2rad
+    bodyRotZ = -s * 0.25;                   // 体を少し傾ける
+    bodyScaleX = 1 - s * 0.08;
+    bodyScaleY = 1 + s * 0.12;
+  } else if (t < 0.55) {
+    // 高速振り下ろし（前へ ＋ 大きく回転）
+    const s = (t - 0.25) / 0.30;
+    const ease = s * s * (3 - 2*s);         // smoothstep で加速
+    angle = 2.2 - ease * 5.8;              // -3.6rad（前方へ大きく）
+    bodyRotZ = -0.25 + s * 0.45;           // 体が振られる
+    bodyScaleX = 1 - 0.08 + s * 0.25;     // 横にぶれる
+    bodyScaleY = 1 + 0.12 - s * 0.22;
+  } else if (t < 0.72) {
+    // 行き過ぎ→ちょっと戻る
+    const s = (t - 0.55) / 0.17;
+    angle = -3.6 + s * 1.1;
+    bodyRotZ = 0.2 - s * 0.2;
+    bodyScaleX = 1.17 - s * 0.12;
+    bodyScaleY = 0.9  + s * 0.08;
+  } else {
+    // 元に戻す
+    const s = (t - 0.72) / 0.28;
+    angle = -2.5 + s * 2.5;
+    bodyRotZ = 0;
+  }
+
   three.swordPivot.rotation.z = angle;
+  // 体全体を少し傾けて迫力を出す
+  three.playerGroup.rotation.z = bodyRotZ;
+  three.playerGroup.scale.set(bodyScaleX, bodyScaleY, bodyScaleX);
+
   if (t >= 1.0) {
     three.swordSwing.active = false;
     three.swordPivot.rotation.z = 0;
+    three.playerGroup.rotation.z = 0;
+    three.playerGroup.scale.set(1, 1, 1);
   }
 }
 
+// 槍モーション：大きく引いて→全力突き（2段）→戻る
 function startSpearThrust() {
   if (!three.spearPivot) return;
   three.spearThrust.active   = true;
   three.spearThrust.progress = 0;
+  three.spearThrust.stage    = 0;  // 0=引き, 1=1段目, 2=戻し, 3=2段目, 4=戻り
 }
 
 function updateSpearThrust() {
   if (!three.spearThrust?.active) return;
-  three.spearThrust.progress += 0.08;
+  three.spearThrust.progress += 0.065;
   const t = three.spearThrust.progress;
-  let z;
-  if      (t < 0.35) z = -(t / 0.35) * 0.7;
-  else if (t < 0.55) z = -0.7;
-  else               z = -0.7 + ((t - 0.55) / 0.45) * 0.7;
-  three.spearPivot.position.z = z;
+  let pz = 0, px = 0, bodyTilt = 0, bodyScaleX = 1, bodyScaleY = 1;
+
+  if (t < 0.15) {
+    // 大きく後ろへ引く
+    const s = t / 0.15;
+    pz = s * 0.55;                  // 後方へ引く（+z方向）
+    px = -s * 0.1;
+    bodyTilt = -s * 0.2;
+    bodyScaleX = 1 + s * 0.1;
+    bodyScaleY = 1 - s * 0.08;
+  } else if (t < 0.30) {
+    // 1段目：鋭く突く
+    const s = (t - 0.15) / 0.15;
+    const ease = s * s;             // 加速しながら突く
+    pz = 0.55 - ease * 1.45;       // -0.9まで前進
+    px = -0.1 + s * 0.15;
+    bodyTilt = -0.2 + s * 0.35;
+    bodyScaleX = 1.1 - s * 0.15;
+    bodyScaleY = 0.92 + s * 0.1;
+  } else if (t < 0.42) {
+    // 少し戻す
+    const s = (t - 0.30) / 0.12;
+    pz = -0.9 + s * 0.65;
+    bodyTilt = 0.15 - s * 0.3;
+  } else if (t < 0.57) {
+    // 2段目：さらに速く！
+    const s = (t - 0.42) / 0.15;
+    const ease = s * s * s;
+    pz = -0.25 - ease * 1.1;       // -1.35（さらに深く）
+    bodyTilt = -0.15 + s * 0.4;
+    bodyScaleX = 0.95 + s * 0.2;
+    bodyScaleY = 1.02 - s * 0.15;
+  } else if (t < 0.70) {
+    // 2段目ヒット：体ごとのめり込む
+    const s = (t - 0.57) / 0.13;
+    pz = -1.35 + s * 0.45;
+    bodyTilt = 0.25;
+    bodyScaleX = 1.15 - s * 0.1;
+    bodyScaleY = 0.87 + s * 0.08;
+  } else {
+    // ゆっくり元の構えへ
+    const s = (t - 0.70) / 0.30;
+    const ease = 1 - (1-s)*(1-s);
+    pz = -0.9 + ease * 0.9;
+    bodyTilt = 0.25 * (1 - ease);
+    bodyScaleX = 1.05 - ease * 0.05;
+    bodyScaleY = 0.95 + ease * 0.05;
+  }
+
+  three.spearPivot.position.z = pz;
+  three.spearPivot.position.x = px;
+  three.playerGroup.rotation.x = bodyTilt;
+  three.playerGroup.scale.set(bodyScaleX, bodyScaleY, bodyScaleX);
+
   if (t >= 1.0) {
     three.spearThrust.active = false;
-    three.spearPivot.position.z = 0;
+    three.spearPivot.position.set(0, 0, 0);
+    three.playerGroup.rotation.x = 0;
+    three.playerGroup.scale.set(1, 1, 1);
   }
 }
 

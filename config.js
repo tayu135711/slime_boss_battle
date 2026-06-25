@@ -12,15 +12,15 @@ const STAGES = [
     maxHp:   600,
     radius:  0.7,             // 小さい
     floatHeight: 0.08, floatSpeedMs: 600,
-    moveSpeed: 0.018, wanderRadius: 2.5,
+    moveSpeed: 0.018, wanderRadius: 3.5,
     attackIntervalMs: 4500,
     chargeDamage: 30, shockwaveDamage: 0,   // 衝撃波なし
     chargeSpeed: 0.14, shockwaveRadius: 0,
     phase2At: 0.5, phase3At: 0.25,
     hasShockwave: false,      // falseなら衝撃波を使わない
-    bgColor: 0x0d1f0d,        // シーン背景色
-    groundColor: 0x1a3d1a,
-    fogDensity: 0.035,
+    bgColor: 0x87ceeb,        // ★ 昼の青空
+    groundColor: 0x3a7d2a,
+    fogDensity: 0.012,        // ★ フォグを薄くして遠くまで見える
   },
   {
     // --- Chapter 1 Stage 2 ---
@@ -31,13 +31,13 @@ const STAGES = [
     maxHp:   1000,
     radius:  0.85,
     floatHeight: 0.10, floatSpeedMs: 550,
-    moveSpeed: 0.020, wanderRadius: 2.8,
+    moveSpeed: 0.020, wanderRadius: 3.8,
     attackIntervalMs: 4000,
     chargeDamage: 45, shockwaveDamage: 0,
     chargeSpeed: 0.16, shockwaveRadius: 0,
     phase2At: 0.55, phase3At: 0.28,
     hasShockwave: false,
-    bgColor: 0x0a1a1f, groundColor: 0x153030, fogDensity: 0.038,
+    bgColor: 0x7ab8d4, groundColor: 0x336e55, fogDensity: 0.014,
   },
   {
     // --- Chapter 1 Stage 3 ---
@@ -48,13 +48,13 @@ const STAGES = [
     maxHp:   1600,
     radius:  0.95,
     floatHeight: 0.12, floatSpeedMs: 500,
-    moveSpeed: 0.022, wanderRadius: 3.0,
+    moveSpeed: 0.022, wanderRadius: 4.0,
     attackIntervalMs: 3800,
     chargeDamage: 55, shockwaveDamage: 35,
     chargeSpeed: 0.17, shockwaveRadius: 3.2,
     phase2At: 0.6, phase3At: 0.3,
     hasShockwave: true,       // ここから衝撃波解禁
-    bgColor: 0x0f1a0a, groundColor: 0x1a3010, fogDensity: 0.040,
+    bgColor: 0x6aad70, groundColor: 0x2a6020, fogDensity: 0.016,
   },
   {
     // --- Chapter 1 Stage 4 ---
@@ -65,13 +65,13 @@ const STAGES = [
     maxHp:   2400,
     radius:  1.0,
     floatHeight: 0.12, floatSpeedMs: 480,
-    moveSpeed: 0.023, wanderRadius: 3.2,
+    moveSpeed: 0.023, wanderRadius: 4.2,
     attackIntervalMs: 3500,
     chargeDamage: 65, shockwaveDamage: 45,
     chargeSpeed: 0.18, shockwaveRadius: 3.4,
     phase2At: 0.6, phase3At: 0.3,
     hasShockwave: true,
-    bgColor: 0x180f08, groundColor: 0x2a1f10, fogDensity: 0.042,
+    bgColor: 0xc4a96a, groundColor: 0x5a4020, fogDensity: 0.018,
   },
   {
     // --- Chapter 1 Stage 5 ---
@@ -82,13 +82,13 @@ const STAGES = [
     maxHp:   3500,
     radius:  1.05,
     floatHeight: 0.14, floatSpeedMs: 430,
-    moveSpeed: 0.024, wanderRadius: 3.4,
+    moveSpeed: 0.024, wanderRadius: 4.4,
     attackIntervalMs: 3200,
     chargeDamage: 72, shockwaveDamage: 52,
     chargeSpeed: 0.20, shockwaveRadius: 3.6,
     phase2At: 0.6, phase3At: 0.3,
     hasShockwave: true,
-    bgColor: 0x15081a, groundColor: 0x22103a, fogDensity: 0.043,
+    bgColor: 0xd4a0c8, groundColor: 0x441050, fogDensity: 0.020,
   },
   {
     // --- Chapter 1 Stage 6（ラスボス） ---
@@ -99,13 +99,13 @@ const STAGES = [
     maxHp:   5000,
     radius:  1.1,
     floatHeight: 0.15, floatSpeedMs: 400,
-    moveSpeed: 0.025, wanderRadius: 3.5,
+    moveSpeed: 0.025, wanderRadius: 4.5,
     attackIntervalMs: 3000,
     chargeDamage: 80, shockwaveDamage: 60,
     chargeSpeed: 0.22, shockwaveRadius: 3.8,
     phase2At: 0.6, phase3At: 0.3,
     hasShockwave: true,
-    bgColor: 0x0d0f1a, groundColor: 0x121830, fogDensity: 0.040,
+    bgColor: 0x8870cc, groundColor: 0x202050, fogDensity: 0.018,
   },
 ];
 
@@ -133,9 +133,9 @@ const CONFIG = {
     specialMinDamage: 400,
     specialMaxDamage: 600,
   },
-  field: { halfSize: 8 },
+  field: { halfSize: 14 },
   camera: {
-    fov: 60, offsetY: 4.5, offsetZ: 7.0,
+    fov: 65, offsetY: 6.0, offsetZ: 9.0,
     lookAtY: 0.5, lookAtZAhead: -2.5, shakeMs: 180,
   },
 };
@@ -174,4 +174,32 @@ const COSTUMES = [
 function getGachaPool() {
   const total = COSTUMES.reduce((s, c) => s + c.rarity, 0);
   return COSTUMES.map(c => ({ ...c, weight: c.rarity / total }));
+}
+
+// ============================================================
+// STAGE_REWARD_POOLS: ステージクリア時に3択で提示するコスチューム
+// stageNo に対応する配列から重複なく3つ選んで表示する。
+// 同じIDが複数回出ないよう getStageRewardPool() でシャッフル済み
+// ============================================================
+const STAGE_REWARD_POOLS = {
+  1: ["c01", "c02", "c03"],              // Stage1: 星1×3
+  2: ["c01", "c02", "c11"],              // Stage2: 星1×2 + 星2×1
+  3: ["c03", "c04", "c12"],              // Stage3: 星1×2 + 星2×1
+  4: ["c11", "c12", "c13"],             // Stage4: 星2×3
+  5: ["c12", "c13", "c21"],             // Stage5: 星2×2 + 星3×1
+  6: ["c21", "c22", "c23"],             // Stage6(ラスボス): 星3×3
+};
+
+/**
+ * stageNo に対応するコスチューム報酬3択を返す。
+ * 対応がない場合は星1からランダムに3つ返す。
+ */
+function getStageRewardPool(stageNo) {
+  const ids = STAGE_REWARD_POOLS[stageNo];
+  if (!ids) {
+    // フォールバック: 星1をランダムに3つ
+    const star1 = COSTUMES.filter(c => c.stars === 1);
+    return star1.sort(() => Math.random() - 0.5).slice(0, 3);
+  }
+  return ids.map(id => COSTUMES.find(c => c.id === id)).filter(Boolean);
 }

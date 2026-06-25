@@ -30,45 +30,83 @@ function initScene() {
 }
 
 function setupLights() {
-  three.scene.add(new THREE.AmbientLight(0x8899cc, 0.5));
-  const moon = new THREE.DirectionalLight(0xaaccff, 0.9);
-  moon.position.set(-8, 14, 6);
-  moon.castShadow = true;
-  moon.shadow.mapSize.set(1024, 1024);
-  moon.shadow.camera.near = 0.5;
-  moon.shadow.camera.far = 60;
-  moon.shadow.camera.left = moon.shadow.camera.bottom = -20;
-  moon.shadow.camera.right = moon.shadow.camera.top = 20;
-  three.scene.add(moon);
-  three.bossLight = new THREE.PointLight(0xcc66ff, 1.4, 8);
+  // ★ 全体の基本明るさを大幅アップ（0.5→1.4）
+  three.scene.add(new THREE.AmbientLight(0xfff5e0, 1.4));
+
+  // ★ 太陽光（メインの明るい昼光）を追加
+  const sun = new THREE.DirectionalLight(0xfff8d0, 2.2);
+  sun.position.set(10, 20, 8);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.near = 0.5;
+  sun.shadow.camera.far = 120;
+  sun.shadow.camera.left = sun.shadow.camera.bottom = -80;
+  sun.shadow.camera.right = sun.shadow.camera.top = 80;
+  three.scene.add(sun);
+
+  // ★ 補助ライト（影を柔らかくする逆方向の光）
+  const fill = new THREE.DirectionalLight(0xc8e8ff, 0.8);
+  fill.position.set(-6, 8, -4);
+  three.scene.add(fill);
+
+  // ★ 地面反射光（下からの跳ね返り）
+  const bounce = new THREE.HemisphereLight(0x88dd88, 0x44aa44, 0.6);
+  three.scene.add(bounce);
+
+  // ★ ボス周辺の光（色はそのままだが明るく）
+  three.bossLight = new THREE.PointLight(0xcc66ff, 2.0, 12);
   three.bossLight.position.set(0, 1.5, -2.5);
   three.scene.add(three.bossLight);
+
+  // ★ フィールド中央の暖かい環境光
+  const centerGlow = new THREE.PointLight(0xffdd88, 0.8, 30);
+  centerGlow.position.set(0, 5, 0);
+  three.scene.add(centerGlow);
 }
 
 function buildGround() {
-  const size = CONFIG.field.halfSize * 2 + 14;
+  // ★ 広い草原（オープンワールド感）
+  const size = CONFIG.field.halfSize * 2 + 60;
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(size, size, 8, 8),
-    new THREE.MeshStandardMaterial({ color: 0x1a3d1a, roughness: 0.9 })
+    new THREE.PlaneGeometry(size, size, 20, 20),
+    new THREE.MeshStandardMaterial({ color: 0x3a7d2a, roughness: 0.85 })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   three.scene.add(ground);
+
+  // ★ バトルアリーナ（明るめの緑）
   const arena = new THREE.Mesh(
-    new THREE.CircleGeometry(CONFIG.field.halfSize * 0.95, 48),
-    new THREE.MeshStandardMaterial({ color: 0x224422, roughness: 0.8 })
+    new THREE.CircleGeometry(CONFIG.field.halfSize * 0.95, 64),
+    new THREE.MeshStandardMaterial({ color: 0x4a9e38, roughness: 0.75 })
   );
   arena.rotation.x = -Math.PI / 2;
   arena.position.y = 0.01;
   arena.receiveShadow = true;
   three.scene.add(arena);
+
+  // ★ 境界リング（柔らかいトーン）
   const ring = new THREE.Mesh(
-    new THREE.RingGeometry(CONFIG.field.halfSize * 0.95, CONFIG.field.halfSize + 0.8, 48),
-    new THREE.MeshBasicMaterial({ color: 0x111811, side: THREE.DoubleSide })
+    new THREE.RingGeometry(CONFIG.field.halfSize * 0.95, CONFIG.field.halfSize + 0.8, 64),
+    new THREE.MeshBasicMaterial({ color: 0x2a5a20, side: THREE.DoubleSide })
   );
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 0.01;
   three.scene.add(ring);
+
+  // ★ 遠方の草原（段階的に広がる）
+  for (let r = CONFIG.field.halfSize + 8; r < CONFIG.field.halfSize + 40; r += 12) {
+    const farGrass = new THREE.Mesh(
+      new THREE.RingGeometry(r, r + 10, 32),
+      new THREE.MeshStandardMaterial({
+        color: r % 24 === (CONFIG.field.halfSize + 8) % 24 ? 0x3a7d2a : 0x336e25,
+        roughness: 0.9
+      })
+    );
+    farGrass.rotation.x = -Math.PI / 2;
+    farGrass.position.y = 0.005;
+    three.scene.add(farGrass);
+  }
 }
 
 function buildAttackRing() {
@@ -95,8 +133,8 @@ function makeFirTree(x, z, height = 3.5, baseRadius = 0.25) {
   trunk.position.y = height * 0.175;
   trunk.castShadow = true;
   group.add(trunk);
-  const leafColor = new THREE.MeshStandardMaterial({ color: 0x1a5c1a, roughness: 0.9 });
-  const leafDark  = new THREE.MeshStandardMaterial({ color: 0x143d14, roughness: 0.9 });
+  const leafColor = new THREE.MeshStandardMaterial({ color: 0x2e8b2e, roughness: 0.85 });
+  const leafDark  = new THREE.MeshStandardMaterial({ color: 0x1e6b1e, roughness: 0.85 });
   [
     { r: height * 0.28, h: height * 0.45, y: height * 0.35, mat: leafColor },
     { r: height * 0.22, h: height * 0.38, y: height * 0.58, mat: leafDark  },
@@ -167,103 +205,262 @@ function makeGlowMushroom(x, z) {
   return group;
 }
 
+function makeFlower(x, z) {
+  const group = new THREE.Group();
+  const stem = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.025, 0.025, 0.25, 5),
+    new THREE.MeshStandardMaterial({ color: 0x44aa44 })
+  );
+  stem.position.y = 0.125;
+  group.add(stem);
+  const colors = [0xffdd44, 0xff88aa, 0xff6644, 0xffffff, 0xaa88ff];
+  const petal = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, 6, 5),
+    new THREE.MeshStandardMaterial({
+      color: colors[Math.floor(Math.random() * colors.length)],
+      roughness: 0.6, emissive: 0x331100, emissiveIntensity: 0.15
+    })
+  );
+  petal.scale.y = 0.5;
+  petal.position.y = 0.28;
+  group.add(petal);
+  group.position.set(x, 0, z);
+  return group;
+}
+
+function makePond(x, z, radius = 1.5) {
+  const pond = new THREE.Mesh(
+    new THREE.CircleGeometry(radius, 32),
+    new THREE.MeshStandardMaterial({ color: 0x4488cc, roughness: 0.1, metalness: 0.3 })
+  );
+  pond.rotation.x = -Math.PI / 2;
+  pond.position.set(x, 0.02, z);
+  return pond;
+}
+
 function buildForestDecor() {
   const half = CONFIG.field.halfSize;
   const rng = (min, max) => Math.random() * (max - min) + min;
-  for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 7) {
-    const r = rng(half + 1.5, half + 5.5);
+
+  // アリーナ周辺の木（近い輪）
+  for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
+    const r = rng(half + 1.5, half + 4.5);
     three.scene.add(makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(2.8, 5.2)));
   }
+
+  // ★ 中距離の木（広い輪 1）
+  for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 12) {
+    const r = rng(half + 6, half + 14);
+    three.scene.add(makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(4, 8)));
+  }
+
+  // ★ 遠距離の木（広い輪 2）
+  for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 18) {
+    const r = rng(half + 16, half + 30);
+    three.scene.add(makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(6, 12)));
+  }
+
+  // ★ ランダム散在木（オープンワールド感）
+  for (let i = 0; i < 40; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const r = rng(half + 5, half + 35);
+    three.scene.add(makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(3, 10)));
+  }
+
+  // 岩
   [
     [half - 1.5, -3, 0.6], [-half + 1.8, -2, 0.8], [3, half - 1.5, 0.5],
-    [-3.5, -half + 1.2, 0.7], [half + 1.5, 0, 1.1], [-half - 1.2, 1, 0.9],
-    [2, -half - 1.5, 0.7], [-1.5, half + 1.2, 0.6],
+    [-3.5, -half + 1.2, 0.7], [half + 2.5, 3, 1.1], [-half - 2.2, 1, 0.9],
+    [2, -half - 2.5, 0.7], [-1.5, half + 2.2, 0.6],
+    [half + 8, -5, 1.3], [-half - 9, 4, 1.0], [6, half + 10, 0.9],
+    [-8, -half - 11, 1.2],
   ].forEach(([x, z, s]) => three.scene.add(makeRock(x, z, s)));
-  for (let i = 0; i < 24; i++) {
+
+  // 苔（広い範囲に）
+  for (let i = 0; i < 60; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const r = rng(half * 0.3, half * 1.8);
+    const r = rng(half * 0.3, half * 2.5);
     three.scene.add(makeMoss(Math.cos(angle) * r, Math.sin(angle) * r));
   }
-  [[half - 0.8, 1.5], [-half + 0.6, -1.0], [1.8, half - 0.5], [-2.2, -half + 0.8], [half + 1.0, -2.5]]
-    .forEach(([x, z]) => three.scene.add(makeGlowMushroom(x, z)));
-  for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 5) {
-    const r = rng(half + 6, half + 11);
-    three.scene.add(makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(5, 8)));
+
+  // 光るきのこ（アリーナ内外に増量）
+  [
+    [half - 0.8, 1.5], [-half + 0.6, -1.0], [1.8, half - 0.5], [-2.2, -half + 0.8],
+    [half + 2.0, -3.5], [-half - 2.0, 2.5], [0, -half - 2.0], [half + 5, 5],
+    [-half - 6, -3], [half - 3, half + 3],
+  ].forEach(([x, z]) => three.scene.add(makeGlowMushroom(x, z)));
+
+  // ★ 花畑（オープンワールド点在）
+  for (let i = 0; i < 80; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const r = rng(half * 0.5, half * 3.0);
+    three.scene.add(makeFlower(Math.cos(angle) * r, Math.sin(angle) * r));
   }
+
+  // ★ 小さな池（遠くに点在）
+  [
+    [half + 12, -8], [-half - 14, 6], [half - 5, half + 15], [-half - 8, -half - 12],
+  ].forEach(([x, z]) => three.scene.add(makePond(x, z, rng(1.2, 2.5))));
 }
 
 // --- スライム顔パーツ ---
 function addSlimeFace(parent, r, eyeY = 0.25) {
   const faceGroup = new THREE.Group();
 
-  // 目のマテリアル
-  const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 0.0 });
-  const eyeBlackMat = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.3 });
-  const highlightMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.0, emissive: 0xffffff, emissiveIntensity: 0.3 });
-  const hlSub = new THREE.MeshStandardMaterial({ color: 0xddeeff, roughness: 0.0, emissive: 0xaaccff, emissiveIntensity: 0.2 });
+  // ── マテリアル定義 ──────────────────────────────────────────
+  const eyeWhiteMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff, roughness: 0.05, metalness: 0.0,
+    emissive: 0xeeeeff, emissiveIntensity: 0.08,
+  });
+  // 虹彩（黒目の外側リング）：深みのある瞳色
+  const irisMat = new THREE.MeshStandardMaterial({
+    color: 0x3366cc, roughness: 0.2, metalness: 0.0,
+    emissive: 0x1133aa, emissiveIntensity: 0.25,
+  });
+  // 瞳孔（黒目の中心）
+  const pupilMat = new THREE.MeshStandardMaterial({
+    color: 0x0a0a18, roughness: 0.3,
+  });
+  // メインハイライト：ぴかっと大きく光る
+  const hlMainMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff, roughness: 0.0,
+    emissive: 0xffffff, emissiveIntensity: 1.2,
+  });
+  // サブハイライト：小さめの星型輝き
+  const hlSubMat = new THREE.MeshStandardMaterial({
+    color: 0xddeeff, roughness: 0.0,
+    emissive: 0x88ccff, emissiveIntensity: 0.8,
+  });
+  // まつ毛
+  const lashMat = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.8 });
+  // 口
+  const mouthMat = new THREE.MeshStandardMaterial({ color: 0x331122, roughness: 0.5 });
 
   function makeEye(side) {
     const eyeGroup = new THREE.Group();
 
-    // 白目：縦に少しつぶした楕円（ぱっちり感）
+    // ── 白目：大きく・縦長の楕円でぱっちり感 ──
     const white = new THREE.Mesh(
-      new THREE.SphereGeometry(r * 0.23, 14, 14),
+      new THREE.SphereGeometry(r * 0.27, 16, 16),
       eyeWhiteMat
     );
-    white.scale.set(1.0, 1.15, 0.85);   // 縦に広げて横に薄く → 大きい目
+    white.scale.set(1.0, 1.3, 0.75);   // 縦に大きく、奥行きは薄く
     eyeGroup.add(white);
 
-    // 黒目：白目より少し小さめ、前に出す
-    const black = new THREE.Mesh(
-      new THREE.SphereGeometry(r * 0.145, 12, 12),
-      eyeBlackMat
+    // ── 虹彩（アイリス）：青みがかったリング ──
+    const iris = new THREE.Mesh(
+      new THREE.SphereGeometry(r * 0.175, 14, 14),
+      irisMat
     );
-    black.scale.set(1.0, 1.1, 0.8);
-    black.position.z = r * 0.12;
-    eyeGroup.add(black);
+    iris.scale.set(1.0, 1.2, 0.7);
+    iris.position.z = r * 0.09;
+    eyeGroup.add(iris);
 
-    // ハイライト①：大きめ・左上（メインの輝き）
-    const hl1 = new THREE.Mesh(
-      new THREE.SphereGeometry(r * 0.062, 7, 7),
-      highlightMat
+    // ── 瞳孔：真ん中の黒い点 ──
+    const pupil = new THREE.Mesh(
+      new THREE.SphereGeometry(r * 0.095, 12, 12),
+      pupilMat
     );
-    hl1.position.set(-r * 0.06, r * 0.07, r * 0.20);
+    pupil.scale.set(1.0, 1.15, 0.65);
+    pupil.position.z = r * 0.155;
+    eyeGroup.add(pupil);
+
+    // ── メインハイライト：大きく左上でキラリ ──
+    const hl1 = new THREE.Mesh(
+      new THREE.SphereGeometry(r * 0.075, 8, 8),
+      hlMainMat
+    );
+    hl1.scale.set(1.0, 1.3, 0.7);
+    hl1.position.set(-r * 0.07, r * 0.10, r * 0.22);
     eyeGroup.add(hl1);
 
-    // ハイライト②：小さめ・右下（サブの輝き）
+    // ── サブハイライト①：右下の小さな輝き ──
     const hl2 = new THREE.Mesh(
-      new THREE.SphereGeometry(r * 0.032, 6, 6),
-      hlSub
+      new THREE.SphereGeometry(r * 0.038, 7, 7),
+      hlSubMat
     );
-    hl2.position.set(r * 0.06, -r * 0.03, r * 0.21);
+    hl2.position.set(r * 0.07, -r * 0.04, r * 0.23);
     eyeGroup.add(hl2);
 
-    // 目の位置：正面やや上、左右に振り分け
-    const angle = side * 0.36;
-    eyeGroup.position.set(
-      Math.sin(angle) * r * 0.85,
-      r * (0.52 + eyeY),
-      Math.cos(angle) * r * 0.85
+    // ── サブハイライト②：左下のさらに小さい輝き ──
+    const hl3 = new THREE.Mesh(
+      new THREE.SphereGeometry(r * 0.022, 6, 6),
+      hlSubMat
     );
+    hl3.position.set(-r * 0.09, -r * 0.07, r * 0.225);
+    eyeGroup.add(hl3);
+
+    // ── まつ毛：上部に3本のアーチ型 ──
+    for (let li = -1; li <= 1; li++) {
+      const lashPts = [];
+      for (let k = 0; k <= 5; k++) {
+        const kt = k / 5;
+        lashPts.push(new THREE.Vector3(
+          li * r * 0.08 + (li === 0 ? 0 : li * r * 0.04 * kt),
+          r * 0.22 + kt * r * 0.16,
+          r * 0.18 - kt * r * 0.04
+        ));
+      }
+      const lash = new THREE.Mesh(
+        new THREE.TubeGeometry(
+          new THREE.CatmullRomCurve3(lashPts), 5, r * 0.018, 4, false
+        ),
+        lashMat
+      );
+      eyeGroup.add(lash);
+    }
+
+    // ── 目の配置：左右に少し広め・正面上部 ──
+    const angle = side * 0.38;
+    eyeGroup.position.set(
+      Math.sin(angle) * r * 0.82,
+      r * (0.48 + eyeY),
+      Math.cos(angle) * r * 0.82
+    );
+    // 外側にわずかに傾けて愛嬌を出す
+    eyeGroup.rotation.z = side * 0.08;
     return eyeGroup;
   }
 
   faceGroup.add(makeEye(-1));
   faceGroup.add(makeEye( 1));
+
+  // ── 口：大きめのニコッとした笑顔 ──
   const mouthPoints = [];
-  const mouthWidth = r * 0.38;
-  for (let i = 0; i <= 10; i++) {
-    const t = i / 10;
+  const mouthWidth = r * 0.44;
+  for (let i = 0; i <= 14; i++) {
+    const t = i / 14;
     const mx = (t - 0.5) * mouthWidth * 2;
-    const my = -Math.abs(t - 0.5) * r * 0.18;
-    const mz = Math.sqrt(Math.max(0, r * r - mx * mx - (r * (0.3 + eyeY) - r * 0.25) ** 2)) * 0.95;
-    mouthPoints.push(new THREE.Vector3(mx, r * (0.3 + eyeY) - r * 0.32 + my, mz));
+    // 両端が上がった笑顔カーブ（二次曲線）
+    const my = (4 * (t - 0.5) ** 2 - 1) * r * 0.13;
+    const mz = Math.sqrt(Math.max(0, r * r - mx * mx - (r * (0.28 + eyeY)) ** 2)) * 0.93;
+    mouthPoints.push(new THREE.Vector3(mx, r * (0.28 + eyeY) - r * 0.36 + my, mz));
   }
   const mouthMesh = new THREE.Mesh(
-    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(mouthPoints), 12, r * 0.04, 6, false),
-    new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.6 })
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(mouthPoints), 16, r * 0.038, 6, false),
+    mouthMat
   );
   faceGroup.add(mouthMesh);
+
+  // ── ほっぺたの赤み：左右にふんわり ──
+  const cheekMat = new THREE.MeshStandardMaterial({
+    color: 0xff8888, roughness: 1.0, transparent: true, opacity: 0.38,
+  });
+  [-1, 1].forEach(side => {
+    const cheek = new THREE.Mesh(
+      new THREE.SphereGeometry(r * 0.13, 8, 6),
+      cheekMat
+    );
+    cheek.scale.set(1.4, 0.7, 0.5);
+    const angle = side * 0.62;
+    cheek.position.set(
+      Math.sin(angle) * r * 0.72,
+      r * (0.25 + eyeY),
+      Math.cos(angle) * r * 0.75
+    );
+    faceGroup.add(cheek);
+  });
+
   parent.add(faceGroup);
   return faceGroup;
 }
@@ -313,54 +510,107 @@ function buildPlayer() {
 
   // ---- 剣（ナイトスライム装備時に表示・デフォルト非表示） ----
   three.swordPivot = new THREE.Group();
-  three.swordPivot.position.set(0.5, 0.8, 0);
-  three.swordPivot.visible = false;   // デフォルトは非表示
+  three.swordPivot.position.set(0.55, 0.75, 0);
+  three.swordPivot.visible = false;
+
+  // 刀身：細長く大きく・強い輝き
   const blade = new THREE.Mesh(
-    new THREE.BoxGeometry(0.08, 0.7, 0.04),
-    new THREE.MeshStandardMaterial({ color: 0xddeeff, metalness: 0.9, roughness: 0.1, emissive: 0x88bbff, emissiveIntensity: 0.3 })
+    new THREE.BoxGeometry(0.10, 1.45, 0.055),
+    new THREE.MeshStandardMaterial({
+      color: 0xe8f4ff, metalness: 0.97, roughness: 0.04,
+      emissive: 0x66aaff, emissiveIntensity: 0.55,
+    })
   );
-  blade.position.y = 0.35;
+  blade.position.y = 0.72;
+
+  // 刀身の中央ラインに溝（細い板で表現）
+  const fuller = new THREE.Mesh(
+    new THREE.BoxGeometry(0.025, 1.2, 0.01),
+    new THREE.MeshStandardMaterial({ color: 0xaaccff, metalness: 1.0, roughness: 0.0, emissive: 0x88ccff, emissiveIntensity: 0.8 })
+  );
+  fuller.position.set(0, 0.72, 0.033);
+  three.swordPivot.add(fuller);
+
+  // 鍔（クロスガード）：しっかりした十字
   const guard = new THREE.Mesh(
-    new THREE.BoxGeometry(0.22, 0.06, 0.08),
-    new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.7, roughness: 0.3 })
+    new THREE.BoxGeometry(0.46, 0.075, 0.10),
+    new THREE.MeshStandardMaterial({ color: 0xddbb33, metalness: 0.85, roughness: 0.2, emissive: 0x886600, emissiveIntensity: 0.2 })
   );
-  guard.position.y = 0.02;
+  guard.position.y = 0.04;
+
+  // 鍔の縦バー
+  const guardV = new THREE.Mesh(
+    new THREE.BoxGeometry(0.075, 0.18, 0.10),
+    new THREE.MeshStandardMaterial({ color: 0xddbb33, metalness: 0.85, roughness: 0.2 })
+  );
+  guardV.position.y = 0.04;
+  three.swordPivot.add(guardV);
+
+  // グリップ
   const grip = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.035, 0.035, 0.22, 6),
-    new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.9 })
+    new THREE.CylinderGeometry(0.048, 0.042, 0.42, 8),
+    new THREE.MeshStandardMaterial({ color: 0x4a2008, roughness: 0.85 })
   );
-  grip.position.y = -0.12;
-  three.swordPivot.add(blade);
-  three.swordPivot.add(guard);
-  three.swordPivot.add(grip);
+  grip.position.y = -0.22;
+
+  // ポメル（柄頭）
+  const pommel = new THREE.Mesh(
+    new THREE.SphereGeometry(0.065, 8, 7),
+    new THREE.MeshStandardMaterial({ color: 0xddbb33, metalness: 0.9, roughness: 0.2 })
+  );
+  pommel.position.y = -0.45;
+
+  three.swordPivot.add(blade, guard, grip, pommel);
   three.playerGroup.add(three.swordPivot);
 
   // ---- 槍（スライムスピア装備時に表示・デフォルト非表示） ----
   three.spearPivot = new THREE.Group();
-  three.spearPivot.position.set(0.5, 0.6, 0);
+  three.spearPivot.position.set(0.5, 0.5, 0);
   three.spearPivot.visible = false;
-  // 槍の柄
+
+  // 柄：長く太く
   const shaft = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.035, 0.035, 1.1, 6),
-    new THREE.MeshStandardMaterial({ color: 0x8B5E3C, roughness: 0.8 })
+    new THREE.CylinderGeometry(0.048, 0.042, 2.2, 8),
+    new THREE.MeshStandardMaterial({ color: 0x6b3d0f, roughness: 0.75, metalness: 0.05 })
   );
-  shaft.position.y = 0.55;
-  // 槍先
+  shaft.position.y = 1.1;
+
+  // 柄の中央に巻き革のリング
+  [0.5, 0.9, 1.3].forEach(py => {
+    const wrap = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.056, 0.056, 0.07, 8),
+      new THREE.MeshStandardMaterial({ color: 0x3a1a05, roughness: 0.95 })
+    );
+    wrap.position.y = py;
+    three.spearPivot.add(wrap);
+  });
+
+  // 穂先：大きく鋭く、強発光
   const tip = new THREE.Mesh(
-    new THREE.ConeGeometry(0.07, 0.28, 6),
-    new THREE.MeshStandardMaterial({ color: 0xccddff, metalness: 0.9, roughness: 0.1, emissive: 0x4488ff, emissiveIntensity: 0.4 })
+    new THREE.ConeGeometry(0.11, 0.55, 8),
+    new THREE.MeshStandardMaterial({
+      color: 0xd0e8ff, metalness: 0.97, roughness: 0.04,
+      emissive: 0x3388ff, emissiveIntensity: 0.7,
+    })
   );
-  tip.position.y = 1.24;
-  // 石突き（槍の下端）
+  tip.position.y = 2.47;
+
+  // 穂先の根元リング（ソケット）
+  const socket = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.075, 0.06, 0.14, 8),
+    new THREE.MeshStandardMaterial({ color: 0x99aacc, metalness: 0.9, roughness: 0.15 })
+  );
+  socket.position.y = 2.18;
+
+  // 石突き（下端）
   const butt = new THREE.Mesh(
-    new THREE.ConeGeometry(0.04, 0.14, 6),
-    new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.7, roughness: 0.3 })
+    new THREE.ConeGeometry(0.055, 0.22, 8),
+    new THREE.MeshStandardMaterial({ color: 0x778899, metalness: 0.85, roughness: 0.2 })
   );
-  butt.position.y = -0.07;
+  butt.position.y = -0.11;
   butt.rotation.z = Math.PI;
-  three.spearPivot.add(shaft);
-  three.spearPivot.add(tip);
-  three.spearPivot.add(butt);
+
+  three.spearPivot.add(shaft, tip, socket, butt);
   three.playerGroup.add(three.spearPivot);
 
   // アニメーション状態

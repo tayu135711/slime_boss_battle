@@ -60,8 +60,8 @@
           <span class="menu-btn-label">ステージ選択</span>
         </button>
         <button class="menu-btn btn-gacha" id="menuGachaBtn">
-          <span class="menu-btn-icon">🎰</span>
-          <span class="menu-btn-label">コスチュームガチャ</span>
+          <span class="menu-btn-icon">📖</span>
+          <span class="menu-btn-label">コスチューム図鑑</span>
         </button>
         <button class="menu-btn btn-other" id="menuOtherBtn">
           <span class="menu-btn-icon">⚙️</span>
@@ -72,16 +72,11 @@
     </div>
   </div>
 
-  <!-- ガチャ画面 -->
+  <!-- コレクション画面 -->
   <div id="gachaScreen">
     <div id="gachaBox">
-      <div id="gachaTitle">🎰 コスチュームガチャ</div>
+      <div id="gachaTitle">📖 コスチューム図鑑</div>
       <div id="gachaCurrentCostume"></div>
-      <div id="gachaBtns">
-        <button class="gacha-pull-btn" id="gachaPullBtn">🎲 ガチャを引く</button>
-        <button class="gacha-pull-btn gacha-pull-10btn" id="gachaPull10Btn">🎲×10 まとめて引く</button>
-      </div>
-      <div id="gachaResult"></div>
       <div id="gachaCollectionTitle">── コレクション ──</div>
       <div id="gachaCollection"></div>
       <button class="back-btn" id="gachaBackBtn">← もどる</button>
@@ -113,7 +108,12 @@
     <div id="resultBox">
       <div id="resultTitle">✨ STAGE CLEAR! ✨</div>
       <div id="resultStats"></div>
-      <button id="nextStageBtn">次のステージへ ▶</button>
+      <!-- クリア報酬：コスチューム3択 -->
+      <div id="rewardArea">
+        <div id="rewardTitle">🎁 クリア報酬 ─ コスチュームを1つ選択！</div>
+        <div id="rewardCards"></div>
+      </div>
+      <button id="nextStageBtn" style="display:none">次のステージへ ▶</button>
     </div>
   </div>
 
@@ -194,6 +194,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="config.js"></script>
+<script src="costume_art.js"></script>
 <script src="scene.js"></script>
 <script src="battle.js"></script>
 <script src="ui.js"></script>

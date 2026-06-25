@@ -142,8 +142,8 @@ function handleBossDefeated() {
 
   // ★ 次ステージを正しく解放（現在+1 を unlockedStages に反映）
   const nextIdx = state.stageIndex + 1;
-  if (nextIdx < STAGES.length && nextIdx > state.unlockedStages) {
-    state.unlockedStages = nextIdx;
+  if (nextIdx < STAGES.length && nextIdx >= state.unlockedStages) {
+    state.unlockedStages = nextIdx + 1;
   }
 
   const elapsed = Math.floor((Date.now() - state.stageStartAt) / 1000);
@@ -165,9 +165,56 @@ function handleBossDefeated() {
         <div>⏱ クリアタイム: <b>${mm}:${ss}</b></div>
         <div>⚔️ 与ダメージ: <b>${state.totalDamage}</b></div>
         <div>🔢 攻撃回数: <b>${state.attackCount}</b>回</div>`;
+
+      // ─ コスチューム3択報酬 ─
+      renderRewardChoices(stg.stageNo);
+
+      dom.nextStageBtn.style.display = "none";  // 選択後に表示する
       dom.resultScreen.classList.add("visible");
     }
   }, 800);
+}
+
+/** ステージ番号に対応した3択コスチューム選択UIを描画 */
+function renderRewardChoices(stageNo) {
+  const pool = getStageRewardPool(stageNo);
+  let html = "";
+  pool.forEach(c => {
+    const rareCls  = c.stars === 3 ? "reward-card-r3" : c.stars === 2 ? "reward-card-r2" : "reward-card-r1";
+    const owned    = !!state.ownedCostumes.find(o => o.id === c.id);
+    const equipped = state.equippedCostume?.id === c.id;
+    html += `<div class="reward-card ${rareCls}" data-id="${c.id}">
+      <div class="reward-card-art">${getSlimeSVG(c.id, 72)}</div>
+      <div class="reward-card-stars">${"⭐".repeat(c.stars)}</div>
+      <div class="reward-card-name">${c.name}</div>
+      <div class="reward-card-weapon">${weaponLabel(c.weapon)}</div>
+      ${owned    ? '<div class="reward-card-badge owned">所持済み</div>' : ""}
+      ${equipped ? '<div class="reward-card-badge equip">装備中</div>'  : ""}
+    </div>`;
+  });
+  dom.rewardCards.innerHTML = html;
+
+  // カードクリックで取得 & 装備
+  dom.rewardCards.querySelectorAll(".reward-card").forEach(card => {
+    card.addEventListener("click", () => {
+      const costume = COSTUMES.find(c => c.id === card.dataset.id);
+      if (!costume) return;
+
+      // 所持リストに追加
+      if (!state.ownedCostumes.find(o => o.id === costume.id)) {
+        state.ownedCostumes.push(costume);
+      }
+      // 装備
+      equipCostume(costume);
+
+      // 選択済みスタイル
+      dom.rewardCards.querySelectorAll(".reward-card").forEach(c => c.classList.remove("reward-selected"));
+      card.classList.add("reward-selected");
+
+      // 次のステージへボタンを出す
+      dom.nextStageBtn.style.display = "";
+    });
+  });
 }
 
 // ── リセット ──────────────────────────────────────────────────
@@ -194,7 +241,11 @@ function resetBattle() {
   }
   if (three.spearThrust) {
     three.spearThrust = { active: false, progress: 0 };
-    if (three.spearPivot) three.spearPivot.position.z = 0;
+    if (three.spearPivot) { three.spearPivot.position.set(0, 0, 0); }
+  }
+  if (three.playerGroup) {
+    three.playerGroup.rotation.x = 0;
+    three.playerGroup.rotation.z = 0;
   }
 
   // 魔法陣をすべてキャンセル
