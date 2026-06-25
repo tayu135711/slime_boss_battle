@@ -47,6 +47,10 @@ const dom = {
   gachaCurrentCostume: document.getElementById("gachaCurrentCostume"),
   gachaBackBtn:        document.getElementById("gachaBackBtn"),
   rewardCards:         document.getElementById("rewardCards"),
+  homePlazaScreen:   document.getElementById("homePlazaScreen"),
+  npcBubble:         document.getElementById("npcBubble"),
+  plazaActionPrompt: document.getElementById("plazaActionPrompt"),
+  titleStartBtn:     document.getElementById("titleStartBtn"),
 };
 
 // ============================================================
@@ -64,7 +68,7 @@ const state = {
   unlockedStages: 1,            // 解放済みステージ数
   lastAttackAt: 0,
   specialGauge: 0,
-  keys: { up: false, down: false, left: false, right: false },
+  keys: { up: false, down: false, left: false, right: false, action: false },
   player: {
     x: CONFIG.player.startX, z: CONFIG.player.startZ,
     hp: CONFIG.player.maxHp,
@@ -515,14 +519,27 @@ function setupInput() {
   window.addEventListener("keydown", (e) => {
     const k = e.key.toLowerCase();
     if (keyMap[k]) state.keys[keyMap[k]] = true;
-    if (k === " ") { e.preventDefault(); attackBoss(); }
+    if (k === " " || k === "enter") {
+      e.preventDefault();
+      if (dom.homePlazaScreen.classList.contains("visible")) {
+        handlePlazaAction();
+      } else {
+        attackBoss();
+      }
+    }
   });
   window.addEventListener("keyup", (e) => {
     const k = e.key.toLowerCase();
     if (keyMap[k]) state.keys[keyMap[k]] = false;
   });
 
-  dom.attackBtn.addEventListener("click", attackBoss);
+  dom.attackBtn.addEventListener("click", () => {
+    if (dom.homePlazaScreen.classList.contains("visible")) {
+      handlePlazaAction();
+    } else {
+      attackBoss();
+    }
+  });
   dom.specialBtn.addEventListener("click", useSpecialMove);
   dom.resetBtn.addEventListener("click", resetBattle);
   dom.retryBtn.addEventListener("click", () => {
@@ -530,15 +547,15 @@ function setupInput() {
     showStageStart();
   });
   dom.stageStartBtn.addEventListener("click", startStage);
-  dom.titleScreen.addEventListener("click", dismissTitle);
+  dom.titleStartBtn.addEventListener("click", dismissTitle);
+  dom.titleStartBtn.addEventListener("touchend", e => { e.preventDefault(); dismissTitle(); }, { passive: false });
   dom.menuStageBtn.addEventListener("click", showStageSelect);
   dom.menuGachaBtn.addEventListener("click", showGacha);
   dom.menuOtherBtn.addEventListener("click", () => window.__adminOpenPanel?.());
   dom.stageSelectBackBtn.addEventListener("click", () => {
     dom.stageSelectScreen.classList.remove("visible");
-    dom.menuScreen.classList.add("visible");
+    showHomePlaza();
   });
-  dom.titleScreen.addEventListener("touchend", (e) => { e.preventDefault(); dismissTitle(); }, { passive: false });
   dom.nextStageBtn.addEventListener("click", goNextStage);
   dom.endingRetryBtn.addEventListener("click", () => {
     state.stageIndex = 0;
@@ -1110,7 +1127,7 @@ function dismissTitle() {
     dom.titleScreen.classList.remove("visible");
     dom.titleScreen.style.transition = "";
     dom.titleScreen.style.opacity = "";
-    showMenu();    // タイトル → メニュー画面へ
+    showHomePlaza();   // ← menuScreen ではなく広場へ
   }, 500);
 }
 
@@ -1213,7 +1230,7 @@ function resetBattle() {
   state.specialGauge = 0;
 
   // キー押しっぱなし状態をリセット（リセットボタン押下時に移動し続けるバグ対策）
-  state.keys = { up: false, down: false, left: false, right: false };
+  state.keys = { up: false, down: false, left: false, right: false, action: false };
   state.gameOver = false;
   state.battleStarted = false;
   state.player.hp = CONFIG.player.maxHp;

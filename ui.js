@@ -47,12 +47,23 @@ function dismissTitle() {
     dom.titleScreen.classList.remove("visible");
     dom.titleScreen.style.transition = "";
     dom.titleScreen.style.opacity    = "";
-    showMenu();
+    showHomePlaza();
   }, 500);
 }
 
 function showMenu() { dom.menuScreen.classList.add("visible"); }
 function hideMenu() { dom.menuScreen.classList.remove("visible"); }
+
+function showHomePlaza() {
+  // 全画面を非表示
+  dom.menuScreen.classList.remove("visible");
+  dom.stageSelectScreen.classList.remove("visible");
+  dom.gachaScreen.classList.remove("visible");
+  // 広場を表示
+  dom.homePlazaScreen.classList.add("visible");
+  // 広場を初期化
+  if (typeof initHomePlaza === "function") initHomePlaza();
+}
 
 function showComingSoon(name) {
   dom.statusLine.textContent = `🚧 ${name}は準備中です！`;
@@ -229,7 +240,7 @@ function resetBattle() {
   state.specialGauge  = 0;
 
   // ★ Dパッドの押下状態をリセット（キーが押しっぱなしにならないように）
-  state.keys = { up: false, down: false, left: false, right: false };
+  state.keys = { up: false, down: false, left: false, right: false, action: false };
   document.querySelectorAll(".dpad-btn").forEach(b => b.classList.remove("pressed"));
 
   // モーションをすべてリセット
