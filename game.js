@@ -42,6 +42,11 @@ const dom = {
   nextStageBtn:     document.getElementById("nextStageBtn"),
   endingScreen:     document.getElementById("endingScreen"),
   endingRetryBtn:   document.getElementById("endingRetryBtn"),
+  gachaScreen:         document.getElementById("gachaScreen"),
+  gachaCollection:     document.getElementById("gachaCollection"),
+  gachaCurrentCostume: document.getElementById("gachaCurrentCostume"),
+  gachaBackBtn:        document.getElementById("gachaBackBtn"),
+  rewardCards:         document.getElementById("rewardCards"),
 };
 
 // ============================================================
@@ -74,6 +79,8 @@ const state = {
     chargeTarget: null,       // 突進の目標座標
   },
   gameOver: false,
+  equippedCostume: COSTUMES[0],
+  ownedCostumes:   [COSTUMES[0]],
 };
 
 // ============================================================
@@ -409,23 +416,24 @@ function addSlimeFace(parent, r, eyeY = 0.25) {
 }
 
 function buildBoss() {
-  const s = getCurrentStage(state.stageIndex);
-  three.bossMat = new THREE.MeshStandardMaterial({
-    color: s.color, roughness: 0.4, metalness: 0.1
-  });
+  // 古いbossGroupを完全にdispose＆シーンから除去
+  if (three.bossGroup) {
+    three.bossGroup.traverse(child => {
+      if (child.isMesh) {
+        child.geometry?.dispose();
+        child.material?.dispose();
+      }
+    });
+    three.scene.remove(three.bossGroup);
+  }
 
-  // ボス本体をGroupでラップ（顔パーツを子にするため）
+  const s = getCurrentStage(state.stageIndex);
+  three.bossMat   = new THREE.MeshStandardMaterial({ color: s.color, roughness: 0.4, metalness: 0.1 });
   three.bossGroup = new THREE.Group();
 
-  three.bossMesh = new THREE.Mesh(
-    new THREE.SphereGeometry(s.radius, 28, 28),
-    three.bossMat
-  );
-  three.bossMesh.castShadow = true;
-  three.bossGroup.add(three.bossMesh);
-
-  // 顔を追加（眼の高さはボスのサイズに応じて調整）
-  three.bossFaceGroup = addSlimeFace(three.bossGroup, s.radius, 0.15);
+  // boss_models.js に委譲（stageNoでモデルを切り替え）
+  const result   = buildBossModel(three.bossGroup, s, three.bossMat);
+  three.bossMesh = result.mesh;
 
   three.bossGroup.position.set(state.boss.x, s.radius, state.boss.z);
   three.scene.add(three.bossGroup);
@@ -524,8 +532,8 @@ function setupInput() {
   dom.stageStartBtn.addEventListener("click", startStage);
   dom.titleScreen.addEventListener("click", dismissTitle);
   dom.menuStageBtn.addEventListener("click", showStageSelect);
-  dom.menuGachaBtn.addEventListener("click", () => showComingSoon("コスチュームガチャ"));
-  dom.menuOtherBtn.addEventListener("click", () => showComingSoon("その他"));
+  dom.menuGachaBtn.addEventListener("click", showGacha);
+  dom.menuOtherBtn.addEventListener("click", () => window.__adminOpenPanel?.());
   dom.stageSelectBackBtn.addEventListener("click", () => {
     dom.stageSelectScreen.classList.remove("visible");
     dom.menuScreen.classList.add("visible");
@@ -537,6 +545,10 @@ function setupInput() {
     dom.endingScreen.classList.remove("visible");
     resetBattle();
     showMenu();
+  });
+  dom.gachaBackBtn.addEventListener("click", () => {
+    dom.gachaScreen.classList.remove("visible");
+    dom.menuScreen.classList.add("visible");
   });
 
   // ウィンドウリサイズ対応

@@ -261,6 +261,7 @@ function resetBattle() {
   // UI
   dom.gameOverScreen.classList.remove("visible");
   dom.resultScreen.classList.remove("visible");   // ★ リセット時にリザルトも閉じる
+  dom.nextStageBtn.style.display = "";            // ★ コスチューム選択後に表示状態をリセット
   dom.statusLine.textContent = "";
   dom.attackBtn.disabled     = false;
   dom.attackBtn.classList.remove("disabled-look");
@@ -284,4 +285,73 @@ function resetBattle() {
   // ★ コスチューム再適用（リセット後も装備状態を維持）
   if (three.playerGroup) applyCostume(state.equippedCostume);
   refreshUi();
+}
+
+// ── コレクション図鑑 ──────────────────────────────────────────
+function showGacha() {
+  hideMenu();
+  dom.gachaScreen.classList.add("visible");
+  renderGachaCollection();
+  renderCurrentCostume();
+}
+
+function renderCurrentCostume() {
+  const c = state.equippedCostume;
+  const rareCls = c.stars === 3 ? "gacha-card-r3" : c.stars === 2 ? "gacha-card-r2" : "gacha-card-r1";
+  dom.gachaCurrentCostume.innerHTML = `
+    <div class="gacha-equipped-label">── 現在の装備 ──</div>
+    <div class="gacha-equipped-card ${rareCls}">
+      <div class="gacha-equipped-art">${getSlimeSVG(c.id, 72)}</div>
+      <div class="gacha-equipped-info">
+        <div class="gacha-equipped-no">${c.no}</div>
+        <div class="gacha-equipped-name">${c.name}</div>
+        <div class="gacha-equipped-stars">${"⭐".repeat(c.stars)}</div>
+        <div class="gacha-equipped-weapon">${weaponLabel(c.weapon)}</div>
+      </div>
+    </div>`;
+}
+
+function weaponLabel(w) {
+  return w === "sword" ? "🗡️ 剣" : w === "spear" ? "🔱 槍" : "👊 素手";
+}
+
+function equipCostume(costume) {
+  state.equippedCostume = costume;
+  if (three.playerGroup) applyCostume(costume);
+  renderCurrentCostume();
+  renderGachaCollection();
+}
+
+function renderGachaCollection() {
+  let html = "";
+  COSTUMES.forEach(c => {
+    const owned    = !!state.ownedCostumes.find(o => o.id === c.id);
+    const equipped = state.equippedCostume?.id === c.id;
+    const rareCls  = c.stars === 3 ? "gacha-coll-r3" : c.stars === 2 ? "gacha-coll-r2" : "gacha-coll-r1";
+    const cls      = owned ? rareCls : "gacha-coll-locked";
+    const art      = owned ? getSlimeSVG(c.id, 64) : `<div class="gacha-coll-mystery">？</div>`;
+    html += `<div class="gacha-coll-card ${cls}" data-id="${c.id}" data-owned="${owned}">
+      <div class="gacha-coll-art">${art}</div>
+      <div class="gacha-coll-stars">${"⭐".repeat(c.stars)}</div>
+      <div class="gacha-coll-no">${c.no}</div>
+      <div class="gacha-coll-name">${owned ? c.name : "????"}</div>
+      ${equipped ? '<div class="gacha-coll-equipped">装備中</div>' : ""}
+      ${owned && !equipped ? '<div class="gacha-coll-equip-btn">装備する</div>' : ""}
+    </div>`;
+  });
+  dom.gachaCollection.innerHTML = html;
+
+  dom.gachaCollection.querySelectorAll(".gacha-coll-card[data-owned='true']").forEach(card => {
+    card.addEventListener("click", () => {
+      const costume = COSTUMES.find(c => c.id === card.dataset.id);
+      if (costume) equipCostume(costume);
+    });
+  });
+}
+
+function applyCostume(costume) {
+  state.equippedCostume = costume;
+  const body = three.playerGroup?.children[0];
+  if (body?.material) body.material.color.set(costume.color);
+  if (three.swordPivot) three.swordPivot.visible = (costume.weapon === "sword");
 }
