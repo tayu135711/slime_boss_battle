@@ -762,7 +762,7 @@ function handlePlazaAction() {
   // ベンチ座り中にAでお弁当を食べる
   if (state._benchBentoReady && eatBentoOnBench()) return;
   if (plazaNearBuilding) {
-    if (plazaNearBuilding.type === "stage")       { exitHomePlaza(); showStageSelect(); }
+    if (plazaNearBuilding.type === "stage")       { exitHomePlaza(); showStageSelect("plaza"); }
     else if (plazaNearBuilding.type === "restaurant") { showCooking(); }
     else if (plazaNearBuilding.type === "pond_area")  { enterPondArea(); }
     else if (plazaNearBuilding.type === "flower_area"){ enterFlowerArea(); }

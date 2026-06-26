@@ -86,10 +86,23 @@ function showComingSoon(name) {
   setTimeout(() => { dom.statusLine.textContent = ""; }, 2000);
 }
 
-function showStageSelect() {
+// ステージ選択の呼び元（"menu" or "plaza"）を記憶して戻り先を切り替える
+let _stageSelectCaller = "plaza";
+
+function showStageSelect(caller) {
+  _stageSelectCaller = caller || "plaza";
   hideMenu();
   dom.stageSelectScreen.classList.add("visible");
   buildStageList();
+}
+
+function backFromStageSelect() {
+  dom.stageSelectScreen.classList.remove("visible");
+  if (_stageSelectCaller === "menu") {
+    showMenu();
+  } else {
+    showHomePlaza();
+  }
 }
 
 function buildStageList() {
@@ -119,6 +132,10 @@ function buildStageList() {
 
 // ── ステージ管理 ──────────────────────────────────────────────
 function showStageStart() {
+  // ★ 広場が表示中の場合は非表示にする（直接呼ばれるケース対策）
+  if (dom.homePlazaScreen.classList.contains("visible")) {
+    if (typeof exitHomePlaza === "function") exitHomePlaza();
+  }
   const stg = getCurrentStage(state.stageIndex);
   dom.stageChapter.textContent  = `Chapter ${stg.chapter}`;
   dom.stageNo.textContent       = `Stage ${stg.stageNo}`;
@@ -131,6 +148,12 @@ function startStage() {
   if (state.battleStarted) return;
 
   dom.stageStartScreen.classList.remove("visible");
+
+  // ★ 広場が表示中の場合は正しく終了させる（固まりバグの修正）
+  if (dom.homePlazaScreen.classList.contains("visible")) {
+    if (typeof exitHomePlaza === "function") exitHomePlaza();
+  }
+
   state.stageStartAt  = Date.now();
   state.battleStarted = true;
 

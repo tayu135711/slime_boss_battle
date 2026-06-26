@@ -56,10 +56,10 @@ function setupInput() {
   dom.stageStartBtn.addEventListener("click", startStage);
   dom.titleStartBtn.addEventListener("click", dismissTitle);
   dom.titleStartBtn.addEventListener("touchend", e => { e.preventDefault(); dismissTitle(); }, { passive: false });
-  dom.menuStageBtn.addEventListener("click", showStageSelect);
+  dom.menuStageBtn.addEventListener("click", () => showStageSelect("menu"));
   dom.menuGachaBtn.addEventListener("click", showGacha);
   dom.menuOtherBtn.addEventListener("click", () => window.__adminOpenPanel?.());
-  dom.stageSelectBackBtn.addEventListener("click", () => { dom.stageSelectScreen.classList.remove("visible"); showHomePlaza(); });
+  dom.stageSelectBackBtn.addEventListener("click", backFromStageSelect);
   dom.nextStageBtn.addEventListener("click", goNextStage);
   dom.backToPlazaBtn.addEventListener("click", () => {
     dom.resultScreen.classList.remove("visible");
