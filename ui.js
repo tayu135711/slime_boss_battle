@@ -47,6 +47,9 @@ function dismissTitle() {
     dom.titleScreen.classList.remove("visible");
     dom.titleScreen.style.transition = "";
     dom.titleScreen.style.opacity    = "";
+    // 誤操作で開いていた場合の強制リセット
+    dom.stageStartScreen?.classList.remove("visible");
+    dom.stageSelectScreen?.classList.remove("visible");
     const loaded = await loadFromServer();
     if (loaded) {
       dom.statusLine.textContent = "📂 セーブデータを読み込みました！";

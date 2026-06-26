@@ -29,6 +29,7 @@ function setupInput() {
     if (keyMap[k]) state.keys[keyMap[k]] = true;
     if (k === " " || k === "enter") {
       e.preventDefault();
+      if (state.titleShown) return; // タイトル表示中は何もしない
       if (fishingActive) fishingAction();
       else if (dom.homePlazaScreen.classList.contains("visible")) handlePlazaAction();
       else attackBoss();
@@ -40,6 +41,7 @@ function setupInput() {
   });
 
   dom.attackBtn.addEventListener("click", () => {
+    if (state.titleShown) return; // タイトル表示中は何もしない
     if (fishingActive) fishingAction();
     else if (dom.homePlazaScreen.classList.contains("visible")) handlePlazaAction();
     else attackBoss();
