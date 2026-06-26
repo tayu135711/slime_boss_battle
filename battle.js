@@ -332,20 +332,153 @@ function useSpecialMove() {
   state.attackCount += 1;
   state.specialGauge = 0;
 
-  spawnMagicCircle();
-  spawnDamageNumber(damage, true);
-  triggerCameraShake();
-  three.bossMat.color.set(0xffffff);
-  const idx = state.stageIndex;
-  setTimeout(() => {
-    if (!state.cleared) three.bossMat.color.set(getCurrentStage(idx).color);
-  }, 350);
-  three.bossGroup.scale.set(0.6, 0.6, 0.6);
-  setTimeout(() => { if (!state.cleared) three.bossGroup.scale.set(1, 1, 1); }, 200);
+  // ── コスチュームスキル分岐 ──────────────────────────────────
+  const skillId = state.equippedCostume?.skillId || null;
 
-  dom.statusLine.textContent = `✨ 光の必殺技！ 弱点ヒット！ ${damage} ダメージ！！`;
+  if (skillId === "wave") {
+    spawnWaveSkill(damage);
+  } else if (skillId === "ice") {
+    spawnIceSkill(damage);
+  } else if (skillId === "thunder") {
+    spawnThunderSkill(damage);
+  } else {
+    // デフォルト（スキルなしコスチューム）
+    spawnMagicCircle();
+    spawnDamageNumber(damage, true);
+    triggerCameraShake();
+    three.bossMat.color.set(0xffffff);
+    const idx = state.stageIndex;
+    setTimeout(() => { if (!state.cleared) three.bossMat.color.set(getCurrentStage(idx).color); }, 350);
+    three.bossGroup.scale.set(0.6, 0.6, 0.6);
+    setTimeout(() => { if (!state.cleared) three.bossGroup.scale.set(1, 1, 1); }, 200);
+    dom.statusLine.textContent = `✨ 光の必殺技！ 弱点ヒット！ ${damage} ダメージ！！`;
+  }
+
   refreshUi();
   if (state.currentHp === 0) handleBossDefeated();
+}
+
+// ── wave スキル（キングスライム）: 衝撃波リング ───────────────
+function spawnWaveSkill(damage) {
+  triggerCameraShake();
+  spawnDamageNumber(damage, true);
+
+  // 青い衝撃波リングを3重に広がらせる
+  const colors = [0x38bdf8, 0x7dd3fc, 0xbae6fd];
+  colors.forEach((color, i) => {
+    setTimeout(() => {
+      const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.35, 40), mat);
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(state.boss.x, 0.1, state.boss.z);
+      three.scene.add(ring);
+
+      let frame = 0;
+      const N = 50;
+      const maxR = 5.0 + i * 1.2;
+      (function tick() {
+        const t = ++frame / N;
+        const s = 1 + t * maxR;
+        ring.scale.set(s, s, s);
+        mat.opacity = 0.8 * (1 - t);
+        if (frame < N) requestAnimationFrame(tick);
+        else { three.scene.remove(ring); ring.geometry.dispose(); mat.dispose(); }
+      })();
+    }, i * 120);
+  });
+
+  // ボスを白フラッシュ
+  three.bossMat.color.set(0x38bdf8);
+  const idx = state.stageIndex;
+  setTimeout(() => { if (!state.cleared) three.bossMat.color.set(getCurrentStage(idx).color); }, 500);
+  three.bossGroup.scale.set(0.5, 0.5, 0.5);
+  setTimeout(() => { if (!state.cleared) three.bossGroup.scale.set(1, 1, 1); }, 250);
+
+  dom.statusLine.textContent = `🌊 キングウェーブ！ 大海嘯！ ${damage} ダメージ！！`;
+}
+
+// ── ice スキル（ライリン）: 氷柱乱立 ──────────────────────────
+function spawnIceSkill(damage) {
+  triggerCameraShake();
+  spawnDamageNumber(damage, true);
+
+  // ボス周囲に氷柱を6本打ち上げる
+  for (let i = 0; i < 6; i++) {
+    setTimeout(() => {
+      const angle = (i / 6) * Math.PI * 2 + Math.random() * 0.4;
+      const dist  = 0.4 + Math.random() * 0.8;
+      const cx = state.boss.x + Math.cos(angle) * dist;
+      const cz = state.boss.z + Math.sin(angle) * dist;
+
+      const h = 1.8 + Math.random() * 1.2;
+      const geo = new THREE.CylinderGeometry(0.08, 0.22, h, 6);
+      const mat = new THREE.MeshBasicMaterial({ color: 0xa5f3fc, transparent: true, opacity: 0.85 });
+      const shard = new THREE.Mesh(geo, mat);
+      shard.position.set(cx, -h / 2, cz);
+      three.scene.add(shard);
+
+      // 突き上げアニメ
+      let frame = 0;
+      const N = 35;
+      (function tick() {
+        const t = ++frame / N;
+        shard.position.y = (t < 0.6 ? (t / 0.6) : 1) * (h / 2) - h / 2;
+        mat.opacity = t < 0.7 ? 0.85 : 0.85 * (1 - (t - 0.7) / 0.3);
+        if (frame < N) requestAnimationFrame(tick);
+        else { three.scene.remove(shard); geo.dispose(); mat.dispose(); }
+      })();
+    }, i * 80);
+  }
+
+  three.bossMat.color.set(0xa5f3fc);
+  const idx = state.stageIndex;
+  setTimeout(() => { if (!state.cleared) three.bossMat.color.set(getCurrentStage(idx).color); }, 600);
+  three.bossGroup.scale.set(0.55, 1.4, 0.55);
+  setTimeout(() => { if (!state.cleared) three.bossGroup.scale.set(1, 1, 1); }, 300);
+
+  dom.statusLine.textContent = `🧊 アイスニードル！ 極寒乱撃！ ${damage} ダメージ！！`;
+}
+
+// ── thunder スキル（イカズチ）: 落雷 ──────────────────────────
+function spawnThunderSkill(damage) {
+  triggerCameraShake();
+  spawnDamageNumber(damage, true);
+
+  // 黄色い雷柱をボスの上から落とす
+  const bx = state.boss.x, bz = state.boss.z;
+  const mat = new THREE.MeshBasicMaterial({ color: 0xfde047, transparent: true, opacity: 0.95, side: THREE.DoubleSide });
+  const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.28, 7, 8, 1, true), mat);
+  bolt.position.set(bx, 3.5, bz);
+  three.scene.add(bolt);
+
+  // 落下 → フラッシュ演出
+  let frame = 0;
+  const N = 28;
+  (function tick() {
+    const t = ++frame / N;
+    bolt.scale.x = bolt.scale.z = 1 + Math.sin(t * Math.PI * 6) * 0.3;
+    mat.opacity = t < 0.7 ? 0.95 : 0.95 * (1 - (t - 0.7) / 0.3);
+    if (frame < N) requestAnimationFrame(tick);
+    else { three.scene.remove(bolt); bolt.geometry.dispose(); mat.dispose(); }
+  })();
+
+  // 地面の放電エフェクト
+  const glow = new THREE.Mesh(
+    new THREE.CircleGeometry(1.2, 24),
+    new THREE.MeshBasicMaterial({ color: 0xfde047, transparent: true, opacity: 0.6, side: THREE.DoubleSide })
+  );
+  glow.rotation.x = -Math.PI / 2;
+  glow.position.set(bx, 0.05, bz);
+  three.scene.add(glow);
+  setTimeout(() => { three.scene.remove(glow); glow.geometry.dispose(); glow.material.dispose(); }, 400);
+
+  three.bossMat.color.set(0xfde047);
+  const idx = state.stageIndex;
+  setTimeout(() => { if (!state.cleared) three.bossMat.color.set(getCurrentStage(idx).color); }, 450);
+  three.bossGroup.scale.set(1.3, 0.5, 1.3);
+  setTimeout(() => { if (!state.cleared) three.bossGroup.scale.set(1, 1, 1); }, 200);
+
+  dom.statusLine.textContent = `⚡ サンダーボルト！ 天罰一撃！ ${damage} ダメージ！！`;
 }
 
 // ── ボスAI ────────────────────────────────────────────────────

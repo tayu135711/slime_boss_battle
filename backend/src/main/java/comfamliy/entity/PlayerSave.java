@@ -36,5 +36,16 @@ public class PlayerSave {
     private int dailyFlowerCount;
     private String lastFlowerDate;
 
+    /** クエスト進捗（JSON文字列） */
+    @Column(columnDefinition = "TEXT")
+    private String quests;
+
+    /** お弁当最大数 */
+    private int maxBento;
+
+    /** 解放済みレシピ（JSON文字列） */
+    @Column(columnDefinition = "TEXT")
+    private String unlockedRecipes;
+
     private LocalDateTime updatedAt;
 }

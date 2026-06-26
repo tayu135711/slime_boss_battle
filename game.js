@@ -59,6 +59,11 @@ function setupInput() {
   dom.menuOtherBtn.addEventListener("click", () => window.__adminOpenPanel?.());
   dom.stageSelectBackBtn.addEventListener("click", () => { dom.stageSelectScreen.classList.remove("visible"); showHomePlaza(); });
   dom.nextStageBtn.addEventListener("click", goNextStage);
+  dom.backToPlazaBtn.addEventListener("click", () => {
+    dom.resultScreen.classList.remove("visible");
+    resetBattle();
+    showHomePlaza();
+  });
   dom.endingRetryBtn.addEventListener("click", () => { state.stageIndex = 0; dom.endingScreen.classList.remove("visible"); resetBattle(); showMenu(); });
   dom.gachaBackBtn.addEventListener("click", () => { dom.gachaScreen.classList.remove("visible"); dom.menuScreen.classList.add("visible"); });
 

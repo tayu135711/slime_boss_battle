@@ -397,6 +397,16 @@ html, body {
 }
 #nextStageBtn:active { transform: scale(0.94); }
 
+#backToPlazaBtn {
+  padding: 11px 28px; font-size: 14px; font-weight: bold;
+  background: linear-gradient(135deg, #2d7a3a, #4caf65);
+  border: none; border-radius: 50px; color: #fff;
+  cursor: pointer; margin-top: 8px;
+  box-shadow: 0 4px 12px rgba(44,160,68,0.35);
+  transition: transform 0.1s;
+}
+#backToPlazaBtn:active { transform: scale(0.94); }
+
 /* ===== 報酬3択 ===== */
 #rewardArea { margin: 14px 0 10px; }
 #rewardTitle { font-size: 14px; font-weight: bold; color: #ffd700; margin-bottom: 10px; letter-spacing: 0.5px; }

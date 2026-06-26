@@ -38,6 +38,7 @@ const dom = {
   resultStats:         document.getElementById("resultStats"),
   rewardCards:         document.getElementById("rewardCards"),
   nextStageBtn:        document.getElementById("nextStageBtn"),
+  backToPlazaBtn:      document.getElementById("backToPlazaBtn"),
   endingScreen:        document.getElementById("endingScreen"),
   endingRetryBtn:      document.getElementById("endingRetryBtn"),
   gachaScreen:         document.getElementById("gachaScreen"),

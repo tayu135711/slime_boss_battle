@@ -24,6 +24,9 @@ const plaza = {
   bench: null,
   dragonflies: [],
   flowerField: [],
+  // 時間帯システム
+  lastTimeOfDay: null,
+  timeOfDayLabel: null,
 };
 
 const plazaPlayer = { x: 0, z: 0 };
@@ -52,6 +55,7 @@ let plazaNearFlower = false;
 let plazaDialog = null;
 
 function initHomePlaza() {
+  // 空・霧は時間帯システムが制御するため初期値のみ設定
   three.scene.background = new THREE.Color(0x87ceeb);
   three.scene.fog = new THREE.FogExp2(0x87ceeb, 0.007);
 
@@ -78,6 +82,112 @@ function initHomePlaza() {
       dom.statusLine.textContent = "🌸 左奥に花畑があるよ！花を摘んで料理の素材にしよう";
       setTimeout(() => dom.statusLine.textContent = "", 3500);
     }, 1500);
+  }
+}
+
+// ── 時間帯システム ─────────────────────────────────────────────
+/**
+ * 現在時刻から「朝/昼/夕/夜」を判定して空・ライトを切り替える。
+ * 毎フレームではなく、広場ループで1分に1回チェックする。
+ */
+const TIME_OF_DAY_SETTINGS = {
+  morning: {
+    label: "🌅 朝",
+    skyColor:   0xffd6a5,  // 朝焼けオレンジ
+    fogColor:   0xffd6a5,
+    fogDensity: 0.008,
+    sunColor:   0xffd580,
+    sunIntensity: 1.4,
+    sunPos: [8, 12, 18],   // 低めの朝日
+    ambColor:   0xffe0b0,
+    ambIntensity: 0.6,
+    groundColor: 0x6abf69,
+  },
+  noon: {
+    label: "☀️ 昼",
+    skyColor:   0x87ceeb,
+    fogColor:   0x87ceeb,
+    fogDensity: 0.007,
+    sunColor:   0xfff5e0,
+    sunIntensity: 1.2,
+    sunPos: [10, 20, 10],
+    ambColor:   0xd0e8ff,
+    ambIntensity: 0.7,
+    groundColor: 0x5cb85c,
+  },
+  evening: {
+    label: "🌆 夕方",
+    skyColor:   0xff7043,  // 夕焼け赤
+    fogColor:   0xff8a65,
+    fogDensity: 0.010,
+    sunColor:   0xff6d00,
+    sunIntensity: 1.0,
+    sunPos: [-12, 6, 10],  // 斜め低い西日
+    ambColor:   0xffccaa,
+    ambIntensity: 0.5,
+    groundColor: 0x7a5c3a,
+  },
+  night: {
+    label: "🌙 夜",
+    skyColor:   0x0d1b3e,  // 深夜ネイビー
+    fogColor:   0x0d1b3e,
+    fogDensity: 0.015,
+    sunColor:   0x4466bb,
+    sunIntensity: 0.4,
+    sunPos: [5, 18, 5],
+    ambColor:   0x2a3a6a,
+    ambIntensity: 0.35,
+    groundColor: 0x2e4020,
+  },
+};
+
+function getTimeOfDay() {
+  const h = new Date().getHours();
+  if (h >= 5  && h < 10) return "morning";
+  if (h >= 10 && h < 17) return "noon";
+  if (h >= 17 && h < 20) return "evening";
+  return "night";
+}
+
+function applyTimeOfDay(tod, showLabel = false) {
+  const s = TIME_OF_DAY_SETTINGS[tod];
+  if (!s) return;
+
+  // 空・霧
+  three.scene.background = new THREE.Color(s.skyColor);
+  three.scene.fog = new THREE.FogExp2(s.fogColor, s.fogDensity);
+
+  // 太陽光
+  if (plaza.sunLight) {
+    plaza.sunLight.color.set(s.sunColor);
+    plaza.sunLight.intensity = s.sunIntensity;
+    plaza.sunLight.position.set(...s.sunPos);
+  }
+  // 環境光
+  if (plaza.ambientLight) {
+    plaza.ambientLight.color.set(s.ambColor);
+    plaza.ambientLight.intensity = s.ambIntensity;
+  }
+  // 地面の色
+  if (plaza.ground) {
+    plaza.ground.material.color.set(s.groundColor);
+  }
+
+  plaza.lastTimeOfDay = tod;
+
+  // 時間帯が変わったときだけ画面に通知
+  if (showLabel) {
+    dom.statusLine.textContent = `${s.label} の景色になりました`;
+    setTimeout(() => dom.statusLine.textContent = "", 3000);
+  }
+}
+
+function updateTimeOfDay() {
+  // 広場が表示されているときだけ時間帯を適用する
+  if (!dom.homePlazaScreen.classList.contains("visible")) return;
+  const tod = getTimeOfDay();
+  if (tod !== plaza.lastTimeOfDay) {
+    applyTimeOfDay(tod, plaza.lastTimeOfDay !== null); // 初回は通知なし
   }
 }
 
@@ -110,6 +220,9 @@ function buildPlazaScene() {
   buildFishingSpot();
   buildFlowerField();   // 花畑
   buildDistantTrees(); // 遠景の木々
+
+  // 時間帯を初期適用（ライト・空が揃った後で実行）
+  applyTimeOfDay(getTimeOfDay(), false);
 }
 
 function buildFountain() {
@@ -370,6 +483,7 @@ function updateHomePlazaLoop() {
   checkPlazaEntrances();
   checkFlowerProximity();
   updatePlazaCameraFollow();
+  updateTimeOfDay();  // 時間帯チェック（変化時のみ描画更新）
 }
 
 function updatePlazaPlayer() {
@@ -655,8 +769,11 @@ function exitHomePlaza() {
   setBattleObjectsVisible(true);
   if (three.sunLight) three.sunLight.visible = true;
   if (three.ambientLight) three.ambientLight.visible = true;
+  // バトル用の空・霧を復元
   three.scene.background = new THREE.Color(getCurrentStage(state.stageIndex).bgColor);
   three.scene.fog = new THREE.FogExp2(getCurrentStage(state.stageIndex).bgColor, getCurrentStage(state.stageIndex).fogDensity);
+  // 次回広場に入ったとき時間帯を再適用するためキャッシュをリセット
+  plaza.lastTimeOfDay = null;
   updateCameraFollow();
 }
 
