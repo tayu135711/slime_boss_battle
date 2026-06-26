@@ -45,7 +45,11 @@ function setupInput() {
     else attackBoss();
   });
   dom.specialBtn.addEventListener("click", useSpecialMove);
-  dom.resetBtn.addEventListener("click", resetBattle);
+  dom.resetBtn.addEventListener("click", () => {
+    if (dom.homePlazaScreen.classList.contains("visible")) return;
+    resetBattle();
+    showStageStart();
+  });
   dom.retryBtn.addEventListener("click", () => { resetBattle(); showStageStart(); });
   dom.stageStartBtn.addEventListener("click", startStage);
   dom.titleStartBtn.addEventListener("click", dismissTitle);

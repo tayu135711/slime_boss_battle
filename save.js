@@ -30,6 +30,9 @@ async function saveToServer() {
     lastFishDate:      state.lastFishDate || "",
     dailyFlowerCount:  state.dailyFlowerCount,
     lastFlowerDate:    state.lastFlowerDate || "",
+    quests:            JSON.stringify(state.quests),
+    maxBento:          state.maxBento,
+    unlockedRecipes:   JSON.stringify(state.unlockedRecipes),
   };
 
   try {
@@ -62,6 +65,16 @@ async function loadFromServer() {
     state.lastFishDate    = data.lastFishDate    || null;
     state.dailyFlowerCount = data.dailyFlowerCount ?? 0;
     state.lastFlowerDate  = data.lastFlowerDate  || null;
+    state.maxBento        = data.maxBento        ?? 3;
+
+    // クエスト
+    if (data.quests) {
+      try { state.quests = JSON.parse(data.quests); } catch {}
+    }
+    // 解放済みレシピ
+    if (data.unlockedRecipes) {
+      try { state.unlockedRecipes = JSON.parse(data.unlockedRecipes); } catch {}
+    }
 
     // インベントリ
     if (data.inventory) {

@@ -539,8 +539,8 @@ html, body {
   display: none;
   position: fixed;
   inset: 0;
-  z-index: 10;
-  pointer-events: none;
+  z-index: 15;       /* hudより上（z-index:10）・各overlay画面より下（z-index:30+） */
+  pointer-events: auto;
 }
 #homePlazaScreen.visible { display: block; }
 
@@ -1311,3 +1311,12 @@ html, body {
   border: 1px solid rgba(100, 160, 255, 0.3);
   box-shadow: 0 -4px 24px rgba(40, 80, 200, 0.2), 0 4px 20px rgba(0,0,0,0.7);
 }
+
+/* ── 広場表示中のHUD非表示制御 ─────────────────────────────── */
+.hud-hidden {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* 広場モードではDパッドとAボタンのみ残す（必殺・リセットは消す） */
+#controllerPanel.plaza-mode #resetBtn { display: none; }

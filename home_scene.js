@@ -645,6 +645,12 @@ function exitHomePlaza() {
   dom.npcBubble.classList.remove("visible");
   dom.plazaActionPrompt.classList.remove("visible");
   closeNpcDialog();
+  // バトルHUD要素を再表示
+  dom.bossHpArea?.classList.remove("hud-hidden");
+  dom.gaugeArea?.classList.remove("hud-hidden");
+  dom.statsArea?.classList.remove("hud-hidden");
+  dom.playerHpArea?.classList.remove("hud-hidden");
+  dom.controllerPanel?.classList.remove("plaza-mode");
   setPlazaObjectsVisible(false);
   setBattleObjectsVisible(true);
   if (three.sunLight) three.sunLight.visible = true;

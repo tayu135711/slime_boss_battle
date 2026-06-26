@@ -64,6 +64,12 @@ function showHomePlaza() {
   dom.menuScreen.classList.remove("visible");
   dom.stageSelectScreen.classList.remove("visible");
   dom.gachaScreen.classList.remove("visible");
+  // バトル用HUI要素を隠す（広場中は不要）
+  dom.bossHpArea?.classList.add("hud-hidden");
+  dom.gaugeArea?.classList.add("hud-hidden");
+  dom.statsArea?.classList.add("hud-hidden");
+  dom.playerHpArea?.classList.add("hud-hidden");
+  dom.controllerPanel?.classList.add("plaza-mode");
   // 広場を表示
   dom.homePlazaScreen.classList.add("visible");
   // 広場を初期化

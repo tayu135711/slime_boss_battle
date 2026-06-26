@@ -175,5 +175,11 @@ const RECIPES = [
     effectDesc: "特別なごちそう。HP・攻撃・防御すべて少しアップ。",
     ingredients: { funa: 1, stone: 1, weed: 1 },
     buff: { hpRecover: 50, attackUp: 1.1, defenseUp: 1.1 }
+  },
+  {
+    id: "flower_basket", name: "花かごサラダ", icon: "🌸",
+    effectDesc: "色とりどりの花で作ったサラダ。気分が上がって会心率アップ。",
+    ingredients: { red_flower: 1, blue_flower: 1 },
+    buff: { critUp: 1.3 }
   }
 ];

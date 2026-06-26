@@ -54,8 +54,12 @@ const dom = {
   npcDialogNext:       document.getElementById("npcDialogNext"),
   // タイトル
   titleStartBtn:       document.getElementById("titleStartBtn"),
-  // お弁当
-  bentoBtn:            document.getElementById("bentoBtn"),
+  // 広場中に非表示にするHUD要素
+  bossHpArea:          document.getElementById("bossHpArea"),
+  gaugeArea:           document.getElementById("gaugeArea"),
+  statsArea:           document.getElementById("statsArea"),
+  playerHpArea:        document.getElementById("playerHpArea"),
+  controllerPanel:     document.getElementById("controllerPanel"),
 };
 
 // ── ゲーム状態 ────────────────────────────────────────────────

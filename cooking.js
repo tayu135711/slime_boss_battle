@@ -90,14 +90,13 @@ function executeCooking() {
 
   const resultDiv = document.getElementById("cookingResult");
   if (matchedRecipe) {
-    selectedIngredients.forEach(id => {
-      state.inventory.ingredients[id]--;
-      if (state.inventory.ingredients[id] <= 0) delete state.inventory.ingredients[id];
-    });
-
     if (state.bento.length >= state.maxBento) {
       resultDiv.innerHTML = `<p>お弁当がいっぱいだ…。先に食べてからにしてね。</p>`;
     } else {
+      selectedIngredients.forEach(id => {
+        state.inventory.ingredients[id]--;
+        if (state.inventory.ingredients[id] <= 0) delete state.inventory.ingredients[id];
+      });
       state.bento.push(matchedRecipe);
       resultDiv.innerHTML = `<p>✨ ${matchedRecipe.icon} ${matchedRecipe.name} が完成！</p><p>${matchedRecipe.effectDesc}</p><p>お弁当に入れたよ🍱</p>`;
     }
