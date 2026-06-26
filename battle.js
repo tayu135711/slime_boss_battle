@@ -611,7 +611,7 @@ function applyPlayerDamage(damage) {
   dom.damageFlash.classList.add("active");
   setTimeout(() => dom.damageFlash.classList.remove("active"), 150);
 
-  const bodyMat = three.playerGroup?.children[0]?.material;
+  const bodyMat = three.slimeParts?.bodyMat;
   if (bodyMat) {
     bodyMat.color.set(0xffffff);
     setTimeout(() => bodyMat.color.set(state.equippedCostume?.color ?? CONFIG.player.color), 200);

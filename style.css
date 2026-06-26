@@ -554,22 +554,25 @@ html, body {
 }
 #homePlazaScreen.visible { display: block; }
 
+/* ── NPC吹き出し（ほのぼのパステル） ── */
 #npcBubble {
   display: none;
   position: fixed;
-  bottom: 260px;
+  bottom: 268px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(255, 255, 255, 0.95);
-  color: #1a1a2e;
-  font-size: 15px;
+  background: linear-gradient(135deg, #fff9f0, #fff0f8);
+  color: #5a3e5a;
+  font-size: 14px;
   font-weight: 700;
-  padding: 10px 20px;
-  border-radius: 20px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  padding: 9px 22px;
+  border-radius: 999px;
+  border: 2px solid #f9c7e0;
+  box-shadow: 0 4px 18px rgba(249,150,200,0.25), 0 1px 4px rgba(0,0,0,0.1);
   pointer-events: none;
   z-index: 30;
   white-space: nowrap;
+  letter-spacing: 0.04em;
 }
 #npcBubble.visible { display: block; }
 #npcBubble::after {
@@ -579,81 +582,96 @@ html, body {
   left: 50%;
   transform: translateX(-50%);
   border: 6px solid transparent;
-  border-top-color: rgba(255,255,255,0.95);
+  border-top-color: #f9c7e0;
 }
 
+/* ── アクションプロンプト（やさしいパステル） ── */
 #plazaActionPrompt {
   display: none;
   position: fixed;
-  bottom: 220px;
+  bottom: 224px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.72);
-  color: #ffd166;
-  font-size: 14px;
-  font-weight: 900;
-  padding: 8px 24px;
-  border-radius: 24px;
-  border: 2px solid #ffd166;
+  background: linear-gradient(135deg, rgba(255,245,255,0.96), rgba(245,255,255,0.96));
+  color: #b06090;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 8px 26px;
+  border-radius: 999px;
+  border: 2px solid #f0b8d8;
+  box-shadow: 0 3px 14px rgba(220,130,180,0.28), 0 1px 3px rgba(0,0,0,0.08);
   pointer-events: none;
   z-index: 30;
-  letter-spacing: 0.1em;
-  animation: promptPulse 1.2s ease-in-out infinite;
+  letter-spacing: 0.08em;
+  animation: promptFloat 2s ease-in-out infinite;
 }
 #plazaActionPrompt.visible { display: block; }
-@keyframes promptPulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.6; }
+@keyframes promptFloat {
+  0%, 100% { transform: translateX(-50%) translateY(0px);   opacity: 1; }
+  50%       { transform: translateX(-50%) translateY(-3px);  opacity: 0.85; }
 }
 
-/* NPC会話ウィンドウ */
+/* ── NPC会話ウィンドウ（ほのぼのパステル） ── */
 #npcDialog {
   display: none;
   position: fixed;
-  bottom: 230px;
+  bottom: 218px;
   left: 50%;
   transform: translateX(-50%);
   width: min(90vw, 360px);
-  background: linear-gradient(135deg, #1e1a2e, #2a2440);
-  border: 2px solid #9b5de5;
-  border-radius: 16px;
-  padding: 18px;
-  box-shadow: 0 8px 30px rgba(155, 93, 229, 0.5);
+  background: linear-gradient(160deg, #fff8fd, #f5f0ff);
+  border: 2.5px solid #e8b4d8;
+  border-radius: 22px;
+  padding: 18px 20px 16px;
+  box-shadow: 0 8px 32px rgba(200,140,200,0.22), 0 2px 8px rgba(0,0,0,0.09);
   z-index: 40;
   pointer-events: auto;
   flex-direction: column;
-  gap: 12px;
+  gap: 11px;
 }
 #npcDialog.visible { display: flex; }
+
+/* 名前プレート */
 #npcDialogName {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 900;
-  color: #ffd166;
-  text-shadow: 0 0 8px #ff8c42;
-  text-align: center;
-  letter-spacing: 0.05em;
+  color: #c060a0;
+  text-align: left;
+  letter-spacing: 0.06em;
+  padding: 4px 12px;
+  background: linear-gradient(90deg, #fde8f4, #f0e8ff);
+  border-radius: 999px;
+  border: 1.5px solid #f0b8d8;
+  display: inline-block;
+  align-self: flex-start;
 }
+
+/* 本文 */
 #npcDialogText {
   font-size: 15px;
-  color: #eee;
-  line-height: 1.6;
-  min-height: 60px;
-  text-align: center;
-  text-shadow: 0 1px 3px #000;
+  color: #4a3050;
+  line-height: 1.75;
+  min-height: 56px;
+  text-align: left;
+  padding: 2px 4px;
 }
+
+/* 次へボタン */
 #npcDialogNext {
-  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  background: linear-gradient(135deg, #f0b0d8, #c8a0f0);
   color: #fff;
   border: none;
-  border-radius: 10px;
-  padding: 10px;
-  font-weight: bold;
-  font-size: 14px;
+  border-radius: 14px;
+  padding: 9px 16px;
+  font-weight: 900;
+  font-size: 13px;
   cursor: pointer;
-  transition: transform 0.1s, filter 0.1s;
-  letter-spacing: 0.05em;
+  transition: transform 0.12s, box-shadow 0.12s;
+  letter-spacing: 0.08em;
+  box-shadow: 0 3px 10px rgba(200,120,200,0.3);
+  align-self: flex-end;
 }
-#npcDialogNext:active { transform: scale(0.95); filter: brightness(1.2); }
+#npcDialogNext:active { transform: scale(0.93); box-shadow: none; }
 
 /* ===== メニュー画面 ===== */
 #menuScreen {
@@ -1315,12 +1333,8 @@ html, body {
   100% { background-position: 200% 50%; }
 }
 
-/* NPC会話ウィンドウ */
-#npcDialog {
-  background: linear-gradient(160deg, rgba(10, 20, 50, 0.97), rgba(5, 12, 35, 0.99));
-  border: 1px solid rgba(100, 160, 255, 0.3);
-  box-shadow: 0 -4px 24px rgba(40, 80, 200, 0.2), 0 4px 20px rgba(0,0,0,0.7);
-}
+/* NPC会話ウィンドウ（末尾上書き → パステル適用済みにつき削除） */
+#npcDialog { /* 上の定義が有効 */ }
 
 /* ── 広場表示中のHUD非表示制御 ─────────────────────────────── */
 .hud-hidden {
@@ -1330,3 +1344,20 @@ html, body {
 
 /* 広場モードではDパッドとAボタンのみ残す（必殺・リセットは消す） */
 #controllerPanel.plaza-mode #resetBtn { display: none; }
+
+/* ── エリア移動フェード ── */
+#areaTransitionOverlay {
+  transition: background 0.4s ease;
+}
+#areaTransitionLabel {
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* ── 広場ステータスライン（パステル） ── */
+#homePlazaScreen ~ #hud #statusLine,
+.plaza-status {
+  color: #c060a0;
+  text-shadow: 0 1px 6px rgba(200,100,180,0.3), 0 1px 3px rgba(0,0,0,0.15);
+}

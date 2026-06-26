@@ -32,9 +32,11 @@ const plaza = {
 const plazaPlayer = { x: 0, z: 0 };
 
 const PLAZA_BUILDINGS = [
-  { type: "stage",      label: "⚔️ 冒険の門",  x:   0, z: -18, color: 0x8b4513 },
-  { type: "shop",       label: "🛍 商　店",     x: -15, z: -10, color: 0x4169e1 },
-  { type: "restaurant", label: "🍜 食　堂",     x:  15, z: -10, color: 0xdc143c },
+  { type: "stage",       label: "⚔️ 冒険の門",  x:   0, z: -18, color: 0x7a5030 },
+  { type: "shop",        label: "🛍 商　店",     x: -15, z: -10, color: 0x4f7ec4 },
+  { type: "restaurant",  label: "🍜 食　堂",     x:  15, z: -10, color: 0xc84040 },
+  { type: "pond_area",   label: "🎣 釣り場",     x:  18, z:   6, color: 0x2a7a96 },
+  { type: "flower_area", label: "🌸 花　畑",     x: -16, z:  14, color: 0xd45090 },
 ];
 
 const PLAZA_ENTER_RADIUS = 5;
@@ -70,6 +72,7 @@ function initHomePlaza() {
 
   plazaPlayer.x = 0;
   plazaPlayer.z = 0;
+  if (plaza.playerMesh) plaza.playerMesh.position.set(0, 0, 0);
   updatePlazaCameraFollow();
 
   npcState.forEach(n => n.waitUntil = Date.now() + 1000);
@@ -175,6 +178,15 @@ function applyTimeOfDay(tod, showLabel = false) {
 
   plaza.lastTimeOfDay = tod;
 
+  // 街灯は夕方・夜だけON
+  const lampOn = (tod === "evening" || tod === "night");
+  (plaza.lamps || []).forEach(lamp => {
+    const light = lamp.children.find(c => c.isLight);
+    if (light) light.intensity = lampOn ? (tod === "night" ? 0.9 : 0.5) : 0.0;
+    const globe = lamp.children.find(c => c.isMesh && c.geometry?.type?.includes("Sphere"));
+    if (globe) globe.material.emissiveIntensity = lampOn ? (tod === "night" ? 1.2 : 0.5) : 0.1;
+  });
+
   // 時間帯が変わったときだけ画面に通知
   if (showLabel) {
     dom.statusLine.textContent = `${s.label} の景色になりました`;
@@ -258,21 +270,132 @@ function buildFountain() {
 function buildPlazaBuildings() {
   PLAZA_BUILDINGS.forEach(def => {
     const group = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(5, 4, 4), new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.7 }));
-    body.position.y = 2;
-    body.castShadow = true;
-    group.add(body);
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(4, 2, 4), new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.8 }));
-    roof.position.y = 5;
-    roof.rotation.y = Math.PI / 4;
-    group.add(roof);
-    const door = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.0, 0.1), new THREE.MeshStandardMaterial({ color: 0x3d1a00, roughness: 0.9 }));
-    door.position.set(0, 1.0, 2.06);
-    group.add(door);
+
+    if (def.type === "pond_area") {
+      // 釣り場：青い小屋＋錨マーク
+      const base = new THREE.Mesh(new THREE.BoxGeometry(4, 3.2, 3.5), new THREE.MeshStandardMaterial({ color: 0x5bafd6, roughness: 0.6 }));
+      base.position.y = 1.6; base.castShadow = true; group.add(base);
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(3.2, 1.8, 4), new THREE.MeshStandardMaterial({ color: 0x1a6080, roughness: 0.7 }));
+      roof.position.y = 4.1; roof.rotation.y = Math.PI/4; group.add(roof);
+      const sign = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.7, 0.1), new THREE.MeshStandardMaterial({ color: 0xfff8e0, roughness: 0.8 }));
+      sign.position.set(0, 2.8, 1.76); group.add(sign);
+    } else if (def.type === "flower_area") {
+      // 花畑：ピンクの小屋＋丸屋根
+      const base = new THREE.Mesh(new THREE.BoxGeometry(4, 3.2, 3.5), new THREE.MeshStandardMaterial({ color: 0xf4a0c0, roughness: 0.6 }));
+      base.position.y = 1.6; base.castShadow = true; group.add(base);
+      const roof = new THREE.Mesh(new THREE.SphereGeometry(2.8, 12, 8, 0, Math.PI*2, 0, Math.PI/2), new THREE.MeshStandardMaterial({ color: 0xe060a0, roughness: 0.6 }));
+      roof.position.y = 3.2; group.add(roof);
+      const sign = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.7, 0.1), new THREE.MeshStandardMaterial({ color: 0xfff0f8, roughness: 0.8 }));
+      sign.position.set(0, 2.8, 1.76); group.add(sign);
+    } else {
+      // 通常建物
+      const roofColors = { stage: 0x5a3010, shop: 0x2a5090, restaurant: 0x902020 };
+      const body = new THREE.Mesh(new THREE.BoxGeometry(5, 4, 4), new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.65 }));
+      body.position.y = 2; body.castShadow = true; group.add(body);
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(4, 2.2, 4), new THREE.MeshStandardMaterial({ color: roofColors[def.type] || 0x5a3010, roughness: 0.75 }));
+      roof.position.y = 5.1; roof.rotation.y = Math.PI/4; group.add(roof);
+      // 窓×2
+      [-1.2, 1.2].forEach(wx => {
+        const win = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.08), new THREE.MeshStandardMaterial({ color: 0xaad8f8, roughness: 0.2, metalness: 0.1 }));
+        win.position.set(wx, 2.2, 2.05); group.add(win);
+      });
+      const door = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.9, 0.08), new THREE.MeshStandardMaterial({ color: 0x2a1200, roughness: 0.9 }));
+      door.position.set(0, 0.95, 2.05); group.add(door);
+      // ドアノブ
+      const knob = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6), new THREE.MeshStandardMaterial({ color: 0xf0c040, metalness: 0.8, roughness: 0.2 }));
+      knob.position.set(0.4, 0.95, 2.10); group.add(knob);
+    }
+
+    // 看板ポール（全建物共通）
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.4, 6), new THREE.MeshStandardMaterial({ color: 0x8b6030, roughness: 0.8 }));
+    pole.position.set(2.8, 0.7, 0); group.add(pole);
+    const labelBoard = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 0.08), new THREE.MeshStandardMaterial({ color: 0xfffce0, roughness: 0.8 }));
+    labelBoard.position.set(2.8, 1.5, 0); group.add(labelBoard);
+
     group.position.set(def.x, 0, def.z);
     three.scene.add(group);
     plaza.buildings.push({ mesh: group, ...def });
   });
+
+  // ── 街灯 ────────────────────────────────────────────────
+  const lampPositions = [
+    [-8, -8], [8, -8], [-8, 8], [8, 8],
+    [0, -14], [-14, 0], [14, 0],
+  ];
+  lampPositions.forEach(([x, z]) => {
+    const g = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 4.5, 8), new THREE.MeshStandardMaterial({ color: 0x606880, roughness: 0.5, metalness: 0.4 }));
+    pole.position.y = 2.25; g.add(pole);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 10), new THREE.MeshStandardMaterial({ color: 0xfffce0, roughness: 0.1, emissive: 0xfff8c0, emissiveIntensity: 0.8 }));
+    head.position.y = 4.65; g.add(head);
+    const arm  = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.6, 6), new THREE.MeshStandardMaterial({ color: 0x606880, roughness: 0.5 }));
+    arm.rotation.z = Math.PI/2; arm.position.set(0.3, 4.45, 0); g.add(arm);
+    const light = new THREE.PointLight(0xfffce0, 0.4, 6);
+    light.position.y = 4.7; g.add(light);
+    g.position.set(x, 0, z);
+    three.scene.add(g);
+    if (!plaza.lamps) plaza.lamps = [];
+    plaza.lamps.push(g);
+  });
+
+  // ── 広場中央の花壇 ──────────────────────────────────────
+  const bedColors = [0xff8888, 0xffcc66, 0x88ddff, 0xcc88ff, 0x88ffbb];
+  const bedRim = new THREE.Mesh(new THREE.TorusGeometry(3.2, 0.22, 8, 24), new THREE.MeshStandardMaterial({ color: 0xd0c0a8, roughness: 0.8 }));
+  bedRim.rotation.x = -Math.PI/2; bedRim.position.set(0, 0.22, 6);
+  three.scene.add(bedRim);
+  const bedSoil = new THREE.Mesh(new THREE.CircleGeometry(3.0, 24), new THREE.MeshStandardMaterial({ color: 0x8a6040, roughness: 0.95 }));
+  bedSoil.rotation.x = -Math.PI/2; bedSoil.position.set(0, 0.02, 6);
+  three.scene.add(bedSoil);
+  for (let i = 0; i < 20; i++) {
+    const angle = Math.random()*Math.PI*2, dist = Math.random()*2.5;
+    const x = Math.cos(angle)*dist, z = 6+Math.sin(angle)*dist;
+    const col = bedColors[Math.floor(Math.random()*bedColors.length)];
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.4,4), new THREE.MeshStandardMaterial({ color:0x44aa44, roughness:0.9 }));
+    stem.position.set(x, 0.2, z); three.scene.add(stem);
+    const petal = new THREE.Mesh(new THREE.SphereGeometry(0.16,6,5), new THREE.MeshStandardMaterial({ color:col, roughness:0.6, emissive:col, emissiveIntensity:0.06 }));
+    petal.position.set(x, 0.45, z); three.scene.add(petal);
+  }
+
+  // ── 露店スタンド ────────────────────────────────────────
+  const stallDefs = [
+    { x: -7, z: -6, color: 0xf9a060, label: "やきとり" },
+    { x:  7, z: -6, color: 0x70d090, label: "くだもの" },
+  ];
+  stallDefs.forEach(sd => {
+    const g = new THREE.Group();
+    // カウンター
+    const counter = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.8, 1.2), new THREE.MeshStandardMaterial({ color: 0xd4a060, roughness: 0.8 }));
+    counter.position.y = 0.9; g.add(counter);
+    // 脚4本
+    [[-0.9,-0.4],[0.9,-0.4],[-0.9,0.4],[0.9,0.4]].forEach(([lx,lz]) => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.9,6), new THREE.MeshStandardMaterial({ color:0x8b5a20, roughness:0.9 }));
+      leg.position.set(lx, 0.45, lz); g.add(leg);
+    });
+    // テント
+    const tent = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.12, 1.6), new THREE.MeshStandardMaterial({ color: sd.color, roughness: 0.7 }));
+    tent.position.y = 2.6; g.add(tent);
+    // テントポール
+    const tp = new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,2.5,6), new THREE.MeshStandardMaterial({ color:0x707070, roughness:0.6 }));
+    tp.position.y = 1.25; g.add(tp);
+    g.position.set(sd.x, 0, sd.z);
+    three.scene.add(g);
+  });
+
+  // ── 掲示板 ──────────────────────────────────────────────
+  const bb = new THREE.Group();
+  const bbPost = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.13,2.5,8), new THREE.MeshStandardMaterial({ color:0x7a5530, roughness:0.9 }));
+  bbPost.position.y = 1.25; bb.add(bbPost);
+  const bbBoard = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.4, 0.12), new THREE.MeshStandardMaterial({ color:0xf5e8c0, roughness:0.85 }));
+  bbBoard.position.y = 2.7; bb.add(bbBoard);
+  const bbFrame = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.6, 0.08), new THREE.MeshStandardMaterial({ color:0x9b7040, roughness:0.8 }));
+  bbFrame.position.y = 2.7; bbFrame.position.z = -0.04; bb.add(bbFrame);
+  // ピン装飾
+  [[-0.7,0.4],[0.7,0.4],[-0.7,-0.3],[0.7,-0.3]].forEach(([px,py]) => {
+    const pin = new THREE.Mesh(new THREE.SphereGeometry(0.07,6,6), new THREE.MeshStandardMaterial({ color:[0xff4444,0x44aaff,0xffcc00,0xff88cc][Math.floor(Math.random()*4)], roughness:0.3 }));
+    pin.position.set(px, 2.7+py, 0.1); bb.add(pin);
+  });
+  bb.position.set(-10, 0, -15);
+  three.scene.add(bb);
 }
 
 function buildPlazaNPCs() {
@@ -639,14 +762,79 @@ function handlePlazaAction() {
   // ベンチ座り中にAでお弁当を食べる
   if (state._benchBentoReady && eatBentoOnBench()) return;
   if (plazaNearBuilding) {
-    if (plazaNearBuilding.type === "stage") { exitHomePlaza(); showStageSelect(); }
+    if (plazaNearBuilding.type === "stage")       { exitHomePlaza(); showStageSelect(); }
     else if (plazaNearBuilding.type === "restaurant") { showCooking(); }
+    else if (plazaNearBuilding.type === "pond_area")  { enterPondArea(); }
+    else if (plazaNearBuilding.type === "flower_area"){ enterFlowerArea(); }
     else { showComingSoon(plazaNearBuilding.label); }
-  } else if (plazaNearNPC) { startNPCConversation(plazaNearNPC); }
-  else if (plazaNearFountain) { recoverAtFountain(); }
-  else if (plazaNearPond) { startFishing(); }
-  else if (plazaNearBench) { sitOnBench(); }
+  } else if (plazaNearNPC)      { startNPCConversation(plazaNearNPC); }
+  else if (plazaNearFountain)   { recoverAtFountain(); }
+  else if (plazaNearPond)       { startFishing(); }
+  else if (plazaNearBench)      { sitOnBench(); }
   else if (plazaNearFlower && nearestFlower) { pickFlower(); }
+}
+
+// ── エリア移動（フェードイン・アウト演出付き） ─────────────────
+function enterAreaWithFade(areaName, onEnter) {
+  const overlay = document.getElementById("areaTransitionOverlay") || (() => {
+    const el = document.createElement("div");
+    el.id = "areaTransitionOverlay";
+    el.style.cssText = "position:fixed;inset:0;z-index:200;background:rgba(255,240,255,0);pointer-events:none;transition:background 0.4s ease;";
+    document.body.appendChild(el);
+    return el;
+  })();
+  overlay.style.background = "rgba(255,240,255,0)";
+  requestAnimationFrame(() => {
+    overlay.style.background = "rgba(255,240,255,0.85)";
+    setTimeout(() => {
+      // エリア名を一瞬表示
+      const label = document.getElementById("areaTransitionLabel") || (() => {
+        const el = document.createElement("div");
+        el.id = "areaTransitionLabel";
+        el.style.cssText = [
+          "position:fixed","top:50%","left:50%",
+          "transform:translate(-50%,-50%)",
+          "font-size:22px","font-weight:900",
+          "color:#c060a0","text-shadow:0 2px 12px rgba(200,100,180,0.4)",
+          "z-index:201","pointer-events:none","letter-spacing:0.12em",
+        ].join(";");
+        document.body.appendChild(el);
+        return el;
+      })();
+      label.textContent = areaName;
+      label.style.opacity = "1";
+      onEnter();
+      setTimeout(() => {
+        label.style.transition = "opacity 0.4s";
+        label.style.opacity = "0";
+        overlay.style.background = "rgba(255,240,255,0)";
+      }, 600);
+    }, 400);
+  });
+}
+
+function enterPondArea() {
+  enterAreaWithFade("🎣 釣り場", () => {
+    dom.statusLine.textContent = "池のほとりに来た。のんびり釣りでもしよう。";
+    setTimeout(() => dom.statusLine.textContent = "", 3000);
+    startFishing();
+  });
+}
+
+function enterFlowerArea() {
+  enterAreaWithFade("🌸 花　畑", () => {
+    dom.statusLine.textContent = "花畑に来た。好きな花を選んで摘もう。";
+    setTimeout(() => dom.statusLine.textContent = "", 3000);
+    // 花畑エリアではnearestFlowerを最寄りの未採取花に強制セット
+    const available = plaza.flowerField.filter(f => !f.userData.picked);
+    if (available.length > 0) {
+      nearestFlower = available[Math.floor(Math.random() * available.length)];
+      pickFlower();
+    } else {
+      dom.statusLine.textContent = "今日の花はもう摘み終わった。また明日来よう。";
+      setTimeout(() => dom.statusLine.textContent = "", 3000);
+    }
+  });
 }
 
 function recoverAtFountain() {
@@ -789,6 +977,7 @@ function setPlazaObjectsVisible(visible) {
   targets.forEach(obj => { if (obj) obj.visible = visible; });
   if (plaza.waterDrops) plaza.waterDrops.forEach(d => d.visible = visible);
   if (plaza.dragonflies) plaza.dragonflies.forEach(d => d.visible = visible);
+  if (plaza.lamps) plaza.lamps.forEach(l => l.visible = visible);
 }
 
 function setBattleObjectsVisible(visible) {

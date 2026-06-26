@@ -499,14 +499,10 @@ function buildBoss() {
 // --- プレイヤー ---
 function buildPlayer() {
   three.playerGroup = new THREE.Group();
-  const body = new THREE.Mesh(
-    new THREE.SphereGeometry(CONFIG.player.radius, 20, 20),
-    new THREE.MeshStandardMaterial({ color: CONFIG.player.color, roughness: 0.5 })
-  );
-  body.position.y = CONFIG.player.radius;
-  body.castShadow = true;
-  three.playerGroup.add(body);
-  addSlimeFace(body, CONFIG.player.radius, 0.2);
+  // buildCuteSlimeBodyでbody/bodyMat/hatGroup/stickMatを生成しthree.slimePartsに保存
+  const parts = buildCuteSlimeBody(three.playerGroup, CONFIG.player.radius, CONFIG.player.color);
+  three.slimeParts = parts;
+  const body = parts.body;
 
   // ---- 剣（ナイトスライム装備時に表示・デフォルト非表示） ----
   three.swordPivot = new THREE.Group();
