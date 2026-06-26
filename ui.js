@@ -328,6 +328,14 @@ function resetBattle() {
   dom.attackBtn.disabled     = false;
   dom.attackBtn.classList.remove("disabled-look");
 
+  // ★ 広場系UIが残っていたら念のためクリア
+  const fishUI = document.getElementById("fishingUI");
+  if (fishUI) fishUI.style.display = "none";
+  const cookUI = document.getElementById("cookingUI");
+  if (cookUI) cookUI.style.display = "none";
+  const flUI = document.getElementById("flowerUI");
+  if (flUI) flUI.style.display = "none";
+
   // 座標リセット
   state.player.x = CONFIG.player.startX;
   state.player.z = CONFIG.player.startZ;

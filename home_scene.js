@@ -610,13 +610,21 @@ function buildDistantTrees() {
 }
 
 function updateHomePlazaLoop() {
-  updatePlazaPlayer();
+  // ★ 料理・花摘みUIが開いているときはプレイヤー移動・インタラクションをスキップ
+  const cookUI  = document.getElementById("cookingUI");
+  const flUI    = document.getElementById("flowerUI");
+  const uiOpen  = (cookUI && cookUI.style.display !== "none") ||
+                  (flUI   && flUI.style.display   !== "none");
+
+  if (!uiOpen) {
+    updatePlazaPlayer();
+    checkPlazaEntrances();
+    checkFlowerProximity();
+  }
   updatePlazaNPCs();
   updateFountain();
   updateDragonflies();
   updateFlowers();
-  checkPlazaEntrances();
-  checkFlowerProximity();
   updatePlazaCameraFollow();
   updateTimeOfDay();  // 時間帯チェック（変化時のみ描画更新）
 }
@@ -962,6 +970,39 @@ function exitHomePlaza() {
   dom.npcBubble.classList.remove("visible");
   dom.plazaActionPrompt.classList.remove("visible");
   closeNpcDialog();
+
+  // ★ 釣りが進行中なら強制終了（UIとフラグを両方クリア）
+  if (typeof fishingActive !== "undefined" && fishingActive) {
+    if (typeof fishingTimer !== "undefined" && fishingTimer) {
+      clearTimeout(fishingTimer);
+      fishingTimer = null;
+    }
+    fishingActive = false;
+    fishingPhase = "idle";
+    const fui = document.getElementById("fishingUI");
+    if (fui) fui.style.display = "none";
+  }
+
+  // ★ 料理UIが開いていたら閉じる
+  const cui = document.getElementById("cookingUI");
+  if (cui && cui.style.display !== "none") {
+    if (typeof closeCooking === "function") closeCooking();
+    else cui.style.display = "none";
+  }
+
+  // ★ 花摘みUIが開いていたら閉じる
+  const flui = document.getElementById("flowerUI");
+  if (flui && flui.style.display !== "none") flui.style.display = "none";
+
+  // ★ ベンチ待機フラグをリセット
+  state._benchBentoReady = false;
+
+  // ★ フェードオーバーレイを即座に非表示
+  const overlay = document.getElementById("areaTransitionOverlay");
+  if (overlay) overlay.style.background = "rgba(255,240,255,0)";
+  const label = document.getElementById("areaTransitionLabel");
+  if (label) label.style.opacity = "0";
+
   // バトルHUD要素を再表示
   dom.bossHpArea?.classList.remove("hud-hidden");
   dom.gaugeArea?.classList.remove("hud-hidden");

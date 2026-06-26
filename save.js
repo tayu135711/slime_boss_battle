@@ -93,9 +93,22 @@ async function loadFromServer() {
         state.ownedCostumes = ids.map(id => COSTUMES.find(c => c.id === id)).filter(Boolean);
       } catch {}
     }
+    // ★ ownedCostumesが空になってしまった場合は初期コスチュームを補填
+    if (!state.ownedCostumes || state.ownedCostumes.length === 0) {
+      state.ownedCostumes = [COSTUMES[0]];
+    }
     if (data.equippedCostumeId) {
       state.equippedCostume = COSTUMES.find(c => c.id === data.equippedCostumeId) || COSTUMES[0];
     }
+    // ★ 装備コスチュームが所持リストにない場合は追加
+    if (!state.ownedCostumes.find(c => c.id === state.equippedCostume?.id)) {
+      state.ownedCostumes.unshift(state.equippedCostume || COSTUMES[0]);
+    }
+
+    // ★ stageIndexがSTAGESの範囲外ならクランプ
+    state.stageIndex = Math.max(0, Math.min(state.stageIndex, STAGES.length - 1));
+    // ★ unlockedStagesもクランプ（最低1、最大はSTAGES.length）
+    state.unlockedStages = Math.max(1, Math.min(state.unlockedStages, STAGES.length));
 
     return true;
   } catch (e) {
