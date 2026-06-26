@@ -112,13 +112,14 @@ function updateCameraFollow() {
 function clamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
 
 function animate() {
-  if (fishingActive) {
+  if (dom.homePlazaScreen.classList.contains("visible")) {
+    // 釣り中でも広場ループは継続（NPCや噴水の更新が止まらないように）
+    if (!fishingActive) updateHomePlazaLoop();
     three.renderer.render(three.scene, three.camera);
     requestAnimationFrame(animate);
     return;
   }
-  if (dom.homePlazaScreen.classList.contains("visible")) {
-    updateHomePlazaLoop();
+  if (fishingActive) {
     three.renderer.render(three.scene, three.camera);
     requestAnimationFrame(animate);
     return;

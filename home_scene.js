@@ -66,10 +66,20 @@ function initHomePlaza() {
   if (!plaza.initialized) {
     buildPlazaScene();
     plaza.initialized = true;
+    // ★ 初回も必ず広場オブジェクトを表示する（デフォルトvisible=falseのままだと何も見えない）
+    setPlazaObjectsVisible(true);
     setBattleObjectsVisible(false);
   } else {
     setPlazaObjectsVisible(true);
     setBattleObjectsVisible(false);
+    // ★ 再入場時にコスチューム色を広場プレイヤーに反映
+    if (plaza.playerMesh && state.equippedCostume) {
+      plaza.playerMesh.traverse(child => {
+        if (child.isMesh && child.material?.color) {
+          child.material.color.set(state.equippedCostume.color);
+        }
+      });
+    }
   }
 
   plazaPlayer.x = 0;
@@ -831,8 +841,11 @@ function enterFlowerArea() {
     const available = plaza.flowerField.filter(f => !f.userData.picked);
     if (available.length > 0) {
       nearestFlower = available[Math.floor(Math.random() * available.length)];
+      plazaNearFlower = true; // ★ フラグも必ず同期する
       pickFlower();
     } else {
+      nearestFlower = null;
+      plazaNearFlower = false;
       dom.statusLine.textContent = "今日の花はもう摘み終わった。また明日来よう。";
       setTimeout(() => dom.statusLine.textContent = "", 3000);
     }
@@ -957,8 +970,6 @@ function exitHomePlaza() {
   dom.controllerPanel?.classList.remove("plaza-mode");
   setPlazaObjectsVisible(false);
   setBattleObjectsVisible(true);
-  if (three.sunLight) three.sunLight.visible = true;
-  if (three.ambientLight) three.ambientLight.visible = true;
   // バトル用の空・霧を復元
   three.scene.background = new THREE.Color(getCurrentStage(state.stageIndex).bgColor);
   three.scene.fog = new THREE.FogExp2(getCurrentStage(state.stageIndex).bgColor, getCurrentStage(state.stageIndex).fogDensity);
@@ -971,10 +982,12 @@ function setPlazaObjectsVisible(visible) {
   const targets = [
     plaza.ground, plaza.cobble, plaza.fountain,
     plaza.playerMesh, plaza.sunLight, plaza.ambientLight,
+    plaza.pond, plaza.bigTree, plaza.bench,
     ...plaza.buildings.map(b => b.mesh),
     ...npcState.map(n => n.mesh).filter(Boolean),
-    ...plaza.dock, plaza.bigTree, plaza.bench,
-    ...plaza.flowerField
+    ...plaza.dock,
+    ...plaza.flowerField,
+    ...(plaza.decorObjects || []),
   ];
   targets.forEach(obj => { if (obj) obj.visible = visible; });
   if (plaza.waterDrops) plaza.waterDrops.forEach(d => d.visible = visible);

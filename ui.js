@@ -50,12 +50,22 @@ function dismissTitle() {
     // 誤操作で開いていた場合の強制リセット
     dom.stageStartScreen?.classList.remove("visible");
     dom.stageSelectScreen?.classList.remove("visible");
-    const loaded = await loadFromServer();
-    if (loaded) {
-      dom.statusLine.textContent = "📂 セーブデータを読み込みました！";
-      setTimeout(() => dom.statusLine.textContent = "", 2500);
-    }
+
+    // ★ 広場を先に表示してからロードする（awaitで固まるのを防ぐ）
     showHomePlaza();
+
+    // ★ バックグラウンドでロードし、完了したらUIを更新する
+    try {
+      const loaded = await loadFromServer();
+      if (loaded) {
+        dom.statusLine.textContent = "📂 セーブデータを読み込みました！";
+        setTimeout(() => dom.statusLine.textContent = "", 2500);
+        // ロードでstateが変わったのでUIを再反映
+        refreshUi();
+      }
+    } catch (e) {
+      console.warn("ロード失敗（続行）:", e);
+    }
   }, 500);
 }
 
@@ -67,12 +77,14 @@ function showHomePlaza() {
   dom.menuScreen.classList.remove("visible");
   dom.stageSelectScreen.classList.remove("visible");
   dom.gachaScreen.classList.remove("visible");
-  // バトル用HUI要素を隠す（広場中は不要）
+  // バトル用HUD要素を隠す（広場中は不要）
   dom.bossHpArea?.classList.add("hud-hidden");
   dom.gaugeArea?.classList.add("hud-hidden");
   dom.statsArea?.classList.add("hud-hidden");
   dom.playerHpArea?.classList.add("hud-hidden");
   dom.controllerPanel?.classList.add("plaza-mode");
+  // ★ バトル3Dオブジェクトを明示的に非表示（ステージ選択から戻ったときの残像防止）
+  if (typeof setBattleObjectsVisible === "function") setBattleObjectsVisible(false);
   // 広場を表示
   dom.homePlazaScreen.classList.add("visible");
   // 広場を初期化

@@ -550,7 +550,7 @@ html, body {
   position: fixed;
   inset: 0;
   z-index: 15;       /* hudより上（z-index:10）・各overlay画面より下（z-index:30+） */
-  pointer-events: auto;
+  pointer-events: none;  /* ★ 透過してDパッドのタッチを通す */
 }
 #homePlazaScreen.visible { display: block; }
 
