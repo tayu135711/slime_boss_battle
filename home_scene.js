@@ -24,6 +24,8 @@ const plaza = {
   bench: null,
   dragonflies: [],
   flowerField: [],
+  // 花壇・露店・フェンス等の装飾オブジェクト（setPlazaObjectsVisibleで一括管理）
+  decorObjects: [],
   // 時間帯システム
   lastTimeOfDay: null,
   timeOfDayLabel: null,
@@ -342,18 +344,18 @@ function buildPlazaBuildings() {
   const bedColors = [0xff8888, 0xffcc66, 0x88ddff, 0xcc88ff, 0x88ffbb];
   const bedRim = new THREE.Mesh(new THREE.TorusGeometry(3.2, 0.22, 8, 24), new THREE.MeshStandardMaterial({ color: 0xd0c0a8, roughness: 0.8 }));
   bedRim.rotation.x = -Math.PI/2; bedRim.position.set(0, 0.22, 6);
-  three.scene.add(bedRim);
+  three.scene.add(bedRim); plaza.decorObjects.push(bedRim);
   const bedSoil = new THREE.Mesh(new THREE.CircleGeometry(3.0, 24), new THREE.MeshStandardMaterial({ color: 0x8a6040, roughness: 0.95 }));
   bedSoil.rotation.x = -Math.PI/2; bedSoil.position.set(0, 0.02, 6);
-  three.scene.add(bedSoil);
+  three.scene.add(bedSoil); plaza.decorObjects.push(bedSoil);
   for (let i = 0; i < 20; i++) {
     const angle = Math.random()*Math.PI*2, dist = Math.random()*2.5;
     const x = Math.cos(angle)*dist, z = 6+Math.sin(angle)*dist;
     const col = bedColors[Math.floor(Math.random()*bedColors.length)];
     const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.4,4), new THREE.MeshStandardMaterial({ color:0x44aa44, roughness:0.9 }));
-    stem.position.set(x, 0.2, z); three.scene.add(stem);
+    stem.position.set(x, 0.2, z); three.scene.add(stem); plaza.decorObjects.push(stem);
     const petal = new THREE.Mesh(new THREE.SphereGeometry(0.16,6,5), new THREE.MeshStandardMaterial({ color:col, roughness:0.6, emissive:col, emissiveIntensity:0.06 }));
-    petal.position.set(x, 0.45, z); three.scene.add(petal);
+    petal.position.set(x, 0.45, z); three.scene.add(petal); plaza.decorObjects.push(petal);
   }
 
   // ── 露店スタンド ────────────────────────────────────────
