@@ -78,6 +78,7 @@ const state = {
   lastAttackAt:   0,
   specialGauge:   0,
   keys: { up: false, down: false, left: false, right: false, action: false },
+  joystickVec: { x: 0, y: 0 },
   player: {
     x: CONFIG.player.startX, z: CONFIG.player.startZ,
     hp: CONFIG.player.maxHp,

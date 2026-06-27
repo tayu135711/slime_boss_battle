@@ -47,9 +47,28 @@ async function saveToServer() {
     if (res.ok) {
       dom.statusLine.textContent = "💾 セーブしました！";
       setTimeout(() => dom.statusLine.textContent = "", 2000);
+      console.log("[save] セーブ成功:", playerId);
+    } else {
+      const errText = await res.text().catch(() => "");
+      console.warn("[save] セーブ失敗 status=" + res.status, errText);
+      dom.statusLine.textContent = "⚠️ セーブに失敗しました（通信エラー）";
+      setTimeout(() => dom.statusLine.textContent = "", 3000);
     }
   } catch (e) {
-    console.warn("セーブ失敗:", e);
+    console.warn("[save] セーブ例外:", e);
+    // Renderのコールドスタートで失敗した場合はリトライ（15秒後）
+    setTimeout(async () => {
+      try {
+        await fetch(SAVE_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        console.log("[save] リトライ成功");
+      } catch (e2) {
+        console.warn("[save] リトライも失敗:", e2);
+      }
+    }, 15000);
   }
 }
 
@@ -58,9 +77,13 @@ async function loadFromServer() {
   const playerId = getPlayerId();
   try {
     const res = await fetch(`${SAVE_API}/${playerId}`);
-    if (!res.ok) return false; // 初回プレイなどで404の場合
+    if (!res.ok) {
+      console.log("[load] セーブデータなし（新規プレイ）", res.status);
+      return false; // 初回プレイなどで404の場合
+    }
 
     const data = await res.json();
+    console.log("[load] ロード成功:", data);
 
     state.stageIndex      = data.stageIndex      ?? 0;
     state.unlockedStages  = data.unlockedStages  ?? 1;
@@ -72,21 +95,21 @@ async function loadFromServer() {
 
     // クエスト
     if (data.quests) {
-      try { state.quests = JSON.parse(data.quests); } catch {}
+      try { state.quests = JSON.parse(data.quests); } catch (e) { console.warn("[load] quests parse失敗", e); }
     }
     // 解放済みレシピ
     if (data.unlockedRecipes) {
-      try { state.unlockedRecipes = JSON.parse(data.unlockedRecipes); } catch {}
+      try { state.unlockedRecipes = JSON.parse(data.unlockedRecipes); } catch (e) { console.warn("[load] unlockedRecipes parse失敗", e); }
     }
 
     // インベントリ
     if (data.inventory) {
-      try { state.inventory = JSON.parse(data.inventory); } catch {}
+      try { state.inventory = JSON.parse(data.inventory); } catch (e) { console.warn("[load] inventory parse失敗", e); }
     }
 
     // お弁当
     if (data.bento) {
-      try { state.bento = JSON.parse(data.bento); } catch {}
+      try { state.bento = JSON.parse(data.bento); } catch (e) { console.warn("[load] bento parse失敗", e); }
     }
 
     // コスチューム
@@ -94,7 +117,7 @@ async function loadFromServer() {
       try {
         const ids = JSON.parse(data.ownedCostumes);
         state.ownedCostumes = ids.map(id => COSTUMES.find(c => c.id === id)).filter(Boolean);
-      } catch {}
+      } catch (e) { console.warn("[load] ownedCostumes parse失敗", e); }
     }
     // ★ ownedCostumesが空になってしまった場合は初期コスチュームを補填
     if (!state.ownedCostumes || state.ownedCostumes.length === 0) {
@@ -115,16 +138,16 @@ async function loadFromServer() {
 
     // アクセサリー・クリア記録
     if (data.accessories) {
-      try { state.accessories = JSON.parse(data.accessories); } catch {}
+      try { state.accessories = JSON.parse(data.accessories); } catch (e) { console.warn("[load] accessories parse失敗", e); }
     }
     if (data.bestTimes) {
-      try { state.bestTimes = JSON.parse(data.bestTimes); } catch {}
+      try { state.bestTimes = JSON.parse(data.bestTimes); } catch (e) { console.warn("[load] bestTimes parse失敗", e); }
     }
     state.totalClears = data.totalClears ?? 0;
 
     return true;
   } catch (e) {
-    console.warn("ロード失敗:", e);
+    console.warn("[load] ロード例外:", e);
     return false;
   }
 }

@@ -47,5 +47,16 @@ public class PlayerSave {
     @Column(columnDefinition = "TEXT")
     private String unlockedRecipes;
 
+    /** アクセサリー（JSON文字列） ★ 追加 */
+    @Column(columnDefinition = "TEXT")
+    private String accessories;
+
+    /** ステージ別ベストタイム（JSON文字列） ★ 追加 */
+    @Column(columnDefinition = "TEXT")
+    private String bestTimes;
+
+    /** 累計クリア数 ★ 追加 */
+    private int totalClears;
+
     private LocalDateTime updatedAt;
 }

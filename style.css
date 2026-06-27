@@ -1298,7 +1298,61 @@ html, body {
 }
 
 /* 広場モードではDパッドとAボタンのみ残す */
+/* ── バーチャルジョイスティック ── */
+#joystickBase {
+  display: none; /* バトル時は非表示、広場モードで表示 */
+  position: absolute;
+  width: 130px; height: 130px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 40% 35%, rgba(255,230,180,0.25), rgba(120,80,30,0.55));
+  border: 2.5px solid rgba(200,150,80,0.7);
+  border-radius: 50%;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.35), inset 0 1px 4px rgba(255,210,120,0.2);
+  touch-action: none;
+  z-index: 10;
+}
+#joystickBase::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 1px solid rgba(200,150,80,0.25);
+}
+/* 方向インジケーター */
+#joystickBase::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    linear-gradient(to top,    transparent 42%, rgba(255,220,120,0.12) 42%, rgba(255,220,120,0.12) 50%, transparent 50%),
+    linear-gradient(to bottom, transparent 42%, rgba(255,220,120,0.12) 42%, rgba(255,220,120,0.12) 50%, transparent 50%),
+    linear-gradient(to left,   transparent 42%, rgba(255,220,120,0.12) 42%, rgba(255,220,120,0.12) 50%, transparent 50%),
+    linear-gradient(to right,  transparent 42%, rgba(255,220,120,0.12) 42%, rgba(255,220,120,0.12) 50%, transparent 50%);
+}
+#joystickKnob {
+  position: absolute;
+  width: 52px; height: 52px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 35% 30%, #f0d090, #a06828 60%, #6b4010);
+  border-radius: 50%;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.45), inset 0 1px 3px rgba(255,220,140,0.5);
+  transition: transform 0.05s ease;
+  pointer-events: none;
+}
+
+/* 広場モード：Dパッドを非表示、ジョイスティックを表示 */
+#controllerPanel.plaza-mode .dpad-cross { display: none; }
+#controllerPanel.plaza-mode #joystickBase { display: block; }
+/* バトルモード：Dパッドを非表示にしてジョイスティックで統一 */
+#controllerPanel:not(.plaza-mode) .dpad-cross { display: none; }
+#controllerPanel:not(.plaza-mode) #joystickBase { display: block; }
+
+/* 広場モードではresetBtnを非表示 */
 #controllerPanel.plaza-mode #resetBtn { display: none; }
+
 
 /* ── エリア移動フェード ── */
 #areaTransitionOverlay {
@@ -1316,4 +1370,462 @@ html, body {
   color: #4A8040;
   border-color: #A8C890;
   text-shadow: 0 1px 4px rgba(255,255,255,0.8);
+}
+
+/* ============================================================
+   ★ アクセシビリティ改善パッチ (a11y v1)
+   - フォントサイズを最低14px相当に引き上げ
+   - コントラスト比をWCAG AA（4.5:1）以上に改善
+   - フォーカスリング追加（:focus-visible）
+   - タッチターゲット最小44×44pxに拡大
+   - テキスト可読性向上（line-height, letter-spacing）
+   ============================================================ */
+
+/* ── フォーカスリング（キーボード操作） ── */
+*:focus-visible {
+  outline: 3px solid #4A8FC0;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+button:focus-visible {
+  outline: 3px solid #4A8FC0;
+  outline-offset: 2px;
+}
+/* ゲームボタン類は配色に合わせた強いリング */
+.action-btn:focus-visible,
+.menu-btn:focus-visible,
+#stageStartBtn:focus-visible,
+#retryBtn:focus-visible,
+#backToPlazaBtn:focus-visible,
+#npcDialogNext:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(74, 143, 192, 0.7);
+}
+
+/* ── HPテキスト・ゲージラベル：最低14px・高コントラスト ── */
+#hpText {
+  font-size: 14px !important;
+  color: #4A3218 !important;  /* #6B4E2E → より濃く（コントラスト↑） */
+}
+#gaugeLabel {
+  font-size: 13px !important;
+  color: #5A3A18 !important;  /* #8B6B4A → 濃く */
+}
+#playerHpText {
+  font-size: 14px !important;
+  color: #4A3218 !important;
+}
+#statsArea {
+  font-size: 14px !important;
+  color: #4A3218 !important;
+}
+#statsArea b { color: #5A3A18 !important; }
+
+/* HPバーを少し大きく（視認性↑） */
+.hp-bar-outer { height: 16px !important; }
+.gauge-outer  { height: 10px !important; }
+.player-hp-bar-outer { height: 14px !important; }
+
+/* ── ステータスライン ── */
+#statusLine {
+  font-size: 15px !important;
+  color: #2A5018 !important;  /* #4A8040 → 濃く */
+  padding: 6px 20px !important;
+  background: rgba(255, 252, 240, 0.96) !important;
+}
+
+/* ── リセットボタン：44×44pxタッチターゲット ── */
+.reset-btn {
+  width: 44px !important;
+  height: 44px !important;
+  font-size: 18px !important;
+  color: #4A3218 !important;  /* #8B6B4A → 濃く */
+}
+
+/* ── NPC吹き出し ── */
+#npcBubble {
+  font-size: 16px !important;
+  color: #2A1E10 !important;  /* #3A2E20 → 濃く */
+}
+
+/* ── アクションプロンプト ── */
+#plazaActionPrompt {
+  font-size: 16px !important;
+  color: #2A6020 !important;  /* #6BAB5A → 濃く */
+  padding: 10px 30px !important;
+}
+
+/* ── NPC会話ウィンドウ ── */
+#npcDialogName {
+  font-size: 15px !important; /* 12px → 15px */
+  color: #2A6020 !important;  /* #6BAB5A → 濃く */
+}
+#npcDialogText {
+  font-size: 16px !important;
+  color: #2A1E10 !important;
+  line-height: 1.9 !important;
+}
+#npcDialogNext {
+  font-size: 16px !important;
+  padding: 12px 24px !important;
+  min-height: 44px !important;  /* タッチターゲット */
+  color: #fff !important;
+  background: linear-gradient(135deg, #8B6030, #A07840) !important; /* コントラスト↑ */
+}
+
+/* ── メニュー画面 ── */
+#menuTitle {
+  font-size: 18px !important;
+  color: #F5EDD8 !important;
+}
+.menu-btn {
+  min-height: 56px !important; /* タッチターゲット拡大 */
+  font-size: 18px !important;
+}
+.menu-btn-label {
+  font-size: 18px !important;
+  font-weight: 900 !important;
+}
+.menu-btn-badge {
+  font-size: 13px !important; /* 10px → 13px */
+}
+
+/* ── ステージ選択 ── */
+#stageSelectTitle {
+  font-size: 20px !important;
+}
+#stageSelectChapter {
+  font-size: 15px !important;
+  color: #2A6020 !important;
+}
+.stage-card {
+  min-height: 60px !important; /* タッチターゲット */
+  padding: 14px 16px !important;
+}
+.stage-card-no {
+  font-size: 14px !important; /* 11px → 14px */
+  color: #2A6020 !important;
+}
+.stage-card-no b {
+  font-size: 22px !important;
+  color: #1A5010 !important;
+}
+.stage-card-name {
+  font-size: 16px !important;
+}
+.stage-card-hp {
+  font-size: 13px !important; /* 11px → 13px */
+  color: #5A3A18 !important;
+}
+.back-btn {
+  font-size: 16px !important;
+  padding: 12px 24px !important;
+  min-height: 44px !important;
+  color: #4A3218 !important;
+}
+
+/* ── ゲームオーバー画面 ── */
+#gameOverTitle {
+  font-size: 32px !important;
+}
+#gameOverSub {
+  font-size: 17px !important;
+  color: #6B2A18 !important; /* #8B4A38 → 濃く */
+}
+#retryBtn, #gameOverBackToPlazaBtn {
+  min-height: 52px !important;
+  font-size: 18px !important;
+  padding: 14px 38px !important;
+}
+
+/* ── リザルト画面 ── */
+#resultTitle {
+  font-size: 28px !important;
+}
+#resultStats {
+  font-size: 16px !important;
+  color: #3A2410 !important;
+}
+#resultStats b { color: #6B3A10 !important; }
+#nextStageBtn, #backToPlazaBtn {
+  min-height: 52px !important;
+  font-size: 18px !important;
+}
+#rewardTitle {
+  font-size: 15px !important;
+  color: #5A3A18 !important;
+}
+.reward-card-stars { font-size: 14px !important; }
+.reward-card-name  { font-size: 14px !important; }
+.reward-card-weapon { font-size: 13px !important; color: #5A3A18 !important; }
+.reward-card-badge {
+  font-size: 12px !important;
+  padding: 3px 8px !important;
+}
+.reward-card-badge.owned { color: #5A3A18 !important; }
+.reward-card-badge.equip { color: #6B4010 !important; }
+
+/* ── エンディング画面 ── */
+#endingTitle {
+  font-size: 28px !important;
+}
+#endingSub {
+  font-size: 17px !important;
+  color: #4A3218 !important;
+}
+#endingRetryBtn {
+  min-height: 52px !important;
+  font-size: 18px !important;
+}
+
+/* ── ステージ開始画面 ── */
+#stageChapter { font-size: 16px !important; }
+#stageNo      { font-size: 28px !important; }
+#stageBossName { font-size: 20px !important; }
+#stageStartBtn {
+  min-height: 56px !important;
+  font-size: 20px !important;
+  padding: 16px 44px !important;
+}
+
+/* ── ガチャ（コレクション）画面 ── */
+.gacha-equipped-label { font-size: 13px !important; color: #2A6020 !important; }
+.gacha-equipped-no    { font-size: 12px !important; color: #5A3A18 !important; }
+.gacha-equipped-name  { font-size: 17px !important; }
+.gacha-equipped-stars { font-size: 15px !important; }
+.gacha-equipped-weapon { font-size: 14px !important; color: #2A6020 !important; }
+.gacha-pull-btn {
+  font-size: 17px !important;
+  min-height: 52px !important;
+}
+.gacha-result-title   { font-size: 16px !important; color: #4A3218 !important; }
+.gacha-card-stars     { font-size: 12px !important; }
+.gacha-card-name      { font-size: 12px !important; }
+.gacha-card-weapon    { font-size: 11px !important; color: #2A6020 !important; }
+.gacha-card-new       { font-size: 11px !important; }
+.gacha-card-equip-btn {
+  font-size: 12px !important;
+  min-height: 28px !important;
+}
+.gacha-pity-info      { font-size: 13px !important; color: #5A3A18 !important; }
+.gacha-pity-info b    { color: #7A4A10 !important; }
+#gachaCollectionTitle { font-size: 14px !important; color: #2A6020 !important; }
+.gacha-coll-name      { font-size: 12px !important; }
+.gacha-coll-stars     { font-size: 11px !important; }
+.gacha-coll-no        { font-size: 11px !important; color: #5A3A18 !important; }
+.gacha-coll-equipped  { font-size: 11px !important; color: #6B4A10 !important; }
+.gacha-coll-equip-btn { font-size: 11px !important; }
+.gacha-coll-card {
+  min-height: 44px !important; /* タッチターゲット */
+}
+
+/* ── コントローラーパネル：ゲームタイトル ── */
+#gameTitle {
+  font-size: 14px !important;
+  color: #5A3A18 !important;
+}
+#gameTitle span { font-size: 13px !important; }
+
+/* ── アクションボタン ── */
+.btn-label { font-size: 16px !important; }
+.btn-text  { font-size: 13px !important; } /* 9px → 13px */
+
+/* ── 釣りUI ── */
+#fishingPrompt { font-size: 22px !important; }
+#fishingAction {
+  font-size: 20px !important;
+  min-height: 52px !important;
+}
+
+/* ── タイトル画面 ── */
+#titleSub    { font-size: 16px !important; }
+#titleStartBtn {
+  font-size: 20px !important;
+  min-height: 56px !important;
+  padding: 16px 44px !important;
+}
+
+/* ── reduced-motion 対応 ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── ハイコントラストモード対応 ── */
+@media (forced-colors: active) {
+  .hp-bar-inner, .gauge-inner, .player-hp-bar-inner {
+    forced-color-adjust: none;
+  }
+  button {
+    border: 2px solid ButtonText;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   着替え画面（ドレッシングルーム）
+   ══════════════════════════════════════════════════════════ */
+#dressingScreen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 10, 50, 0.82);
+  backdrop-filter: blur(4px);
+  z-index: 900;
+  align-items: center;
+  justify-content: center;
+}
+#dressingScreen.visible {
+  display: flex;
+}
+
+#dressingBox {
+  background: linear-gradient(160deg, #fdf6ff 0%, #ffe8f8 60%, #fff0e0 100%);
+  border: 3px solid #d080c0;
+  border-radius: 24px;
+  padding: 28px 24px 22px;
+  width: min(88vw, 420px);
+  box-shadow: 0 8px 32px rgba(160, 0, 180, 0.30), 0 0 0 1px rgba(255,255,255,0.5) inset;
+  text-align: center;
+}
+
+#dressingTitle {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #7b2d8b;
+  margin-bottom: 18px;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 3px rgba(200, 100, 220, 0.4);
+}
+
+#dressingPreview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+#dressingFrom, #dressingTo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  border-radius: 14px;
+  min-width: 0;
+}
+#dressingFrom {
+  background: rgba(180, 160, 200, 0.18);
+  border: 1px solid rgba(160, 120, 180, 0.3);
+}
+#dressingTo {
+  background: rgba(255, 200, 240, 0.35);
+  border: 2px solid #e060b0;
+  box-shadow: 0 0 12px rgba(220, 80, 180, 0.25);
+}
+
+.dressing-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #8a5a9a;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+#dressingTo .dressing-label { color: #c0306a; }
+
+#dressingFromArt, #dressingToArt {
+  line-height: 0;
+}
+
+#dressingFromName, #dressingToName {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #4a2060;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+#dressingFromStars, #dressingToStars {
+  font-size: 0.75rem;
+}
+
+#dressingArrow {
+  font-size: 1.8rem;
+  color: #c060d0;
+  font-weight: 900;
+  flex-shrink: 0;
+  text-shadow: 0 0 8px rgba(200, 80, 220, 0.5);
+  animation: dressingArrowPulse 1.2s ease-in-out infinite;
+}
+@keyframes dressingArrowPulse {
+  0%, 100% { transform: translateX(0) scale(1); opacity: 1; }
+  50%       { transform: translateX(4px) scale(1.15); opacity: 0.7; }
+}
+
+#dressingInfo {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 10px;
+  border: 1px solid rgba(200, 150, 220, 0.35);
+  font-size: 0.82rem;
+  color: #5a3070;
+  line-height: 1.7;
+}
+.dressing-weapon { font-weight: 700; }
+.dressing-skill  { color: #9030a0; font-style: italic; }
+
+#dressingBtns {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+#dressingConfirmBtn {
+  flex: 1;
+  padding: 13px 0;
+  border: none;
+  border-radius: 50px;
+  background: linear-gradient(135deg, #e040b0, #9030d0);
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 900;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  box-shadow: 0 4px 14px rgba(180, 40, 160, 0.45);
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+#dressingConfirmBtn:active {
+  transform: scale(0.95);
+  box-shadow: 0 2px 6px rgba(180, 40, 160, 0.3);
+}
+
+#dressingCancelBtn {
+  flex: 0.7;
+  padding: 13px 0;
+  border: 2px solid #c080c0;
+  border-radius: 50px;
+  background: rgba(255,255,255,0.7);
+  color: #8040a0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+#dressingCancelBtn:active {
+  background: rgba(220, 180, 240, 0.5);
+}
+
+/* 登場ポップアニメ */
+@keyframes dressingPop {
+  0%   { transform: scale(0.7) translateY(20px); opacity: 0; }
+  70%  { transform: scale(1.04) translateY(-3px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
 }

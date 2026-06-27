@@ -54,13 +54,36 @@ function _slimeSVG({ id, body, shadow, eyes, mouth, extras = "", badge = "", siz
 
 // 目パーツヘルパー
 function _eyes(lx, ly, rx, ry, r = 7, pupilColor = "#1a0a2e") {
+  const pr  = r * 0.58;   // 瞳孔半径
+  const hl1 = r * 0.22;   // 大ハイライト
+  const hl2 = r * 0.12;   // 小ハイライト
+  // 白目に薄いグラデーション風の影（下部を少し暗く）
   return `
-  <ellipse cx="${lx}" cy="${ly}" rx="${r}" ry="${r * 1.1}" fill="white"/>
-  <ellipse cx="${rx}" cy="${ry}" rx="${r}" ry="${r * 1.1}" fill="white"/>
-  <circle cx="${lx + 1}" cy="${ly + 1}" r="${r * 0.55}" fill="${pupilColor}"/>
-  <circle cx="${rx + 1}" cy="${ry + 1}" r="${r * 0.55}" fill="${pupilColor}"/>
-  <circle cx="${lx - 2}" cy="${ly - 2}" r="${r * 0.18}" fill="white"/>
-  <circle cx="${rx - 2}" cy="${ry - 2}" r="${r * 0.18}" fill="white"/>`;
+  <defs>
+    <radialGradient id="eyeWhite_L_${lx}${ly}" cx="40%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#dde8f0"/>
+    </radialGradient>
+    <radialGradient id="eyeWhite_R_${rx}${ry}" cx="40%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#dde8f0"/>
+    </radialGradient>
+  </defs>
+  <!-- 白目（わずかに縦長の楕円） -->
+  <ellipse cx="${lx}" cy="${ly}" rx="${r}" ry="${r * 1.15}" fill="url(#eyeWhite_L_${lx}${ly})" stroke="rgba(0,0,0,0.08)" stroke-width="0.5"/>
+  <ellipse cx="${rx}" cy="${ry}" rx="${r}" ry="${r * 1.15}" fill="url(#eyeWhite_R_${rx}${ry})" stroke="rgba(0,0,0,0.08)" stroke-width="0.5"/>
+  <!-- 瞳孔（中央に正確に配置、わずかに下にオフセット） -->
+  <circle cx="${lx}" cy="${ly + r * 0.08}" r="${pr}" fill="${pupilColor}"/>
+  <circle cx="${rx}" cy="${ry + r * 0.08}" r="${pr}" fill="${pupilColor}"/>
+  <!-- 虹彩のリング -->
+  <circle cx="${lx}" cy="${ly + r * 0.08}" r="${pr}" fill="none" stroke="${pupilColor}" stroke-width="${r * 0.08}" opacity="0.4"/>
+  <circle cx="${rx}" cy="${ry + r * 0.08}" r="${pr}" fill="none" stroke="${pupilColor}" stroke-width="${r * 0.08}" opacity="0.4"/>
+  <!-- 大ハイライト（左上） -->
+  <circle cx="${lx - r * 0.28}" cy="${ly - r * 0.28}" r="${hl1}" fill="white" opacity="0.95"/>
+  <circle cx="${rx - r * 0.28}" cy="${ry - r * 0.28}" r="${hl1}" fill="white" opacity="0.95"/>
+  <!-- 小ハイライト（右下） -->
+  <circle cx="${lx + r * 0.18}" cy="${ly + r * 0.22}" r="${hl2}" fill="white" opacity="0.6"/>
+  <circle cx="${rx + r * 0.18}" cy="${ry + r * 0.22}" r="${hl2}" fill="white" opacity="0.6"/>`;
 }
 
 // 口パーツヘルパー（笑顔）

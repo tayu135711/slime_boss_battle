@@ -15,11 +15,11 @@
   <!-- 上部：ボスHP＆ゲージ -->
   <div id="bossHpArea">
     <div id="hpText">古龍スライム・ギガンテス　HP 5000 / 5000</div>
-    <div class="hp-bar-outer"><div class="hp-bar-inner" id="hpBarInner"></div></div>
+    <div class="hp-bar-outer" role="progressbar" aria-label="ボスHP" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" id="bossHpBar"><div class="hp-bar-inner" id="hpBarInner"></div></div>
   </div>
   <div id="gaugeArea">
     <div id="gaugeLabel">必殺技ゲージ: 0%</div>
-    <div class="gauge-outer"><div class="gauge-inner" id="gaugeInner"></div></div>
+    <div class="gauge-outer" role="progressbar" aria-label="必殺技ゲージ" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="gaugeBar"><div class="gauge-inner" id="gaugeInner"></div></div>
   </div>
 
   <!-- 左上：ステータス -->
@@ -31,7 +31,7 @@
   <!-- プレイヤーHP（左下、コントローラーパネルの上） -->
   <div id="playerHpArea">
     <div id="playerHpText">勇者　HP 500 / 500</div>
-    <div class="player-hp-bar-outer"><div class="player-hp-bar-inner" id="playerHpBarInner"></div></div>
+    <div class="player-hp-bar-outer" role="progressbar" aria-label="プレイヤーHP" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" id="playerHpBar"><div class="player-hp-bar-inner" id="playerHpBarInner"></div></div>
   </div>
 
   <!-- 画面赤フラッシュ（被弾時） -->
@@ -73,10 +73,10 @@
 
   <!-- ホーム広場画面 -->
   <div id="homePlazaScreen">
-    <div id="npcBubble"></div>
+    <div id="npcBubble" aria-live="polite"></div>
     <div id="plazaActionPrompt">Ａ で入る</div>
     <!-- NPC会話ウィンドウ -->
-    <div id="npcDialog">
+    <div id="npcDialog" role="dialog" aria-modal="true" aria-labelledby="npcDialogName">
       <div id="npcDialogName"></div>
       <div id="npcDialogText"></div>
       <button id="npcDialogNext">次へ ▶</button>
@@ -106,7 +106,7 @@
 
   <!-- ステージ開始画面 -->
   <div id="stageStartScreen">
-    <div id="stageStartBox">
+    <div id="stageStartBox" role="dialog" aria-modal="true" aria-labelledby="stageBossName">
       <div id="stageChapter">Chapter 1</div>
       <div id="stageNo">Stage 1</div>
       <div id="stageBossName">ぷちスライム・ポヨ</div>
@@ -116,7 +116,7 @@
 
   <!-- リザルト画面 -->
   <div id="resultScreen">
-    <div id="resultBox">
+    <div id="resultBox" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
       <div id="resultTitle">✨ STAGE CLEAR! ✨</div>
       <div id="resultStats"></div>
       <!-- クリア報酬：コスチューム3択 -->
@@ -140,7 +140,7 @@
 
   <!-- ゲームオーバー画面 -->
   <div id="gameOverScreen">
-    <div id="gameOverBox">
+    <div id="gameOverBox" role="alertdialog" aria-modal="true" aria-labelledby="gameOverTitle">
       <div id="gameOverTitle">💀 GAME OVER</div>
       <div id="gameOverSub">ボスに倒されました…</div>
       <button id="retryBtn">もう一度挑戦</button>
@@ -149,16 +149,51 @@
   </div>
 
   <!-- ステータスライン -->
-  <div id="statusLine"></div>
+  <div id="statusLine" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- ============ 着替え画面（ドレッシングルーム） ============ -->
+  <div id="dressingScreen" role="dialog" aria-modal="true" aria-labelledby="dressingTitle">
+    <div id="dressingBox">
+      <div id="dressingTitle">👗 きがえる</div>
+      <!-- プレビュー：現在 → 新しいコスチューム -->
+      <div id="dressingPreview">
+        <div id="dressingFrom">
+          <div class="dressing-label">いま装備中</div>
+          <div id="dressingFromArt"></div>
+          <div id="dressingFromName"></div>
+          <div id="dressingFromStars"></div>
+        </div>
+        <div id="dressingArrow">→</div>
+        <div id="dressingTo">
+          <div class="dressing-label">きがえる！</div>
+          <div id="dressingToArt"></div>
+          <div id="dressingToName"></div>
+          <div id="dressingToStars"></div>
+        </div>
+      </div>
+      <!-- 特技・武器情報 -->
+      <div id="dressingInfo"></div>
+      <!-- ボタン -->
+      <div id="dressingBtns">
+        <button id="dressingConfirmBtn">✨ きがえる！</button>
+        <button id="dressingCancelBtn">← やめる</button>
+      </div>
+    </div>
+  </div>
 
   <!-- リセット（右上） -->
-  <button class="reset-btn" id="resetBtn">↺</button>
+  <button class="reset-btn" id="resetBtn" aria-label="リセット">↺</button>
 
   <!-- ============ コントローラーパネル（下部） ============ -->
   <div id="controllerPanel">
 
-    <!-- 左：十字型Dパッド -->
+    <!-- 左：バーチャルジョイスティック（広場用） / 十字型Dパッド（バトル用） -->
     <div id="dpadWrap">
+      <!-- バーチャルジョイスティック -->
+      <div id="joystickBase" role="slider" aria-label="移動コントロール" aria-valuetext="中央">
+        <div id="joystickKnob"></div>
+      </div>
+
       <svg width="0" height="0" style="position:absolute">
         <defs>
           <clipPath id="crossClip" clipPathUnits="objectBoundingBox">
@@ -173,11 +208,11 @@
       </svg>
 
       <div class="dpad-cross">
-        <button class="dpad-btn dpad-up"    data-dir="up">▲</button>
-        <button class="dpad-btn dpad-left"  data-dir="left">◀</button>
+        <button class="dpad-btn dpad-up"    data-dir="up" aria-label="上">▲</button>
+        <button class="dpad-btn dpad-left"  data-dir="left" aria-label="左">◀</button>
         <div    class="dpad-center-dot"></div>
-        <button class="dpad-btn dpad-right" data-dir="right">▶</button>
-        <button class="dpad-btn dpad-down"  data-dir="down">▼</button>
+        <button class="dpad-btn dpad-right" data-dir="right" aria-label="右">▶</button>
+        <button class="dpad-btn dpad-down"  data-dir="down" aria-label="下">▼</button>
       </div>
     </div>
 
@@ -188,11 +223,11 @@
 
     <!-- 右：アクションボタン -->
     <div id="actionPad">
-      <button class="action-btn btn-y" id="specialBtn">
+      <button class="action-btn btn-y" id="specialBtn" aria-label="必殺技">
         <span class="btn-label">Y</span>
         <span class="btn-text">✨必殺</span>
       </button>
-      <button class="action-btn btn-a" id="attackBtn">
+      <button class="action-btn btn-a" id="attackBtn" aria-label="攻撃">
         <span class="btn-label">A</span>
         <span class="btn-text">攻撃</span>
       </button>

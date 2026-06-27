@@ -58,15 +58,37 @@ function addSimpleSlimeFace(group, r, eyeOpts = {}) {
 
   [-1, 1].forEach(side => {
     const eg = new THREE.Group();
-    const white = new THREE.Mesh(new THREE.SphereGeometry(r * 0.24 * eyeScale, 14, 14), whiteMat);
-    white.scale.set(1.0, 1.2, 0.75);
+
+    // 白目（縦に少し扁平、滑らかに）
+    const white = new THREE.Mesh(new THREE.SphereGeometry(r * 0.24 * eyeScale, 18, 18), whiteMat);
+    white.scale.set(1.0, 1.25, 0.72);
     eg.add(white);
-    const pupil = new THREE.Mesh(new THREE.SphereGeometry(r * 0.13 * eyeScale, 10, 10), blackMat);
-    pupil.position.z = r * 0.14;
+
+    // 虹彩（中間色の薄いリング）
+    const irisMat = new THREE.MeshStandardMaterial({
+      color: eyeColor, roughness: 0.3, transparent: true, opacity: 0.55
+    });
+    const iris = new THREE.Mesh(new THREE.SphereGeometry(r * 0.155 * eyeScale, 14, 14), irisMat);
+    iris.position.z = r * 0.10;
+    iris.scale.set(1, 1.12, 0.8);
+    eg.add(iris);
+
+    // 瞳孔（白目の中心に合わせて配置）
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(r * 0.10 * eyeScale, 12, 12), blackMat);
+    pupil.position.z = r * 0.165;
     eg.add(pupil);
-    const hl = new THREE.Mesh(new THREE.SphereGeometry(r * 0.05 * eyeScale, 6, 6), hlMat);
-    hl.position.set(-r * 0.05, r * 0.06, r * 0.22);
+
+    // 大ハイライト（左上）
+    const hl = new THREE.Mesh(new THREE.SphereGeometry(r * 0.065 * eyeScale, 8, 8), hlMat);
+    hl.position.set(-r * 0.07, r * 0.08, r * 0.22);
     eg.add(hl);
+
+    // 小ハイライト（右下）
+    const hl2 = new THREE.Mesh(new THREE.SphereGeometry(r * 0.035 * eyeScale, 6, 6), hlMat);
+    hl2.position.set(r * 0.05, -r * 0.05, r * 0.22);
+    hl2.material = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.5, transparent: true, opacity: 0.7 });
+    eg.add(hl2);
+
     const angle = side * eyeSpread;
     eg.position.set(Math.sin(angle) * r * 0.85, r * (0.48 + eyeY), Math.cos(angle) * r * 0.85);
     eg.rotation.z = side * eyeTilt;

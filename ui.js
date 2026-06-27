@@ -12,10 +12,12 @@ function refreshUi() {
   if      (hpPct < 20) dom.hpBarInner.style.background = "linear-gradient(90deg,#7c0a02,#ff4d4d)";
   else if (hpPct < 50) dom.hpBarInner.style.background = "linear-gradient(90deg,#ff4d4d,#ff8c42)";
   else                 dom.hpBarInner.style.background = "linear-gradient(90deg,#ffb347,#ffd166)";
+  document.getElementById("bossHpBar")?.setAttribute("aria-valuenow", Math.round(hpPct));
   // 必殺技ゲージ
   dom.gaugeInner.style.width = state.specialGauge + "%";
   dom.gaugeLabel.textContent = `必殺技ゲージ: ${state.specialGauge}%`;
   dom.specialBtn.classList.toggle("visible", state.specialGauge >= 100);
+  document.getElementById("gaugeBar")?.setAttribute("aria-valuenow", state.specialGauge);
   // 統計
   dom.totalDamageEl.textContent = state.totalDamage;
   dom.attackCountEl.textContent = state.attackCount;
@@ -26,6 +28,7 @@ function refreshUi() {
   if      (pct < 25) dom.playerHpBarInner.style.background = "linear-gradient(90deg,#cc0000,#ff4444)";
   else if (pct < 50) dom.playerHpBarInner.style.background = "linear-gradient(90deg,#ff8c00,#ffcc00)";
   else               dom.playerHpBarInner.style.background = "linear-gradient(90deg,#44cc88,#88ffcc)";
+  document.getElementById("playerHpBar")?.setAttribute("aria-valuenow", Math.round(pct));
 }
 
 function updateAttackButtonState() {
@@ -297,6 +300,7 @@ function resetBattle() {
 
   // ★ Dパッドの押下状態をリセット（キーが押しっぱなしにならないように）
   state.keys = { up: false, down: false, left: false, right: false, action: false };
+  state.joystickVec = { x: 0, y: 0 };
   document.querySelectorAll(".dpad-btn").forEach(b => b.classList.remove("pressed"));
 
   // モーションをすべてリセット
@@ -421,7 +425,10 @@ function renderGachaCollection() {
   dom.gachaCollection.querySelectorAll(".gacha-coll-card[data-owned='true']").forEach(card => {
     card.addEventListener("click", () => {
       const costume = COSTUMES.find(c => c.id === card.dataset.id);
-      if (costume) equipCostume(costume);
+      if (!costume) return;
+      // 既に装備中のコスチュームは着替え画面を開かない
+      if (state.equippedCostume?.id === costume.id) return;
+      showDressingRoom(costume);
     });
   });
 }
@@ -436,6 +443,96 @@ function applyCostume(costume) {
   if (three.spearPivot) three.spearPivot.visible = (costume.weapon === "spear");
   // 帽子差し替え
   rebuildHat(costume);
+  // ── 広場プレイヤーにも色を反映 ──
+  if (plaza?.playerMesh) {
+    plaza.playerMesh.traverse(child => {
+      if (child.isMesh && child.material?.color) {
+        child.material.color.set(costume.color);
+      }
+    });
+  }
+}
+
+// ── 着替え画面（ドレッシングルーム） ─────────────────────────────
+let _dressingTargetCostume = null;
+
+function showDressingRoom(costume) {
+  if (!costume) return;
+  _dressingTargetCostume = costume;
+  const cur = state.equippedCostume;
+
+  // 現在装備中
+  const fromEl   = document.getElementById("dressingFromArt");
+  const fromName = document.getElementById("dressingFromName");
+  const fromStar = document.getElementById("dressingFromStars");
+  if (fromEl)   fromEl.innerHTML   = getSlimeSVG(cur.id, 80);
+  if (fromName) fromName.textContent = cur.name;
+  if (fromStar) fromStar.textContent = "⭐".repeat(cur.stars);
+
+  // 着替え先
+  const toEl   = document.getElementById("dressingToArt");
+  const toName = document.getElementById("dressingToName");
+  const toStar = document.getElementById("dressingToStars");
+  if (toEl)   toEl.innerHTML   = getSlimeSVG(costume.id, 80);
+  if (toName) toName.textContent = costume.name;
+  if (toStar) toStar.textContent = "⭐".repeat(costume.stars);
+
+  // 特技・武器情報
+  const infoEl = document.getElementById("dressingInfo");
+  if (infoEl) {
+    const wpnLabel = weaponLabel(costume.weapon);
+    const skillText = costume.skill
+      ? `<div class="dressing-skill">✨ 特技: ${costume.skill.name} ─ ${costume.skill.desc}</div>`
+      : "";
+    infoEl.innerHTML = `
+      <div class="dressing-weapon">武器: ${wpnLabel}</div>
+      ${skillText}
+    `;
+  }
+
+  // 画面表示
+  const ds = document.getElementById("dressingScreen");
+  if (ds) {
+    ds.classList.add("visible");
+    // ぷるぷる登場アニメ
+    const box = document.getElementById("dressingBox");
+    if (box) {
+      box.style.animation = "none";
+      box.offsetHeight; // reflow
+      box.style.animation = "dressingPop 0.35s cubic-bezier(0.34,1.56,0.64,1)";
+    }
+  }
+}
+
+function closeDressingRoom() {
+  const ds = document.getElementById("dressingScreen");
+  if (ds) ds.classList.remove("visible");
+  _dressingTargetCostume = null;
+}
+
+function confirmDressing() {
+  if (!_dressingTargetCostume) return;
+  const costume = _dressingTargetCostume;
+
+  // 着替えモーション：3Dスライムをくるっと回転
+  if (three.playerGroup || plaza?.playerMesh) {
+    const mesh = three.playerGroup || plaza.playerMesh;
+    let spins = 0;
+    const spinFn = () => {
+      mesh.rotation.y += 0.35;
+      spins++;
+      if (spins < 18) requestAnimationFrame(spinFn); // 約1回転
+    };
+    spinFn();
+  }
+
+  equipCostume(costume);
+  saveToServer(); // 着替え後は即セーブ
+  closeDressingRoom();
+
+  // 着替え完了フィードバック
+  dom.statusLine.textContent = `✨ ${costume.name} に着替えた！`;
+  setTimeout(() => dom.statusLine.textContent = "", 2500);
 }
 
 // ── お弁当 ───────────────────────────────────────────────────

@@ -43,7 +43,7 @@ const PLAZA_BUILDINGS = [
 
 const PLAZA_ENTER_RADIUS = 5;
 const PLAZA_MOVE_SPEED   = 0.13;
-const PLAZA_FIELD_LIMIT  = 24;
+const PLAZA_FIELD_LIMIT  = 38;
 const NPC_TALK_RADIUS    = 3.5;
 const FOUNTAIN_INTERACT_RADIUS = 3.0;
 const POND_INTERACT_RADIUS = 4.5;
@@ -55,6 +55,15 @@ let plazaNearFountain = false;
 let plazaNearPond = false;
 let plazaNearBench = false;
 let plazaNearFlower = false;
+
+// ── サブエリア管理 ─────────────────────────────────────────────
+// 釣り場・花畑に「入った」かどうかを追跡するフラグ
+let currentSubArea = null; // null | "pond" | "flower"
+// 広場に戻ったときのプレイヤー初期位置（エリア入口付近）
+const POND_AREA_ENTRY   = { x: 18,  z: 11.5 };   // 釣り場建物の正面
+const FLOWER_AREA_ENTRY = { x: -16, z: 20 };      // 花畑建物の正面
+// サブエリア用カメラ固定：trueの間はupdatePlazaCameraFollowでカメラを上書きしない
+let subAreaCameraLocked = false;
 
 let plazaDialog = null;
 
@@ -251,17 +260,17 @@ function buildPlazaScene() {
 
 function buildFountain() {
   const group = new THREE.Group();
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.0, 0.4, 16), new THREE.MeshStandardMaterial({ color: 0xe0d0c0, roughness: 0.8 }));
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.0, 0.4, 16), new THREE.MeshStandardMaterial({ color: 0x9a8878, roughness: 0.85 }));
   base.position.y = 0.2;
   group.add(base);
   const basin = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.25, 8, 24), new THREE.MeshStandardMaterial({ color: 0x90c0e0, roughness: 0.3, metalness: 0.2 }));
   basin.rotation.x = -Math.PI / 2;
   basin.position.y = 0.5;
   group.add(basin);
-  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.4, 8), new THREE.MeshStandardMaterial({ color: 0xd0c0b0, roughness: 0.7 }));
+  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.4, 8), new THREE.MeshStandardMaterial({ color: 0x8a7868, roughness: 0.75 }));
   pillar.position.y = 1.1;
   group.add(pillar);
-  const topDish = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.4, 0.15, 12), new THREE.MeshStandardMaterial({ color: 0xe0d0c0, roughness: 0.8 }));
+  const topDish = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.4, 0.15, 12), new THREE.MeshStandardMaterial({ color: 0x9a8878, roughness: 0.85 }));
   topDish.position.y = 1.85;
   group.add(topDish);
   plaza.waterDrops = [];
@@ -289,15 +298,15 @@ function buildPlazaBuildings() {
       base.position.y = 1.6; base.castShadow = true; group.add(base);
       const roof = new THREE.Mesh(new THREE.ConeGeometry(3.2, 1.8, 4), new THREE.MeshStandardMaterial({ color: 0x1a6080, roughness: 0.7 }));
       roof.position.y = 4.1; roof.rotation.y = Math.PI/4; group.add(roof);
-      const sign = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.7, 0.1), new THREE.MeshStandardMaterial({ color: 0xfff8e0, roughness: 0.8 }));
+      const sign = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.7, 0.1), new THREE.MeshStandardMaterial({ color: 0xa8c878, roughness: 0.8 }));
       sign.position.set(0, 2.8, 1.76); group.add(sign);
     } else if (def.type === "flower_area") {
       // 花畑：ピンクの小屋＋丸屋根
-      const base = new THREE.Mesh(new THREE.BoxGeometry(4, 3.2, 3.5), new THREE.MeshStandardMaterial({ color: 0xf4a0c0, roughness: 0.6 }));
+      const base = new THREE.Mesh(new THREE.BoxGeometry(4, 3.2, 3.5), new THREE.MeshStandardMaterial({ color: 0xd9607a, roughness: 0.6 }));
       base.position.y = 1.6; base.castShadow = true; group.add(base);
       const roof = new THREE.Mesh(new THREE.SphereGeometry(2.8, 12, 8, 0, Math.PI*2, 0, Math.PI/2), new THREE.MeshStandardMaterial({ color: 0xe060a0, roughness: 0.6 }));
       roof.position.y = 3.2; group.add(roof);
-      const sign = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.7, 0.1), new THREE.MeshStandardMaterial({ color: 0xfff0f8, roughness: 0.8 }));
+      const sign = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.7, 0.1), new THREE.MeshStandardMaterial({ color: 0xd080a0, roughness: 0.8 }));
       sign.position.set(0, 2.8, 1.76); group.add(sign);
     } else {
       // 通常建物
@@ -321,7 +330,7 @@ function buildPlazaBuildings() {
     // 看板ポール（全建物共通）
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.4, 6), new THREE.MeshStandardMaterial({ color: 0x8b6030, roughness: 0.8 }));
     pole.position.set(2.8, 0.7, 0); group.add(pole);
-    const labelBoard = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 0.08), new THREE.MeshStandardMaterial({ color: 0xfffce0, roughness: 0.8 }));
+    const labelBoard = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 0.08), new THREE.MeshStandardMaterial({ color: 0xc8a050, roughness: 0.85 }));
     labelBoard.position.set(2.8, 1.5, 0); group.add(labelBoard);
 
     group.position.set(def.x, 0, def.z);
@@ -595,31 +604,61 @@ function buildFlowerField() {
 }
 
 
-// 遠景の木々（オープンワールド感）
+// 遠景の木々（境界を隠す密な林）
 function buildDistantTrees() {
-  const positions = [];
-  for (let i = 0; i < 40; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 22 + Math.random() * 30;
-    positions.push([Math.cos(angle) * dist, Math.sin(angle) * dist]);
+  const WALL = PLAZA_FIELD_LIMIT;
+
+  // 境界線に沿ってびっしり木を並べる（見えてはいけない部分を完全に隠す）
+  const treePositions = [];
+
+  // 外周を2重リングで囲む
+  for (let ring = 0; ring < 3; ring++) {
+    const dist = WALL + 2 + ring * 3.5;
+    const count = Math.round(dist * Math.PI * 2 / 3.5); // 間隔3.5単位
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2;
+      treePositions.push([Math.cos(angle) * dist, Math.sin(angle) * dist]);
+    }
   }
-  positions.forEach(([x, z]) => {
-    const h = 3.5 + Math.random() * 5;
+
+  // 内側にもランダムな木で自然感を出す（距離20〜WALL+1）
+  for (let i = 0; i < 60; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = WALL - 4 + Math.random() * 6;
+    treePositions.push([Math.cos(angle) * dist, Math.sin(angle) * dist]);
+  }
+
+  treePositions.forEach(([x, z]) => {
+    const h = 4.0 + Math.random() * 6;
     three.scene.add(makeFirTree(x, z, h));
   });
+
+  // 透明な衝突壁（プレイヤーが木の中に入れないように）
+  // ※ FIELD_LIMIT で移動制限しているので視覚的な木の帯で十分
 }
 
+
 function updateHomePlazaLoop() {
-  // ★ 料理・花摘みUIが開いているときはプレイヤー移動・インタラクションをスキップ
+  // 料理・花摘みUI、または釣り中はプレイヤー移動・インタラクションをスキップ
   const cookUI  = document.getElementById("cookingUI");
   const flUI    = document.getElementById("flowerUI");
   const uiOpen  = (cookUI && cookUI.style.display !== "none") ||
-                  (flUI   && flUI.style.display   !== "none");
+                  (flUI   && flUI.style.display   !== "none") ||
+                  (typeof fishingActive !== "undefined" && fishingActive);
 
   if (!uiOpen) {
     updatePlazaPlayer();
-    checkPlazaEntrances();
-    checkFlowerProximity();
+    // ★ サブエリア（釣り場・花畑）内にいるときは建物入場チェックをスキップ
+    // 　 （プレイヤーが建物近くにいても「入る」プロンプトを出さない）
+    if (!currentSubArea) {
+      checkPlazaEntrances();
+    } else {
+      // サブエリア内では花の近接チェックのみ実行（花畑エリア用）
+      dom.plazaActionPrompt.classList.remove("visible");
+      plazaNearBuilding = null;
+      if (currentSubArea === "flower") checkFlowerProximity();
+    }
+    if (!currentSubArea) checkFlowerProximity();
   }
   updatePlazaNPCs();
   updateFountain();
@@ -629,22 +668,96 @@ function updateHomePlazaLoop() {
   updateTimeOfDay();  // 時間帯チェック（変化時のみ描画更新）
 }
 
+// ── 歩きモーション（ぽよんぽよんホップ）用の状態 ──────────────
+const plazaWalk = {
+  phase:     0,       // ホップ位相（0〜2π で1サイクル）
+  isMoving:  false,   // 移動中フラグ
+  wasMoving: false,   // 前フレームの移動状態（着地スクワッシュ用）
+  landTimer: 0,       // 着地スクワッシュ残り時間（ms）
+};
+const WALK_HOP_SPEED   = 0.22;  // 位相の進み速さ（速いほど足が速い感じ）
+const WALK_HOP_HEIGHT  = 0.28;  // ホップの最大高さ（単位:Three.jsユニット）
+const WALK_SQUASH_TIME = 120;   // 着地スクワッシュ持続（ms）
+
 function updatePlazaPlayer() {
   let dx = 0, dz = 0;
-  if (state.keys.up) dz -= 1;
-  if (state.keys.down) dz += 1;
-  if (state.keys.left) dx -= 1;
-  if (state.keys.right) dx += 1;
-  if (dx !== 0 || dz !== 0) {
-    const len = Math.hypot(dx, dz);
-    plazaPlayer.x = Math.max(-PLAZA_FIELD_LIMIT, Math.min(PLAZA_FIELD_LIMIT, plazaPlayer.x + (dx / len) * PLAZA_MOVE_SPEED));
-    plazaPlayer.z = Math.max(-PLAZA_FIELD_LIMIT, Math.min(PLAZA_FIELD_LIMIT, plazaPlayer.z + (dz / len) * PLAZA_MOVE_SPEED));
-    if (plaza.playerMesh) plaza.playerMesh.rotation.y = Math.atan2(dx, dz);
+
+  // アナログジョイスティック優先（広場モード時）
+  const jv = state.joystickVec;
+  if (jv && (Math.abs(jv.x) > 0.05 || Math.abs(jv.y) > 0.05)) {
+    dx = jv.x;
+    dz = jv.y;
+  } else {
+    // キーボード / Dパッドのデジタル入力
+    if (state.keys.up)    dz -= 1;
+    if (state.keys.down)  dz += 1;
+    if (state.keys.left)  dx -= 1;
+    if (state.keys.right) dx += 1;
   }
-  if (plaza.playerMesh) plaza.playerMesh.position.set(plazaPlayer.x, 0, plazaPlayer.z);
+
+  const isMoving = (dx !== 0 || dz !== 0);
+
+  if (isMoving) {
+    const len = Math.hypot(dx, dz);
+    const speed = PLAZA_MOVE_SPEED * (jv && len > 0 ? Math.min(len, 1.0) : 1.0);
+    plazaPlayer.x = Math.max(-PLAZA_FIELD_LIMIT, Math.min(PLAZA_FIELD_LIMIT, plazaPlayer.x + (dx / len) * speed));
+    plazaPlayer.z = Math.max(-PLAZA_FIELD_LIMIT, Math.min(PLAZA_FIELD_LIMIT, plazaPlayer.z + (dz / len) * speed));
+    if (plaza.playerMesh) plaza.playerMesh.rotation.y = Math.atan2(dx, dz);
+
+    // ── ぽよんぽよんホップ位相を進める ──
+    plazaWalk.phase += WALK_HOP_SPEED;
+  }
+
+  // ── 着地検出：移動→停止の瞬間にスクワッシュ ──
+  if (plazaWalk.wasMoving && !isMoving) {
+    plazaWalk.landTimer = WALK_SQUASH_TIME;
+  }
+  plazaWalk.wasMoving = isMoving;
+  plazaWalk.isMoving  = isMoving;
+  if (plazaWalk.landTimer > 0) plazaWalk.landTimer -= 16; // 約60fps想定
+
+  // ── Y位置・スケールをアニメーション ──
+  if (plaza.playerMesh) {
+    let posY  = 0;
+    let scaleX = 1, scaleY = 1, scaleZ = 1;
+
+    if (isMoving) {
+      // ぽよんぽよんホップ：sin波で上下
+      // sin が正のとき上昇、0のとき地面接地
+      const hopRaw = Math.sin(plazaWalk.phase);
+      const hop    = Math.max(0, hopRaw);  // 負値（地中に潜る）をカット
+      posY = hop * WALK_HOP_HEIGHT;
+
+      // 接地フェーズ（sin≈0付近）でスクワッシュ、空中でストレッチ
+      const squashStrength = 1.0 - hop;
+      scaleX = 1 + squashStrength * 0.12;  // 横に広がる
+      scaleY = 1 - squashStrength * 0.10;  // 縦に縮む
+      scaleZ = scaleX;
+    } else if (plazaWalk.landTimer > 0) {
+      // 着地スクワッシュ：ぺちゃっと潰れてすぐ戻る
+      const t = plazaWalk.landTimer / WALK_SQUASH_TIME; // 1→0
+      const squash = Math.sin(t * Math.PI); // 山なりに0→1→0
+      scaleX = 1 + squash * 0.22;
+      scaleY = 1 - squash * 0.18;
+      scaleZ = scaleX;
+      posY = 0;
+    } else {
+      // 待機：ゆっくりフワフワする呼吸アニメ
+      const breathe = Math.sin(Date.now() * 0.0015) * 0.025;
+      posY   = breathe + 0.025;
+      scaleX = 1 + Math.sin(Date.now() * 0.0012) * 0.012;
+      scaleY = 1 - Math.sin(Date.now() * 0.0012) * 0.010;
+      scaleZ = scaleX;
+    }
+
+    plaza.playerMesh.position.set(plazaPlayer.x, posY, plazaPlayer.z);
+    plaza.playerMesh.scale.set(scaleX, scaleY, scaleZ);
+  }
 }
 
 function updatePlazaCameraFollow() {
+  // ★ サブエリア入場直後はカメラを固定（演出カメラを上書きしない）
+  if (subAreaCameraLocked) return;
   three.camera.position.set(plazaPlayer.x, 3.5, plazaPlayer.z + 10.0);
   three.camera.lookAt(plazaPlayer.x, 0.5, plazaPlayer.z - 5.0);
 }
@@ -674,6 +787,20 @@ function updatePlazaNPCs() {
       }
     }
     npc.mesh.position.set(npc.x, 0, npc.z);
+    // ── NPCもぽよんぽよん歩きアニメ ──
+    if (!npc.mesh) return;
+    if (npc.moveState === "moving") {
+      npc.walkPhase = (npc.walkPhase || 0) + 0.18;
+      const hop = Math.max(0, Math.sin(npc.walkPhase)) * 0.18;
+      const sq  = 1.0 - Math.max(0, Math.sin(npc.walkPhase));
+      npc.mesh.position.y = hop;
+      npc.mesh.scale.set(1 + sq * 0.08, 1 - sq * 0.07, 1 + sq * 0.08);
+    } else {
+      // 待機：ゆっくり呼吸
+      const b = Math.sin(now * 0.001 + (npc.walkPhase || 0)) * 0.018;
+      npc.mesh.position.y = b + 0.018;
+      npc.mesh.scale.set(1 + b * 0.3, 1 - b * 0.25, 1 + b * 0.3);
+    }
     const dist = Math.hypot(plazaPlayer.x - npc.x, plazaPlayer.z - npc.z);
     if (dist < NPC_TALK_RADIUS) {
       let line = null;
@@ -784,6 +911,20 @@ function handlePlazaAction() {
   if (state._benchBentoReady && eatBentoOnBench()) return;
   // 花摘み待機中にAで摘む
   if (window._flowerWaiting) { doPickFlower(); return; }
+
+  // ★ サブエリア内では「広場に戻る」以外の建物入場を防ぐ
+  if (currentSubArea) {
+    // 花畑エリア内: Aで花を摘む
+    if (currentSubArea === "flower" && plazaNearFlower && nearestFlower) {
+      pickFlower();
+    }
+    // 釣り場エリア内: Aで釣り（UI経由で既に釣りが始まっていない場合）
+    if (currentSubArea === "pond" && !fishingActive) {
+      startFishing();
+    }
+    return;
+  }
+
   if (plazaNearBuilding) {
     if (plazaNearBuilding.type === "stage")       { exitHomePlaza(); showStageSelect("plaza"); }
     else if (plazaNearBuilding.type === "restaurant") { showCooking(); }
@@ -838,14 +979,18 @@ function enterAreaWithFade(areaName, onEnter) {
 
 function enterPondArea() {
   enterAreaWithFade("🎣 釣り場", () => {
-    // ★ プレイヤーを池の手前（桟橋の前）に移動
+    currentSubArea = "pond";
+    showSubAreaBackButton("pond");
+
+    // ★ プレイヤーをpond実体の手前（桟橋の前）に移動
     const px = plaza.pondPos.x;
     const pz = plaza.pondPos.z;
     plazaPlayer.x = px;
     plazaPlayer.z = pz + 5.5;  // 池の手前・桟橋のすぐ手前
     if (plaza.playerMesh) plaza.playerMesh.position.set(plazaPlayer.x, 0, plazaPlayer.z);
 
-    // ★ カメラを池に向ける（後ろ＆やや上から池を見下ろす構図）
+    // ★ カメラを池に向ける演出（次フレームで上書きされないようロック）
+    subAreaCameraLocked = true;
     three.camera.position.set(px, 4.5, pz + 12);
     three.camera.lookAt(px, 0.2, pz);
 
@@ -857,20 +1002,32 @@ function enterPondArea() {
 
 function enterFlowerArea() {
   enterAreaWithFade("🌸 花　畑", () => {
+    currentSubArea = "flower";
+    showSubAreaBackButton("flower");
+
     // ★ プレイヤーを花畑の入口（中心から少し手前）に移動
     const fc = { x: -16, z: 14 };
     plazaPlayer.x = fc.x;
     plazaPlayer.z = fc.z + 6;  // 花畑の入口付近
     if (plaza.playerMesh) plaza.playerMesh.position.set(plazaPlayer.x, 0, plazaPlayer.z);
 
-    // ★ カメラを花畑に向ける（後ろから花畑を見下ろす構図）
+    // ★ カメラを花畑に向ける演出（ロック）
+    subAreaCameraLocked = true;
     three.camera.position.set(fc.x, 4.5, fc.z + 13);
     three.camera.lookAt(fc.x, 0.3, fc.z);
+    // 2秒後にカメラロック解除 → 以降は通常フォロー
+    setTimeout(() => { subAreaCameraLocked = false; }, 2000);
 
-    // 花畑エリアではnearestFlowerを最寄りの未採取花に強制セット
+    // 花畑エリアではnearestFlowerを最寄り（距離近い方）の未採取花に強制セット
     const available = plaza.flowerField.filter(f => !f.userData.picked);
     if (available.length > 0) {
-      nearestFlower = available[Math.floor(Math.random() * available.length)];
+      // ランダムではなく、プレイヤー移動先に最も近い花を選ぶ
+      available.sort((a, b) => {
+        const da = Math.hypot(a.position.x - plazaPlayer.x, a.position.z - plazaPlayer.z);
+        const db = Math.hypot(b.position.x - plazaPlayer.x, b.position.z - plazaPlayer.z);
+        return da - db;
+      });
+      nearestFlower = available[0];
       plazaNearFlower = true;
       dom.statusLine.textContent = "花畑に来た。Ａ で花を摘もう！";
       setTimeout(() => dom.statusLine.textContent = "", 3000);
@@ -880,6 +1037,79 @@ function enterFlowerArea() {
       dom.statusLine.textContent = "今日の花はもう摘み終わった。また明日来よう。";
       setTimeout(() => dom.statusLine.textContent = "", 3000);
     }
+  });
+}
+
+/**
+ * サブエリア（釣り場・花畑）用の「広場に戻る」ボタンを表示する。
+ * 既存のボタンがあれば使い回し、なければ動的生成。
+ * @param {"pond"|"flower"} areaType
+ */
+function showSubAreaBackButton(areaType) {
+  let btn = document.getElementById("subAreaBackBtn");
+  if (!btn) {
+    btn = document.createElement("button");
+    btn.id = "subAreaBackBtn";
+    btn.style.cssText = [
+      "position:fixed",
+      "bottom:90px",
+      "left:50%",
+      "transform:translateX(-50%)",
+      "z-index:150",
+      "padding:10px 24px",
+      "background:rgba(255,240,255,0.92)",
+      "color:#9a3080",
+      "border:2px solid #d070b0",
+      "border-radius:24px",
+      "font-size:15px",
+      "font-weight:700",
+      "cursor:pointer",
+      "box-shadow:0 2px 12px rgba(200,100,180,0.25)",
+      "letter-spacing:0.08em",
+    ].join(";");
+    document.body.appendChild(btn);
+    btn.addEventListener("click", leaveSubArea);
+  }
+  btn.textContent = areaType === "pond" ? "🏡 広場に戻る" : "🏡 広場に戻る";
+  btn.style.display = "block";
+}
+
+/** サブエリアから広場に戻る（フェード演出付き） */
+function leaveSubArea() {
+  // 釣り中なら強制終了
+  if (typeof fishingActive !== "undefined" && fishingActive) {
+    if (typeof fishingTimer !== "undefined" && fishingTimer) {
+      clearTimeout(fishingTimer);
+      fishingTimer = null;
+    }
+    fishingActive = false;
+    fishingPhase = "idle";
+    const fui = document.getElementById("fishingUI");
+    if (fui) fui.style.display = "none";
+  }
+  // 花摘み待機中ならキャンセル
+  window._flowerWaiting = false;
+  const flui = document.getElementById("flowerUI");
+  if (flui) flui.style.display = "none";
+
+  // ボタンを隠す
+  const btn = document.getElementById("subAreaBackBtn");
+  if (btn) btn.style.display = "none";
+
+  // カメラロック解除
+  subAreaCameraLocked = false;
+
+  // エリアに応じた戻り先座標を設定（フェード後に適用）
+  const returnPos = currentSubArea === "pond" ? POND_AREA_ENTRY : FLOWER_AREA_ENTRY;
+
+  enterAreaWithFade("🏡 広　場", () => {
+    currentSubArea = null;
+    plazaPlayer.x = returnPos.x;
+    plazaPlayer.z = returnPos.z;
+    if (plaza.playerMesh) plaza.playerMesh.position.set(plazaPlayer.x, 0, plazaPlayer.z);
+    updatePlazaCameraFollow();
+    dom.statusLine.textContent = "広場に戻った。";
+    setTimeout(() => dom.statusLine.textContent = "", 2000);
   });
 }
 
@@ -994,6 +1224,12 @@ function exitHomePlaza() {
   dom.plazaActionPrompt.classList.remove("visible");
   closeNpcDialog();
 
+  // ★ サブエリアフラグ・「広場に戻る」ボタンをリセット
+  currentSubArea = null;
+  subAreaCameraLocked = false;
+  const subBtn = document.getElementById("subAreaBackBtn");
+  if (subBtn) subBtn.style.display = "none";
+
   // 花摘み待機中ならキャンセル
   window._flowerWaiting = false;
 
@@ -1035,6 +1271,9 @@ function exitHomePlaza() {
   dom.statsArea?.classList.remove("hud-hidden");
   dom.playerHpArea?.classList.remove("hud-hidden");
   dom.controllerPanel?.classList.remove("plaza-mode");
+  // ジョイスティックのノブ位置をリセット
+  const jKnob = document.getElementById("joystickKnob");
+  if (jKnob) jKnob.style.transform = "translate(-50%, -50%)";
   setPlazaObjectsVisible(false);
   setBattleObjectsVisible(true);
   // バトル用の空・霧を復元

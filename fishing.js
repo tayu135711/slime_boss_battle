@@ -83,10 +83,13 @@ function endFishing(success) {
       fishingUI.style.display = "none";
       document.getElementById("fishingAction").style.display = "";
       fishingPhase = "idle";
+      subAreaCameraLocked = false;  // ★ カメラロック解除（釣り後は自由移動）
       dom.statusLine.textContent = `${fish.icon} ${fish.name}: ${fish.desc}`;
       setTimeout(() => dom.statusLine.textContent = "", 2500);
       checkQuestProgress();
       if (typeof updatePlazaCameraFollow === "function") updatePlazaCameraFollow();
+      // ★ 釣り場エリア内なら残り回数があれば自動で次の一投を促す
+      _afterFishingInArea();
     }, 1500);
   } else {
     document.getElementById("fishingPrompt").textContent = "…そっと逃がしてしまった。";
@@ -95,8 +98,24 @@ function endFishing(success) {
       fishingUI.style.display = "none";
       document.getElementById("fishingAction").style.display = "";
       fishingPhase = "idle";
+      subAreaCameraLocked = false;  // ★ カメラロック解除
       if (typeof updatePlazaCameraFollow === "function") updatePlazaCameraFollow();
+      // ★ 釣り場エリア内なら残り回数があれば次の一投を促す
+      _afterFishingInArea();
     }, 1000);
+  }
+}
+
+/** 釣り終了後、釣り場エリア内ならプロンプトを表示 */
+function _afterFishingInArea() {
+  if (typeof currentSubArea === "undefined" || currentSubArea !== "pond") return;
+  const remaining = FISHING_DAILY_LIMIT - state.dailyFishCount;
+  if (remaining > 0) {
+    dom.statusLine.textContent = `🎣 あと ${remaining} 回釣れる。Ａ でもう一度！`;
+    setTimeout(() => dom.statusLine.textContent = "", 3000);
+  } else {
+    dom.statusLine.textContent = "🎣 今日はもう十分。また明日おいで。";
+    setTimeout(() => dom.statusLine.textContent = "", 2500);
   }
 }
 
