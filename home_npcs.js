@@ -48,7 +48,7 @@ const HOME_NPCS = [
     conditionalLines: [
       { condition: () => state.unlockedStages >= 5, line: "ねえ！ステージ5まで行ったって本当？すごすぎ！！" }
     ],
-    moveSpeed: 0.020, moveRadius: 2.5, pauseTime: 2000, questId: null
+    moveSpeed: 0.020, moveRadius: 2.5, pauseTime: 2000, questId: "flower_beginner"
   },
   {
     id: 5, startX: 3, startZ: 8, costumeId: "c03",
@@ -56,11 +56,11 @@ const HOME_NPCS = [
       "食堂のマスターのスープ、絶品なんだよね〜",
       "今日のおすすめ料理、何かな〜♪",
       "ごはんのことを考えながら歩くの、好き",
-      "お弁当って、なんか特別感あるよね",
+      "水草って、料理にも使えるんだって！採ってきてほしいな〜",
       "食後に広場で昼寝したいな〜",
     ],
     conditionalLines: [],
-    moveSpeed: 0.016, moveRadius: 2.8, pauseTime: 2500, questId: "flower_beginner"
+    moveSpeed: 0.016, moveRadius: 2.8, pauseTime: 2500, questId: "seaweed_collect"
   },
   {
     id: 6, startX: -9, startZ: 2, costumeId: "c21",

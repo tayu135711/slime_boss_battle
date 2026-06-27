@@ -33,6 +33,9 @@ async function saveToServer() {
     quests:            JSON.stringify(state.quests),
     maxBento:          state.maxBento,
     unlockedRecipes:   JSON.stringify(state.unlockedRecipes),
+    accessories:       JSON.stringify(state.accessories  || []),
+    bestTimes:         JSON.stringify(state.bestTimes    || {}),
+    totalClears:       state.totalClears ?? 0,
   };
 
   try {
@@ -109,6 +112,15 @@ async function loadFromServer() {
     state.stageIndex = Math.max(0, Math.min(state.stageIndex, STAGES.length - 1));
     // ★ unlockedStagesもクランプ（最低1、最大はSTAGES.length）
     state.unlockedStages = Math.max(1, Math.min(state.unlockedStages, STAGES.length));
+
+    // アクセサリー・クリア記録
+    if (data.accessories) {
+      try { state.accessories = JSON.parse(data.accessories); } catch {}
+    }
+    if (data.bestTimes) {
+      try { state.bestTimes = JSON.parse(data.bestTimes); } catch {}
+    }
+    state.totalClears = data.totalClears ?? 0;
 
     return true;
   } catch (e) {

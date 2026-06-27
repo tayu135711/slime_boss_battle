@@ -80,7 +80,12 @@ function executeCooking() {
   const ingredientCounts = {};
   selectedIngredients.forEach(id => ingredientCounts[id] = (ingredientCounts[id] || 0) + 1);
 
+  // 解放が必要なレシピID（クエスト報酬で解放されるもの）
+  const LOCKED_RECIPES = ["flower_basket"];
+
   const matchedRecipe = RECIPES.find(recipe => {
+    // 未解放のレシピはスキップ
+    if (LOCKED_RECIPES.includes(recipe.id) && !state.unlockedRecipes.includes(recipe.id)) return false;
     const req = recipe.ingredients;
     const reqIds = Object.keys(req);
     const selectedIds = Object.keys(ingredientCounts);

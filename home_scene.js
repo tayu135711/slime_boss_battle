@@ -108,51 +108,51 @@ function initHomePlaza() {
 const TIME_OF_DAY_SETTINGS = {
   morning: {
     label: "🌅 朝",
-    skyColor:   0xffd6a5,  // 朝焼けオレンジ
-    fogColor:   0xffd6a5,
+    skyColor:   0xf4c98a,  // 朝焼けオレンジ（少し落ち着かせる）
+    fogColor:   0xf4c98a,
     fogDensity: 0.008,
-    sunColor:   0xffd580,
-    sunIntensity: 1.4,
-    sunPos: [8, 12, 18],   // 低めの朝日
-    ambColor:   0xffe0b0,
-    ambIntensity: 0.6,
-    groundColor: 0x6abf69,
+    sunColor:   0xffcc66,
+    sunIntensity: 0.75,    // 1.4 → 0.75 に下げる
+    sunPos: [8, 12, 18],
+    ambColor:   0xd4a870,  // 白みを抑えた暖色
+    ambIntensity: 0.30,    // 0.6 → 0.30
+    groundColor: 0x4e9a48, // 少し濃いめの緑
   },
   noon: {
     label: "☀️ 昼",
-    skyColor:   0x87ceeb,
-    fogColor:   0x87ceeb,
+    skyColor:   0x5ab0d8,  // 白すぎない青空
+    fogColor:   0x5ab0d8,
     fogDensity: 0.007,
-    sunColor:   0xfff5e0,
-    sunIntensity: 1.2,
+    sunColor:   0xfff0c0,
+    sunIntensity: 0.80,    // 1.2 → 0.80
     sunPos: [10, 20, 10],
-    ambColor:   0xd0e8ff,
-    ambIntensity: 0.7,
-    groundColor: 0x5cb85c,
+    ambColor:   0x8ab4cc,  // 白みを抑えた青
+    ambIntensity: 0.32,    // 0.7 → 0.32
+    groundColor: 0x3d8c3a, // 濃いめの緑
   },
   evening: {
     label: "🌆 夕方",
-    skyColor:   0xff7043,  // 夕焼け赤
-    fogColor:   0xff8a65,
+    skyColor:   0xe05a30,
+    fogColor:   0xd06040,
     fogDensity: 0.010,
-    sunColor:   0xff6d00,
-    sunIntensity: 1.0,
-    sunPos: [-12, 6, 10],  // 斜め低い西日
-    ambColor:   0xffccaa,
-    ambIntensity: 0.5,
-    groundColor: 0x7a5c3a,
+    sunColor:   0xff6600,
+    sunIntensity: 0.65,    // 1.0 → 0.65
+    sunPos: [-12, 6, 10],
+    ambColor:   0xcc8855,  // 暗めの橙
+    ambIntensity: 0.28,    // 0.5 → 0.28
+    groundColor: 0x6b4e2a, // 夕方らしい茶みどり
   },
   night: {
     label: "🌙 夜",
-    skyColor:   0x0d1b3e,  // 深夜ネイビー
-    fogColor:   0x0d1b3e,
+    skyColor:   0x0a1530,
+    fogColor:   0x0a1530,
     fogDensity: 0.015,
-    sunColor:   0x4466bb,
-    sunIntensity: 0.4,
+    sunColor:   0x3355aa,
+    sunIntensity: 0.25,    // 0.4 → 0.25
     sunPos: [5, 18, 5],
-    ambColor:   0x2a3a6a,
-    ambIntensity: 0.35,
-    groundColor: 0x2e4020,
+    ambColor:   0x1e2d55,
+    ambIntensity: 0.22,    // 0.35 → 0.22
+    groundColor: 0x223318,
   },
 };
 
@@ -216,22 +216,22 @@ function updateTimeOfDay() {
 }
 
 function buildPlazaScene() {
-  plaza.sunLight = new THREE.DirectionalLight(0xfff5e0, 1.2);
+  plaza.sunLight = new THREE.DirectionalLight(0xfff0c0, 0.80);
   plaza.sunLight.position.set(10, 20, 10);
   plaza.sunLight.castShadow = true;
   three.scene.add(plaza.sunLight);
-  plaza.ambientLight = new THREE.AmbientLight(0xd0e8ff, 0.7);
+  plaza.ambientLight = new THREE.AmbientLight(0x8ab4cc, 0.32);
   three.scene.add(plaza.ambientLight);
 
   plaza.ground = new THREE.Mesh(
     new THREE.PlaneGeometry(200, 200, 1, 1),
-    new THREE.MeshStandardMaterial({ color: 0x5cb85c, roughness: 0.9 })
+    new THREE.MeshStandardMaterial({ color: 0x3d8c3a, roughness: 0.9 })
   );
   plaza.ground.rotation.x = -Math.PI / 2;
   plaza.ground.receiveShadow = true;
   three.scene.add(plaza.ground);
 
-  const cobble = new THREE.Mesh(new THREE.CircleGeometry(12, 32), new THREE.MeshStandardMaterial({ color: 0xb0a090, roughness: 0.95 }));
+  const cobble = new THREE.Mesh(new THREE.CircleGeometry(12, 32), new THREE.MeshStandardMaterial({ color: 0x8a7a6a, roughness: 0.95 }));
   cobble.rotation.x = -Math.PI / 2;
   cobble.position.y = 0.01;
   three.scene.add(cobble);
@@ -737,6 +737,7 @@ function checkPlazaEntrances() {
   plazaNearFountain = false;
   plazaNearPond = false;
   plazaNearBench = false;
+  plazaNearFlower = false;  // ← 料理UI中でもゴーストプロンプトが残らないようリセット
 
   for (const b of plaza.buildings) {
     if (Math.hypot(plazaPlayer.x - b.x, plazaPlayer.z - b.z) < PLAZA_ENTER_RADIUS) {
@@ -781,6 +782,8 @@ function handlePlazaAction() {
   if (plazaDialog) { advanceDialog(); return; }
   // ベンチ座り中にAでお弁当を食べる
   if (state._benchBentoReady && eatBentoOnBench()) return;
+  // 花摘み待機中にAで摘む
+  if (window._flowerWaiting) { doPickFlower(); return; }
   if (plazaNearBuilding) {
     if (plazaNearBuilding.type === "stage")       { exitHomePlaza(); showStageSelect("plaza"); }
     else if (plazaNearBuilding.type === "restaurant") { showCooking(); }
@@ -835,6 +838,17 @@ function enterAreaWithFade(areaName, onEnter) {
 
 function enterPondArea() {
   enterAreaWithFade("🎣 釣り場", () => {
+    // ★ プレイヤーを池の手前（桟橋の前）に移動
+    const px = plaza.pondPos.x;
+    const pz = plaza.pondPos.z;
+    plazaPlayer.x = px;
+    plazaPlayer.z = pz + 5.5;  // 池の手前・桟橋のすぐ手前
+    if (plaza.playerMesh) plaza.playerMesh.position.set(plazaPlayer.x, 0, plazaPlayer.z);
+
+    // ★ カメラを池に向ける（後ろ＆やや上から池を見下ろす構図）
+    three.camera.position.set(px, 4.5, pz + 12);
+    three.camera.lookAt(px, 0.2, pz);
+
     dom.statusLine.textContent = "池のほとりに来た。のんびり釣りでもしよう。";
     setTimeout(() => dom.statusLine.textContent = "", 3000);
     startFishing();
@@ -843,14 +857,23 @@ function enterPondArea() {
 
 function enterFlowerArea() {
   enterAreaWithFade("🌸 花　畑", () => {
-    dom.statusLine.textContent = "花畑に来た。好きな花を選んで摘もう。";
-    setTimeout(() => dom.statusLine.textContent = "", 3000);
+    // ★ プレイヤーを花畑の入口（中心から少し手前）に移動
+    const fc = { x: -16, z: 14 };
+    plazaPlayer.x = fc.x;
+    plazaPlayer.z = fc.z + 6;  // 花畑の入口付近
+    if (plaza.playerMesh) plaza.playerMesh.position.set(plazaPlayer.x, 0, plazaPlayer.z);
+
+    // ★ カメラを花畑に向ける（後ろから花畑を見下ろす構図）
+    three.camera.position.set(fc.x, 4.5, fc.z + 13);
+    three.camera.lookAt(fc.x, 0.3, fc.z);
+
     // 花畑エリアではnearestFlowerを最寄りの未採取花に強制セット
     const available = plaza.flowerField.filter(f => !f.userData.picked);
     if (available.length > 0) {
       nearestFlower = available[Math.floor(Math.random() * available.length)];
-      plazaNearFlower = true; // ★ フラグも必ず同期する
-      pickFlower();
+      plazaNearFlower = true;
+      dom.statusLine.textContent = "花畑に来た。Ａ で花を摘もう！";
+      setTimeout(() => dom.statusLine.textContent = "", 3000);
     } else {
       nearestFlower = null;
       plazaNearFlower = false;
@@ -971,6 +994,9 @@ function exitHomePlaza() {
   dom.plazaActionPrompt.classList.remove("visible");
   closeNpcDialog();
 
+  // 花摘み待機中ならキャンセル
+  window._flowerWaiting = false;
+
   // ★ 釣りが進行中なら強制終了（UIとフラグを両方クリア）
   if (typeof fishingActive !== "undefined" && fishingActive) {
     if (typeof fishingTimer !== "undefined" && fishingTimer) {
@@ -1058,9 +1084,18 @@ function checkFlowerProximity() {
 }
 
 function updateFlowers() {
-  const t = Date.now() * 0.001;
+  const now = Date.now();
+  const t = now * 0.001;
   plaza.flowerField.forEach(flower => {
-    if (flower.userData.picked) return;
+    // 翌日リスポーン：respawnTimeを過ぎたら花を復活させる
+    if (flower.userData.picked) {
+      if (flower.userData.respawnTime > 0 && now >= flower.userData.respawnTime) {
+        flower.userData.picked = false;
+        flower.userData.respawnTime = 0;
+        flower.visible = true;
+      }
+      return;
+    }
     flower.rotation.z = Math.sin(t * 1.5 + flower.userData.phase) * 0.1;
   });
 }

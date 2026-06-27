@@ -20,6 +20,9 @@ function initScene() {
   three.renderer.setSize(w, h);
   three.renderer.shadowMap.enabled = true;
   three.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  three.renderer.outputColorSpace = THREE.SRGBColorSpace; // ★ MeshPhysicalMaterial用
+  three.renderer.toneMapping = THREE.ACESFilmicToneMapping; // ★ ゼリー質感をきれいに表示
+  three.renderer.toneMappingExposure = 1.2;
   dom.sceneContainer.appendChild(three.renderer.domElement);
   setupLights();
   buildGround();
@@ -307,156 +310,94 @@ function buildForestDecor() {
 function addSlimeFace(parent, r, eyeY = 0.25) {
   const faceGroup = new THREE.Group();
 
-  // ── マテリアル定義 ──────────────────────────────────────────
-  const eyeWhiteMat = new THREE.MeshStandardMaterial({
-    color: 0xffffff, roughness: 0.05, metalness: 0.0,
-    emissive: 0xeeeeff, emissiveIntensity: 0.08,
+  // ── マテリアル ──────────────────────────────────────────────
+  // カービィ風：目は大きな黒い楕円＋星型ハイライト
+  const eyeBaseMat = new THREE.MeshStandardMaterial({
+    color: 0x111133, roughness: 0.2,
   });
-  // 虹彩（黒目の外側リング）：深みのある瞳色
-  const irisMat = new THREE.MeshStandardMaterial({
-    color: 0x3366cc, roughness: 0.2, metalness: 0.0,
-    emissive: 0x1133aa, emissiveIntensity: 0.25,
-  });
-  // 瞳孔（黒目の中心）
-  const pupilMat = new THREE.MeshStandardMaterial({
-    color: 0x0a0a18, roughness: 0.3,
-  });
-  // メインハイライト：ぴかっと大きく光る
-  const hlMainMat = new THREE.MeshStandardMaterial({
+  const hlStarMat = new THREE.MeshStandardMaterial({
     color: 0xffffff, roughness: 0.0,
-    emissive: 0xffffff, emissiveIntensity: 1.2,
+    emissive: 0xffffff, emissiveIntensity: 1.5,
   });
-  // サブハイライト：小さめの星型輝き
   const hlSubMat = new THREE.MeshStandardMaterial({
-    color: 0xddeeff, roughness: 0.0,
-    emissive: 0x88ccff, emissiveIntensity: 0.8,
+    color: 0xaaddff, roughness: 0.0,
+    emissive: 0x88ccff, emissiveIntensity: 1.0,
   });
-  // まつ毛
-  const lashMat = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.8 });
-  // 口
-  const mouthMat = new THREE.MeshStandardMaterial({ color: 0x331122, roughness: 0.5 });
+  const mouthMat = new THREE.MeshStandardMaterial({ color: 0x221111, roughness: 0.4 });
+  const cheekMat = new THREE.MeshStandardMaterial({
+    color: 0xff6699, roughness: 1.0, transparent: true, opacity: 0.50,
+  });
 
   function makeEye(side) {
     const eyeGroup = new THREE.Group();
 
-    // ── 白目：大きく・縦長の楕円でぱっちり感 ──
-    const white = new THREE.Mesh(
-      new THREE.SphereGeometry(r * 0.27, 16, 16),
-      eyeWhiteMat
+    // ── 大きな黒い楕円（カービィの目の特徴） ──
+    const eyeBase = new THREE.Mesh(
+      new THREE.SphereGeometry(r * 0.28, 18, 18),
+      eyeBaseMat
     );
-    white.scale.set(1.0, 1.3, 0.75);   // 縦に大きく、奥行きは薄く
-    eyeGroup.add(white);
+    eyeBase.scale.set(0.85, 1.35, 0.55); // 縦長・平らにして正面感UP
+    eyeGroup.add(eyeBase);
 
-    // ── 虹彩（アイリス）：青みがかったリング ──
-    const iris = new THREE.Mesh(
-      new THREE.SphereGeometry(r * 0.175, 14, 14),
-      irisMat
+    // ── ハイライト：大きい丸（左上）＋小さい丸（右下）のシンプル2点 ──
+    const hlMain = new THREE.Mesh(
+      new THREE.SphereGeometry(r * 0.095, 10, 10),
+      hlStarMat
     );
-    iris.scale.set(1.0, 1.2, 0.7);
-    iris.position.z = r * 0.09;
-    eyeGroup.add(iris);
+    hlMain.position.set(-r * 0.07, r * 0.13, r * 0.17);
+    eyeGroup.add(hlMain);
 
-    // ── 瞳孔：真ん中の黒い点 ──
-    const pupil = new THREE.Mesh(
-      new THREE.SphereGeometry(r * 0.095, 12, 12),
-      pupilMat
-    );
-    pupil.scale.set(1.0, 1.15, 0.65);
-    pupil.position.z = r * 0.155;
-    eyeGroup.add(pupil);
-
-    // ── メインハイライト：大きく左上でキラリ ──
-    const hl1 = new THREE.Mesh(
-      new THREE.SphereGeometry(r * 0.075, 8, 8),
-      hlMainMat
-    );
-    hl1.scale.set(1.0, 1.3, 0.7);
-    hl1.position.set(-r * 0.07, r * 0.10, r * 0.22);
-    eyeGroup.add(hl1);
-
-    // ── サブハイライト①：右下の小さな輝き ──
-    const hl2 = new THREE.Mesh(
-      new THREE.SphereGeometry(r * 0.038, 7, 7),
+    const hlSub = new THREE.Mesh(
+      new THREE.SphereGeometry(r * 0.048, 8, 8),
       hlSubMat
     );
-    hl2.position.set(r * 0.07, -r * 0.04, r * 0.23);
-    eyeGroup.add(hl2);
+    hlSub.position.set(r * 0.07, -r * 0.06, r * 0.17);
+    eyeGroup.add(hlSub);
 
-    // ── サブハイライト②：左下のさらに小さい輝き ──
-    const hl3 = new THREE.Mesh(
-      new THREE.SphereGeometry(r * 0.022, 6, 6),
-      hlSubMat
-    );
-    hl3.position.set(-r * 0.09, -r * 0.07, r * 0.225);
-    eyeGroup.add(hl3);
-
-    // ── まつ毛：上部に3本のアーチ型 ──
-    for (let li = -1; li <= 1; li++) {
-      const lashPts = [];
-      for (let k = 0; k <= 5; k++) {
-        const kt = k / 5;
-        lashPts.push(new THREE.Vector3(
-          li * r * 0.08 + (li === 0 ? 0 : li * r * 0.04 * kt),
-          r * 0.22 + kt * r * 0.16,
-          r * 0.18 - kt * r * 0.04
-        ));
-      }
-      const lash = new THREE.Mesh(
-        new THREE.TubeGeometry(
-          new THREE.CatmullRomCurve3(lashPts), 5, r * 0.018, 4, false
-        ),
-        lashMat
-      );
-      eyeGroup.add(lash);
-    }
-
-    // ── 目の配置：左右に少し広め・正面上部 ──
-    const angle = side * 0.38;
+    // ── 目の配置：カービィ風に少し下・中央寄り ──
+    const angle = side * 0.32;
     eyeGroup.position.set(
-      Math.sin(angle) * r * 0.82,
-      r * (0.48 + eyeY),
-      Math.cos(angle) * r * 0.82
+      Math.sin(angle) * r * 0.75,
+      r * (0.42 + eyeY),
+      Math.cos(angle) * r * 0.80
     );
-    // 外側にわずかに傾けて愛嬌を出す
-    eyeGroup.rotation.z = side * 0.08;
+    eyeGroup.rotation.z = side * 0.05;
     return eyeGroup;
   }
 
   faceGroup.add(makeEye(-1));
   faceGroup.add(makeEye( 1));
 
-  // ── 口：大きめのニコッとした笑顔 ──
-  const mouthPoints = [];
-  const mouthWidth = r * 0.44;
-  for (let i = 0; i <= 14; i++) {
-    const t = i / 14;
-    const mx = (t - 0.5) * mouthWidth * 2;
-    // 両端が上がった笑顔カーブ（二次曲線）
-    const my = (4 * (t - 0.5) ** 2 - 1) * r * 0.13;
-    const mz = Math.sqrt(Math.max(0, r * r - mx * mx - (r * (0.28 + eyeY)) ** 2)) * 0.93;
-    mouthPoints.push(new THREE.Vector3(mx, r * (0.28 + eyeY) - r * 0.36 + my, mz));
+  // ── 口：カービィ風の小さなw字ニコニコ口 ──
+  const mouthPts = [];
+  const mw = r * 0.30;
+  for (let i = 0; i <= 20; i++) {
+    const t = i / 20;
+    const mx = (t - 0.5) * mw * 2;
+    // w字カーブ：両端と中央が下がるハッピーな口
+    const wave = Math.sin(t * Math.PI) * r * 0.10;
+    const my = -wave;
+    const mz = Math.sqrt(Math.max(0, r * r - mx * mx)) * 0.88;
+    mouthPts.push(new THREE.Vector3(mx, r * (0.14 + eyeY) + my, mz));
   }
   const mouthMesh = new THREE.Mesh(
-    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(mouthPoints), 16, r * 0.038, 6, false),
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(mouthPts), 20, r * 0.032, 6, false),
     mouthMat
   );
   faceGroup.add(mouthMesh);
 
-  // ── ほっぺたの赤み：左右にふんわり ──
-  const cheekMat = new THREE.MeshStandardMaterial({
-    color: 0xff8888, roughness: 1.0, transparent: true, opacity: 0.38,
-  });
+  // ── ほっぺた：カービィ風の大きめ赤丸 ──
   [-1, 1].forEach(side => {
     const cheek = new THREE.Mesh(
-      new THREE.SphereGeometry(r * 0.13, 8, 6),
+      new THREE.SphereGeometry(r * 0.16, 10, 8),
       cheekMat
     );
-    cheek.scale.set(1.4, 0.7, 0.5);
-    const angle = side * 0.62;
+    cheek.scale.set(1.5, 0.75, 0.45);
+    const angle = side * 0.58;
     cheek.position.set(
-      Math.sin(angle) * r * 0.72,
-      r * (0.25 + eyeY),
-      Math.cos(angle) * r * 0.75
+      Math.sin(angle) * r * 0.70,
+      r * (0.20 + eyeY),
+      Math.cos(angle) * r * 0.80
     );
     faceGroup.add(cheek);
   });
@@ -624,10 +565,38 @@ function buildPlayer() {
 // 戻り値 { body, bodyMat, hatGroup, stickMat }
 // ============================================================
 function buildCuteSlimeBody(group, r, color) {
-  const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.42, metalness: 0.05 });
-  const body = new THREE.Mesh(new THREE.SphereGeometry(r, 22, 22), bodyMat);
-  body.scale.set(1.0, 0.90, 1.0);
-  body.position.y = r;
+  // ── ぷにぷに体形：頂点変形で底面を平たく・上部をふっくら ──
+  const geo = new THREE.SphereGeometry(r, 32, 32);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const ny = y / r; // -1〜1の正規化Y
+    // 底面を平らに押し込む
+    const flatBottom = ny < -0.3 ? -0.3 + (ny + 0.3) * 0.35 : ny;
+    // 上部をふっくり膨らませる
+    const puff = ny > 0 ? 1.0 + ny * 0.18 : 1.0;
+    // 横方向を少し膨らませてぷにっと感
+    const bulge = 1.0 + Math.max(0, 1.0 - ny * ny) * 0.12;
+    pos.setXYZ(i, x * bulge * puff, flatBottom * r * puff, z * bulge * puff);
+  }
+  pos.needsUpdate = true;  // ★ 頂点変形をGPUに反映
+  geo.computeVertexNormals();
+
+  // ── MeshPhysicalMaterialでゼリー質感 ──
+  const bodyMat = new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.08,
+    metalness: 0.0,
+    transmission: 0.25,   // 光を透過させてゼリー感
+    thickness: r * 1.2,
+    clearcoat: 1.0,       // 表面のツヤツヤコーティング
+    clearcoatRoughness: 0.05,
+    ior: 1.4,
+    envMapIntensity: 1.2,
+  });
+  const body = new THREE.Mesh(geo, bodyMat);
+  body.scale.set(1.0, 1.0, 1.0);
+  body.position.y = r * 0.78;  // 底面が平らな分少し下げる
   body.castShadow = true;
   group.add(body);
 

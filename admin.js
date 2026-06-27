@@ -269,6 +269,7 @@
         showStageStart();
         syncPanel();
         closePanel();
+        if (typeof saveToServer === 'function') saveToServer();
         showToast(`Stage ${stg.stageNo} にジャンプ！`);
       });
       stageBtns.appendChild(btn);
@@ -356,6 +357,7 @@
     document.getElementById('adminUnlockAllBtn').addEventListener('click', () => {
       state.unlockedStages = STAGES.length;
       syncPanel();
+      if (typeof saveToServer === 'function') saveToServer();
       showToast('🔓 全ステージ解放！');
     });
   }

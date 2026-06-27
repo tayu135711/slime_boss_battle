@@ -202,6 +202,11 @@ function handleBossDefeated() {
   three.bossMesh.material.transparent = true;
   three.bossMesh.material.opacity     = 0.3;
 
+  // ★ 最終ボス（古王スライム・ガガントス = stageIndex 5）討伐フラグ
+  if (state.stageIndex >= 5) {
+    state.quests.king_slime_defeated = true;
+  }
+
   // ★ 次ステージを正しく解放（現在+1 を unlockedStages に反映）
   const nextIdx = state.stageIndex + 1;
   if (nextIdx < STAGES.length && nextIdx >= state.unlockedStages) {
@@ -316,6 +321,8 @@ function resetBattle() {
 
   state.player.hp              = CONFIG.player.maxHp;
   state.player.invincibleUntil = 0;
+  state.player.vx              = 0;   // ★ 慣性速度リセット
+  state.player.vz              = 0;
 
   // ★ nextAttackAt を Infinity に戻す（startStage() で正式に設定する）
   state.bossAI = { phase: 1, nextAttackAt: Infinity, mode: "wander", chargeTarget: null };

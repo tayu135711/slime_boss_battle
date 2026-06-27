@@ -30,6 +30,7 @@ function initFishingUI() {
 
 function startFishing() {
   if (fishingActive) return;
+  fishingActive = true;  // ← フェードアニメーション中の連打を即ブロック
 
   const today = new Date().toDateString();
   if (!state.lastFishDate || state.lastFishDate !== today) {
@@ -37,13 +38,13 @@ function startFishing() {
     state.lastFishDate = today;
   }
   if (state.dailyFishCount >= FISHING_DAILY_LIMIT) {
+    fishingActive = false;  // 制限に引っかかった場合はリセット
     dom.statusLine.textContent = "🎣 今日はもう十分。また明日おいで。";
     setTimeout(() => dom.statusLine.textContent = "", 2000);
     return;
   }
 
   initFishingUI();
-  fishingActive = true;
   fishingPhase = "waiting";
 
   fishingUI.style.display = "flex";
@@ -85,6 +86,7 @@ function endFishing(success) {
       dom.statusLine.textContent = `${fish.icon} ${fish.name}: ${fish.desc}`;
       setTimeout(() => dom.statusLine.textContent = "", 2500);
       checkQuestProgress();
+      if (typeof updatePlazaCameraFollow === "function") updatePlazaCameraFollow();
     }, 1500);
   } else {
     document.getElementById("fishingPrompt").textContent = "…そっと逃がしてしまった。";
@@ -93,6 +95,7 @@ function endFishing(success) {
       fishingUI.style.display = "none";
       document.getElementById("fishingAction").style.display = "";
       fishingPhase = "idle";
+      if (typeof updatePlazaCameraFollow === "function") updatePlazaCameraFollow();
     }, 1000);
   }
 }

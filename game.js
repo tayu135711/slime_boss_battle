@@ -53,6 +53,11 @@ function setupInput() {
     showStageStart();
   });
   dom.retryBtn.addEventListener("click", () => { resetBattle(); showStageStart(); });
+  document.getElementById("gameOverBackToPlazaBtn")?.addEventListener("click", () => {
+    dom.gameOverScreen.classList.remove("visible");
+    resetBattle();
+    showHomePlaza();
+  });
   dom.stageStartBtn.addEventListener("click", startStage);
   dom.titleStartBtn.addEventListener("click", dismissTitle);
   dom.titleStartBtn.addEventListener("touchend", e => { e.preventDefault(); dismissTitle(); }, { passive: false });
@@ -81,17 +86,32 @@ function setupInput() {
 function updatePlayerMovement() {
   if (state.gameOver || !state.battleStarted) return;
   let dx = 0, dz = 0;
-  if (state.keys.up) dz -= 1;
-  if (state.keys.down) dz += 1;
-  if (state.keys.left) dx -= 1;
+  if (state.keys.up)    dz -= 1;
+  if (state.keys.down)  dz += 1;
+  if (state.keys.left)  dx -= 1;
   if (state.keys.right) dx += 1;
+
+  const half    = CONFIG.field.halfSize;
+  const topSpeed = CONFIG.player.moveSpeed * 1.8;
+  const accel    = 0.12;
+  const friction = 0.82;
+
   if (dx !== 0 || dz !== 0) {
     const len = Math.hypot(dx, dz);
-    const half = CONFIG.field.halfSize;
-    state.player.x = clamp(state.player.x + (dx / len) * CONFIG.player.moveSpeed, -half, half);
-    state.player.z = clamp(state.player.z + (dz / len) * CONFIG.player.moveSpeed, -half, half);
+    state.player.vx = (state.player.vx || 0) + (dx / len * topSpeed - (state.player.vx || 0)) * accel;
+    state.player.vz = (state.player.vz || 0) + (dz / len * topSpeed - (state.player.vz || 0)) * accel;
     three.playerGroup.rotation.y = Math.atan2(dx, dz);
+  } else {
+    state.player.vx = (state.player.vx || 0) * friction;
+    state.player.vz = (state.player.vz || 0) * friction;
   }
+
+  state.player.x = clamp(state.player.x + (state.player.vx || 0), -half, half);
+  state.player.z = clamp(state.player.z + (state.player.vz || 0), -half, half);
+
+  if (Math.abs(state.player.x) >= half) state.player.vx = 0;
+  if (Math.abs(state.player.z) >= half) state.player.vz = 0;
+
   three.playerGroup.position.set(state.player.x, 0, state.player.z);
   three.rangeRing.position.set(state.player.x, 0.03, state.player.z);
 }
