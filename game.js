@@ -136,10 +136,10 @@ function setupInput() {
     showHomePlaza();
   });
   dom.stageStartBtn.addEventListener("click", startStage);
-  dom.titleStartBtn.addEventListener("click", dismissTitle);
-  dom.titleStartBtn.addEventListener("touchend", e => { e.preventDefault(); dismissTitle(); }, { passive: false });
-  dom.menuStageBtn.addEventListener("click", () => showStageSelect("menu"));
-  dom.menuGachaBtn.addEventListener("click", showGacha);
+  dom.titleStartBtn.addEventListener("click", () => { SE.resume(); SE.button(); dismissTitle(); });
+  dom.titleStartBtn.addEventListener("touchend", e => { e.preventDefault(); SE.resume(); SE.button(); dismissTitle(); }, { passive: false });
+  dom.menuStageBtn.addEventListener("click", () => { SE.button(); showStageSelect("menu"); });
+  dom.menuGachaBtn.addEventListener("click", () => { SE.button(); showGacha(); });
   dom.menuOtherBtn.addEventListener("click", () => window.__adminOpenPanel?.());
   dom.stageSelectBackBtn.addEventListener("click", backFromStageSelect);
   dom.nextStageBtn.addEventListener("click", goNextStage);
@@ -159,6 +159,7 @@ function setupInput() {
     const { w, h } = getSize();
     three.camera.aspect = w / h;
     three.camera.updateProjectionMatrix();
+    three.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     three.renderer.setSize(w, h);
   });
 }
@@ -303,6 +304,26 @@ function init() {
   pickNewBossTarget();
   refreshUi();
   animate();
+
+  // SE初期化: ユーザー操作後にAudioContextを起動
+  const initSEOnce = () => {
+    SE.init();
+    document.removeEventListener("click", initSEOnce);
+    document.removeEventListener("keydown", initSEOnce);
+  };
+  document.addEventListener("click", initSEOnce);
+  document.addEventListener("keydown", initSEOnce);
+
+  // ミュートボタン
+  const muteBtn = document.getElementById("muteBtn");
+  if (muteBtn) {
+    muteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const next = !SE.isEnabled();
+      SE.setEnabled(next);
+      muteBtn.textContent = next ? "🔊" : "🔇";
+    });
+  }
 }
 
 init();

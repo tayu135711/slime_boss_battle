@@ -382,22 +382,22 @@ html, body {
 }
 #gameOverScreen.visible { display: flex; }
 #gameOverBox {
-  background: linear-gradient(160deg, #FFF0E8, #FFE4D8);
+  background: linear-gradient(160deg, #3a1808, #2a1205);
   border: 3px solid #C45030;
   border-radius: 24px;
   padding: 36px 48px;
   text-align: center;
-  box-shadow: 0 12px 40px rgba(180,60,30,0.25), inset 0 1px 0 rgba(255,255,255,0.8);
+  box-shadow: 0 12px 40px rgba(180,60,30,0.5), inset 0 1px 0 rgba(255,100,60,0.15);
 }
 #gameOverTitle {
   font-size: 30px; font-weight: 900;
-  color: #B03020;
-  text-shadow: 0 2px 0 rgba(180,80,40,0.3);
+  color: #ff6040;
+  text-shadow: 0 2px 8px rgba(255,80,40,0.6);
   margin-bottom: 10px;
   letter-spacing: 0.05em;
 }
 #gameOverSub {
-  font-size: 14px; color: #8B4A38;
+  font-size: 14px; color: #e0a090;
   margin-bottom: 24px;
 }
 #retryBtn {
@@ -437,21 +437,22 @@ html, body {
 #stageStartBox {
   text-align: center;
   padding: 38px 52px;
-  background: linear-gradient(160deg, #F0FFF0, #E8F8E0);
-  border: 3px solid #6BAB5A;
+  background: linear-gradient(160deg, #0a2010, #061808);
+  border: 3px solid #4a8040;
   border-radius: 24px;
-  box-shadow: 0 12px 40px rgba(60,120,40,0.2), inset 0 1px 0 rgba(255,255,255,0.8);
+  box-shadow: 0 12px 40px rgba(30,80,20,0.5), inset 0 1px 0 rgba(100,200,80,0.1);
 }
 #stageChapter {
-  font-size: 12px; color: #4A8040; letter-spacing: 0.2em;
+  font-size: 12px; color: #80c870; letter-spacing: 0.2em;
   margin-bottom: 6px; font-weight: 700;
 }
 #stageNo {
-  font-size: 28px; font-weight: 900; color: #2A5020;
+  font-size: 28px; font-weight: 900; color: #b0e890;
   letter-spacing: 0.1em; margin-bottom: 8px;
+  text-shadow: 0 2px 8px rgba(80,200,60,0.4);
 }
 #stageBossName {
-  font-size: 16px; color: #8B6B4A;
+  font-size: 16px; color: #c0a880;
   margin-bottom: 28px; font-weight: bold;
 }
 #stageStartBtn {
@@ -477,26 +478,26 @@ html, body {
 #resultBox {
   text-align: center;
   padding: 32px 40px;
-  background: linear-gradient(160deg, #FFFEF0, #FFF8E0);
-  border: 3px solid #D4A84B;
+  background: linear-gradient(160deg, #201808, #180e04);
+  border: 3px solid #c09030;
   border-radius: 24px;
-  box-shadow: 0 12px 40px rgba(180,140,30,0.2), inset 0 1px 0 rgba(255,255,255,0.9);
+  box-shadow: 0 12px 40px rgba(180,120,20,0.4), inset 0 1px 0 rgba(255,200,80,0.1);
   min-width: 280px;
   max-width: min(90vw, 380px);
 }
 #resultTitle {
   font-size: 24px; font-weight: 900;
-  color: #A07020;
-  text-shadow: 0 2px 0 rgba(180,130,20,0.25);
+  color: #ffd060;
+  text-shadow: 0 2px 8px rgba(255,180,20,0.5);
   margin-bottom: 18px;
   letter-spacing: 0.05em;
 }
 #resultStats {
-  font-size: 14px; color: #6B4E2E;
+  font-size: 14px; color: #d0b888;
   line-height: 2.0; margin-bottom: 20px;
   text-align: left;
 }
-#resultStats b { color: #8B5A20; }
+#resultStats b { color: #ffc840; }
 #nextStageBtn {
   padding: 13px 32px; font-size: 15px; font-weight: 900;
   background: linear-gradient(135deg, #4A7EA0, #6AA8C8);
@@ -563,20 +564,20 @@ html, body {
 #endingBox {
   text-align: center;
   padding: 44px 56px;
-  background: linear-gradient(160deg, #FFFCE8, #FFF0C0);
-  border: 3px solid #D4A84B;
+  background: linear-gradient(160deg, #1a1200, #100c00);
+  border: 3px solid #d4a030;
   border-radius: 24px;
-  box-shadow: 0 14px 48px rgba(180,140,20,0.22), inset 0 1px 0 rgba(255,255,255,0.9);
+  box-shadow: 0 14px 48px rgba(200,150,0,0.4), inset 0 1px 0 rgba(255,200,60,0.12);
 }
 #endingTitle {
   font-size: 26px; font-weight: 900;
-  color: #906020;
-  text-shadow: 0 2px 0 rgba(180,130,0,0.2);
+  color: #ffe060;
+  text-shadow: 0 2px 12px rgba(255,200,0,0.6);
   margin-bottom: 12px;
   letter-spacing: 0.06em;
 }
 #endingSub {
-  font-size: 14px; color: #6B4E2E;
+  font-size: 14px; color: #c8a870;
   margin-bottom: 28px; line-height: 1.8;
 }
 #endingRetryBtn {
@@ -889,44 +890,45 @@ html, body {
 #stageSelectScreen.visible { display: flex; }
 #stageSelectBox {
   width: min(92vw, 360px);
-  background: linear-gradient(160deg, #F8FFF4, #EEF8E8);
-  border: 2.5px solid #6BAB5A;
+  background: linear-gradient(160deg, #0a1e08, #061404);
+  border: 2.5px solid #4a8040;
   border-radius: 24px;
   padding: 22px 18px;
   display: flex; flex-direction: column; gap: 14px;
   animation: titleFadeIn 0.4s ease forwards;
   max-height: 85vh; overflow-y: auto;
-  box-shadow: 0 14px 40px rgba(40,90,20,0.18), inset 0 1px 0 rgba(255,255,255,0.9);
+  box-shadow: 0 14px 40px rgba(20,70,10,0.5), inset 0 1px 0 rgba(80,180,60,0.08);
 }
 #stageSelectTitle {
   font-size: 17px; font-weight: 900;
-  color: #3A6828; text-align: center;
+  color: #90d870; text-align: center;
   letter-spacing: 0.1em;
+  text-shadow: 0 1px 6px rgba(60,180,40,0.4);
 }
 #stageSelectChapter {
-  font-size: 12px; color: #6BAB5A;
+  font-size: 12px; color: #5a9850;
   text-align: center; letter-spacing: 0.12em; font-weight: 700;
 }
 #stageList { display: flex; flex-direction: column; gap: 8px; }
 .stage-card {
   display: flex; align-items: center; gap: 14px;
   padding: 12px 14px;
-  background: rgba(255,255,255,0.7);
-  border: 2px solid #B8D8A8;
+  background: rgba(40,80,30,0.45);
+  border: 2px solid #4a7840;
   border-radius: 14px;
   cursor: pointer;
   transition: background 0.1s, transform 0.1s;
-  box-shadow: 0 2px 6px rgba(60,100,40,0.1);
+  box-shadow: 0 2px 6px rgba(20,60,10,0.3);
 }
-.stage-card:active { transform: scale(0.97); background: #E8F8E0; }
-.stage-card:hover { background: rgba(220,245,210,0.9); }
-.stage-card.locked { opacity: 0.45; cursor: not-allowed; }
+.stage-card:active { transform: scale(0.97); background: rgba(60,110,40,0.6); }
+.stage-card:hover { background: rgba(50,100,35,0.55); }
+.stage-card.locked { opacity: 0.35; cursor: not-allowed; }
 .stage-card.locked:active { transform: none; }
-.stage-card-no { font-size: 11px; color: #6BAB5A; min-width: 52px; text-align: center; font-weight: 700; }
-.stage-card-no b { display: block; font-size: 20px; color: #3A6828; }
+.stage-card-no { font-size: 11px; color: #80c860; min-width: 52px; text-align: center; font-weight: 700; }
+.stage-card-no b { display: block; font-size: 20px; color: #a8e888; text-shadow: 0 1px 4px rgba(60,180,40,0.4); }
 .stage-card-info { flex: 1; }
-.stage-card-name { font-size: 14px; font-weight: 900; color: #3A2E20; }
-.stage-card-hp { font-size: 11px; color: #8B6B4A; margin-top: 2px; }
+.stage-card-name { font-size: 14px; font-weight: 900; color: #e0f0d8; }
+.stage-card-hp { font-size: 11px; color: #90a880; margin-top: 2px; }
 .stage-card-lock { font-size: 20px; }
 .back-btn {
   padding: 10px 20px;
@@ -1683,22 +1685,22 @@ button:focus-visible {
 }
 
 #dressingBox {
-  background: linear-gradient(160deg, #fdf6ff 0%, #ffe8f8 60%, #fff0e0 100%);
-  border: 3px solid #d080c0;
+  background: linear-gradient(160deg, #180820 0%, #200830 60%, #1a0818 100%);
+  border: 3px solid #b060c0;
   border-radius: 24px;
   padding: 28px 24px 22px;
   width: min(88vw, 420px);
-  box-shadow: 0 8px 32px rgba(160, 0, 180, 0.30), 0 0 0 1px rgba(255,255,255,0.5) inset;
+  box-shadow: 0 8px 32px rgba(180, 0, 220, 0.40), 0 0 0 1px rgba(200,100,255,0.15) inset;
   text-align: center;
 }
 
 #dressingTitle {
   font-size: 1.4rem;
   font-weight: 900;
-  color: #7b2d8b;
+  color: #e080f0;
   margin-bottom: 18px;
   letter-spacing: 0.08em;
-  text-shadow: 0 1px 3px rgba(200, 100, 220, 0.4);
+  text-shadow: 0 1px 8px rgba(220, 80, 255, 0.6);
 }
 
 #dressingPreview {
@@ -1745,7 +1747,7 @@ button:focus-visible {
 #dressingFromName, #dressingToName {
   font-size: 0.85rem;
   font-weight: 800;
-  color: #4a2060;
+  color: #d8b8e8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1772,15 +1774,15 @@ button:focus-visible {
 #dressingInfo {
   margin: 0 0 16px;
   padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(80, 20, 100, 0.4);
   border-radius: 10px;
-  border: 1px solid rgba(200, 150, 220, 0.35);
+  border: 1px solid rgba(180, 80, 220, 0.4);
   font-size: 0.82rem;
-  color: #5a3070;
+  color: #d0a8e8;
   line-height: 1.7;
 }
 .dressing-weapon { font-weight: 700; }
-.dressing-skill  { color: #9030a0; font-style: italic; }
+.dressing-skill  { color: #e080f0; font-style: italic; }
 
 #dressingBtns {
   display: flex;
@@ -1829,3 +1831,107 @@ button:focus-visible {
   70%  { transform: scale(1.04) translateY(-3px); opacity: 1; }
   100% { transform: scale(1) translateY(0); opacity: 1; }
 }
+
+/* ===== マップボタン（広場右上） ===== */
+#plazaMapBtn {
+  position: fixed;
+  top: 12px;
+  right: 14px;
+  z-index: 120;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2.5px solid #c4a27a;
+  background: rgba(245, 237, 216, 0.95);
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(90,60,30,0.3);
+  display: none;          /* JS で広場表示時に show */
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: transform 0.15s;
+}
+#plazaMapBtn:active { transform: scale(0.9); }
+
+/* ===== ワールドマップ画面 ===== */
+#plazaMapScreen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(20, 10, 40, 0.78);
+  align-items: center;
+  justify-content: center;
+}
+#plazaMapScreen.visible {
+  display: flex;
+}
+#plazaMapBox {
+  background: linear-gradient(160deg, #2a1a50 0%, #1a0a30 100%);
+  border: 2.5px solid #c4a27a;
+  border-radius: 18px;
+  padding: 18px 16px 14px;
+  width: min(360px, 94vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+#plazaMapTitle {
+  font-size: 18px;
+  font-weight: 900;
+  color: #ffeebb;
+  letter-spacing: 0.1em;
+  text-shadow: 0 2px 8px rgba(200,160,80,0.4);
+}
+#plazaMapCanvas {
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid #6a4a2a;
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
+}
+#plazaMapSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+/* 透明なタップボタン（SVGの上） */
+.map-area-btn {
+  position: absolute;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: rgba(255,255,200,0.15);
+}
+.map-area-btn:hover,
+.map-area-btn:active {
+  background: rgba(255, 255, 180, 0.18);
+}
+#plazaMapDesc {
+  font-size: 13px;
+  color: #ccbbaa;
+  letter-spacing: 0.05em;
+  min-height: 18px;
+  text-align: center;
+}
+#plazaMapCloseBtn {
+  background: linear-gradient(135deg, #7a5030, #5a3010);
+  color: #ffeebb;
+  border: 1.5px solid #c4a27a;
+  border-radius: 20px;
+  padding: 8px 28px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  transition: transform 0.12s;
+}
+#plazaMapCloseBtn:active { transform: scale(0.94); }

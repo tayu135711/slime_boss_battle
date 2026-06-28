@@ -16,7 +16,9 @@ function refreshUi() {
   // 必殺技ゲージ
   dom.gaugeInner.style.width = state.specialGauge + "%";
   dom.gaugeLabel.textContent = `必殺技ゲージ: ${state.specialGauge}%`;
+  const wasNotFull = !dom.specialBtn.classList.contains("visible");
   dom.specialBtn.classList.toggle("visible", state.specialGauge >= 100);
+  if (wasNotFull && state.specialGauge >= 100) SE.gaugeFull();
   document.getElementById("gaugeBar")?.setAttribute("aria-valuenow", state.specialGauge);
   // 統計
   dom.totalDamageEl.textContent = state.totalDamage;
@@ -90,6 +92,10 @@ function showHomePlaza() {
   if (typeof setBattleObjectsVisible === "function") setBattleObjectsVisible(false);
   // 広場を表示
   dom.homePlazaScreen.classList.add("visible");
+  SE.resume();
+  SE.plazaEnter();
+  // マップボタンを表示
+  if (typeof updateMapBtnVisibility === "function") updateMapBtnVisibility();
   // 広場を初期化
   if (typeof initHomePlaza === "function") initHomePlaza();
   // セーブ
@@ -99,6 +105,258 @@ function showHomePlaza() {
 function showComingSoon(name) {
   dom.statusLine.textContent = `🚧 ${name}は準備中です！`;
   setTimeout(() => { dom.statusLine.textContent = ""; }, 2000);
+}
+
+// ──────────────────────────────────────────────────────────────
+// 🛍 商　店 UI
+// ──────────────────────────────────────────────────────────────
+function showShop() {
+  const existing = document.getElementById("shopScreen");
+  if (existing) { existing.style.display = "flex"; _renderShop(); return; }
+
+  // ─── DOM生成 ───
+  const screen = document.createElement("div");
+  screen.id = "shopScreen";
+  screen.style.cssText = [
+    "position:fixed","inset:0","z-index:400",
+    "display:flex","align-items:center","justify-content:center",
+    "background:rgba(10,20,40,0.72)","backdrop-filter:blur(4px)",
+  ].join(";");
+
+  screen.innerHTML = `
+  <div id="shopBox" style="
+    background:linear-gradient(160deg,#1a2a4a 0%,#0f1a30 100%);
+    border:2px solid #4a6aaa; border-radius:20px;
+    padding:0 0 24px 0; width:min(96vw,680px); max-height:92vh;
+    overflow-y:auto; box-shadow:0 8px 40px rgba(0,60,160,0.5);
+    font-family:'Hiragino Sans','Yu Gothic',sans-serif; color:#e8eeff;
+  ">
+    <!-- ヘッダー -->
+    <div style="
+      background:linear-gradient(90deg,#1a3a7a,#2a5aaa,#1a3a7a);
+      border-radius:18px 18px 0 0; padding:16px 20px 12px;
+      text-align:center; position:relative;
+    ">
+      <div style="font-size:22px;font-weight:900;letter-spacing:0.1em;">🛍 商　店</div>
+      <div style="font-size:11px;color:#9ab0e0;margin-top:2px;">きがえ・クエスト・コレクション</div>
+      <button id="shopCloseBtn" style="
+        position:absolute;right:14px;top:12px;
+        background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);
+        color:#fff;border-radius:50%;width:32px;height:32px;
+        font-size:16px;cursor:pointer;line-height:1;
+      ">✕</button>
+    </div>
+
+    <!-- タブ -->
+    <div id="shopTabs" style="display:flex;gap:0;border-bottom:2px solid #2a3a6a;">
+      <button class="shop-tab-btn active" data-tab="wardrobe" style="
+        flex:1;padding:10px 4px;font-size:13px;font-weight:700;
+        background:none;border:none;color:#88aaff;cursor:pointer;
+        border-bottom:3px solid #4a8aff;letter-spacing:0.05em;
+      ">👗 きがえる</button>
+      <button class="shop-tab-btn" data-tab="quests" style="
+        flex:1;padding:10px 4px;font-size:13px;font-weight:700;
+        background:none;border:none;color:#6688cc;cursor:pointer;
+        border-bottom:3px solid transparent;letter-spacing:0.05em;
+      ">📋 クエスト</button>
+      <button class="shop-tab-btn" data-tab="collection" style="
+        flex:1;padding:10px 4px;font-size:13px;font-weight:700;
+        background:none;border:none;color:#6688cc;cursor:pointer;
+        border-bottom:3px solid transparent;letter-spacing:0.05em;
+      ">📖 図　鑑</button>
+    </div>
+
+    <!-- コンテンツ -->
+    <div id="shopContent" style="padding:16px 14px 0;"></div>
+  </div>`;
+
+  document.body.appendChild(screen);
+  // ※ display:flex はインラインスタイルで設定済み。closeShop()はdisplay:noneで隠す。
+
+  // タブ切り替え
+  screen.querySelectorAll(".shop-tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      screen.querySelectorAll(".shop-tab-btn").forEach(b => {
+        b.style.color = "#6688cc";
+        b.style.borderBottom = "3px solid transparent";
+      });
+      btn.style.color = "#88aaff";
+      btn.style.borderBottom = "3px solid #4a8aff";
+      _renderShopTab(btn.dataset.tab);
+    });
+  });
+  document.getElementById("shopCloseBtn").addEventListener("click", closeShop);
+  // 外側クリックで閉じる
+  screen.addEventListener("click", e => { if (e.target === screen) closeShop(); });
+
+  _renderShop();
+}
+
+function _renderShop() { _renderShopTab("wardrobe"); }
+
+function _renderShopTab(tab) {
+  const content = document.getElementById("shopContent");
+  if (!content) return;
+
+  if (tab === "wardrobe") {
+    // ── 着替えエリア ──
+    const equipped = state.equippedCostume;
+    let html = `
+      <div style="margin-bottom:12px;">
+        <div style="font-size:12px;color:#9ab0e0;margin-bottom:8px;">▼ 現在の装備</div>
+        <div style="background:rgba(255,255,255,0.06);border-radius:12px;padding:10px 14px;
+          display:flex;align-items:center;gap:12px;">
+          <div style="width:76px;height:76px;flex-shrink:0;">${getSlimeSVG(equipped.id, 76)}</div>
+          <div>
+            <div style="font-weight:800;font-size:15px;">${equipped.name}</div>
+            <div style="font-size:13px;color:#ffd060;">${"⭐".repeat(equipped.stars)}</div>
+            <div style="font-size:11px;color:#9ab0e0;margin-top:2px;">武器: ${_weaponLabel(equipped.weapon)}</div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#9ab0e0;margin-bottom:8px;">▼ 所持コスチューム（タップで着替え）</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">`;
+
+    COSTUMES.forEach(c => {
+      const owned    = !!state.ownedCostumes.find(o => o.id === c.id);
+      const isEquip  = equipped?.id === c.id;
+      const starBg   = c.stars === 3 ? "linear-gradient(135deg,#2a1a50,#4a2a80)" :
+                       c.stars === 2 ? "linear-gradient(135deg,#1a2a50,#2a4070)" :
+                                       "linear-gradient(135deg,#1a2020,#2a3040)";
+      const border   = isEquip ? "2px solid #ffd060" : owned ? "1px solid #3a5090" : "1px solid #2a3050";
+      html += `
+        <div class="shop-costume-card" data-id="${c.id}" data-owned="${owned}" style="
+          background:${starBg};border:${border};border-radius:12px;
+          padding:10px 6px 8px;text-align:center;cursor:${owned && !isEquip ? "pointer" : "default"};
+          opacity:${owned ? 1 : 0.45};transition:transform 0.15s,box-shadow 0.15s;
+          position:relative;
+        ">
+          ${isEquip ? '<div style="position:absolute;top:4px;right:6px;font-size:9px;color:#ffd060;font-weight:700;">装備中</div>' : ""}
+          <div style="width:68px;height:68px;margin:0 auto 4px;">
+            ${owned ? getSlimeSVG(c.id, 68) : '<div style="width:68px;height:68px;line-height:68px;font-size:30px;text-align:center;color:#4a5080;">？</div>'}
+          </div>
+          <div style="font-size:10px;color:#ffd060;">${"⭐".repeat(c.stars)}</div>
+          <div style="font-size:11px;font-weight:700;margin-top:2px;line-height:1.2;">${owned ? c.name : "?????"}</div>
+          <div style="font-size:9px;color:#6888aa;margin-top:2px;">${c.no}</div>
+        </div>`;
+    });
+    html += `</div><div style="height:16px;"></div>`;
+    content.innerHTML = html;
+
+    // 着替えクリック
+    content.querySelectorAll(".shop-costume-card[data-owned='true']").forEach(card => {
+      card.addEventListener("mouseenter", () => {
+        if (card.dataset.id !== state.equippedCostume?.id) card.style.transform = "scale(1.04)";
+      });
+      card.addEventListener("mouseleave", () => { card.style.transform = ""; });
+      card.addEventListener("click", () => {
+        const costume = COSTUMES.find(c => c.id === card.dataset.id);
+        if (!costume || costume.id === state.equippedCostume?.id) return;
+        showDressingRoom(costume);
+        // 着替え後に商店も更新
+        const orig = window._dressingConfirmHook;
+        window._dressingConfirmHook = () => {
+          setTimeout(() => _renderShopTab("wardrobe"), 400);
+          if (orig) orig();
+        };
+      });
+    });
+
+  } else if (tab === "quests") {
+    // ── クエスト掲示板 ──
+    let html = `<div style="font-size:13px;color:#9ab0e0;margin-bottom:10px;">📋 クエスト一覧</div>`;
+
+    Object.entries(QUESTS).forEach(([qid, def]) => {
+      const qs = state.quests[qid];
+      const isAccepted  = !!qs;
+      const isCompleted = qs?.completed;
+      const collected   = qs?.collected || 0;
+      const goal        = def.goal;
+
+      const barPct  = isAccepted && !isCompleted ? Math.min(100, Math.round(collected / goal * 100)) : (isCompleted ? 100 : 0);
+      const barCol  = isCompleted ? "#44cc88" : "#4a8aff";
+      const badgeText = isCompleted ? "✅ 達成" : isAccepted ? "🔵 進行中" : "⬜ 未受注";
+      const badgeBg   = isCompleted ? "rgba(50,160,80,0.25)" : isAccepted ? "rgba(40,80,180,0.25)" : "rgba(60,60,80,0.25)";
+
+      html += `
+        <div style="background:rgba(255,255,255,0.05);border:1px solid #2a3a6a;border-radius:12px;
+          padding:12px 14px;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div style="font-weight:700;font-size:13px;">${def.name}</div>
+            <div style="font-size:10px;background:${badgeBg};padding:2px 8px;border-radius:20px;">${badgeText}</div>
+          </div>
+          <div style="font-size:11px;color:#9ab0e0;margin-bottom:8px;">${def.description}</div>
+          ${isAccepted ? `
+            <div style="background:#1a2a50;border-radius:6px;height:8px;margin-bottom:6px;overflow:hidden;">
+              <div style="height:100%;width:${barPct}%;background:${barCol};border-radius:6px;transition:width 0.5s;"></div>
+            </div>
+            <div style="font-size:10px;color:#7a9acc;">進捗: ${isCompleted ? goal : collected} / ${goal}</div>
+          ` : ""}
+          <div style="font-size:10px;color:#c0a040;margin-top:4px;">🎁 報酬: ${def.rewardText}</div>
+          <div style="font-size:10px;color:#6a8aaa;margin-top:2px;">依頼人: ${def.giver}</div>
+          ${!isAccepted ? `
+            <button class="shop-quest-accept" data-qid="${qid}" style="
+              margin-top:8px;padding:6px 16px;font-size:11px;font-weight:700;
+              background:linear-gradient(90deg,#2a4aaa,#3a6acc);border:1px solid #4a7aee;
+              color:#fff;border-radius:20px;cursor:pointer;
+            ">✋ クエストを受ける</button>
+          ` : ""}
+        </div>`;
+    });
+
+    content.innerHTML = html;
+    content.querySelectorAll(".shop-quest-accept").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const qid = btn.dataset.qid;
+        if (acceptQuest(qid)) {
+          btn.textContent = "受注した！";
+          btn.disabled = true;
+          btn.style.opacity = "0.6";
+          dom.statusLine.textContent = `📋 クエスト「${QUESTS[qid].name}」を受けた！`;
+          setTimeout(() => { dom.statusLine.textContent = ""; }, 2500);
+          setTimeout(() => _renderShopTab("quests"), 500);
+        }
+      });
+    });
+
+  } else if (tab === "collection") {
+    // ── 図鑑 ──
+    const total  = COSTUMES.length;
+    const owned  = COSTUMES.filter(c => state.ownedCostumes.find(o => o.id === c.id)).length;
+    let html = `
+      <div style="text-align:center;margin-bottom:14px;">
+        <div style="font-size:22px;font-weight:900;color:#ffd060;">${owned}<span style="font-size:14px;color:#9ab0e0;"> / ${total}</span></div>
+        <div style="font-size:11px;color:#9ab0e0;">コスチューム収集率</div>
+        <div style="background:#1a2a50;border-radius:6px;height:10px;margin:8px auto;max-width:200px;overflow:hidden;">
+          <div style="height:100%;width:${Math.round(owned/total*100)}%;background:linear-gradient(90deg,#4a8aff,#a060ff);border-radius:6px;"></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">`;
+
+    COSTUMES.forEach(c => {
+      const isOwned = !!state.ownedCostumes.find(o => o.id === c.id);
+      const starBg  = c.stars === 3 ? "#4a2a80" : c.stars === 2 ? "#1a3060" : "#1e2830";
+      html += `
+        <div style="background:${starBg};border-radius:10px;padding:8px 4px;text-align:center;opacity:${isOwned?1:0.4};">
+          <div style="width:58px;height:58px;margin:0 auto 3px;">
+            ${isOwned ? getSlimeSVG(c.id,58) : '<div style="width:58px;height:58px;line-height:58px;font-size:26px;text-align:center;color:#4a5080;">？</div>'}
+          </div>
+          <div style="font-size:9px;color:#ffd060;">${"⭐".repeat(c.stars)}</div>
+          <div style="font-size:9px;font-weight:700;line-height:1.2;margin-top:1px;">${isOwned ? c.name : "?????"}</div>
+        </div>`;
+    });
+    html += `</div><div style="height:16px;"></div>`;
+    content.innerHTML = html;
+  }
+}
+
+function _weaponLabel(w) {
+  return w === "sword" ? "⚔️ 剣" : w === "spear" ? "🔱 槍" : "👊 なし";
+}
+
+function closeShop() {
+  const s = document.getElementById("shopScreen");
+  if (s) s.style.display = "none";
 }
 
 // ステージ選択の呼び元（"menu" or "plaza"）を記憶して戻り先を切り替える
@@ -171,6 +429,8 @@ function startStage() {
 
   state.stageStartAt  = Date.now();
   state.battleStarted = true;
+  SE.resume();
+  SE.battleStart();
 
   // ★ バトル開始時に初回攻撃を2秒後に設定
   state.bossAI.nextAttackAt = Date.now() + 2000;
@@ -199,6 +459,7 @@ function goNextStage() {
 // ── クリア・ゲームオーバー ─────────────────────────────────────
 function handleBossDefeated() {
   state.cleared = true;
+  SE.victory();
   dom.attackBtn.disabled = true;
   dom.attackBtn.classList.add("disabled-look");
   dom.specialBtn.classList.remove("visible");
@@ -435,8 +696,12 @@ function renderGachaCollection() {
 
 function applyCostume(costume) {
   state.equippedCostume = costume;
-  // ボディ・触角の色変更
-  if (three.slimeParts?.bodyMat)  three.slimeParts.bodyMat.color.set(costume.color);
+  // ボディ・触角の色変更（emissiveも連動させて色をはっきり出す）
+  if (three.slimeParts?.bodyMat) {
+    three.slimeParts.bodyMat.color.set(costume.color);
+    three.slimeParts.bodyMat.emissive.set(costume.color);
+    three.slimeParts.bodyMat.emissiveIntensity = 0.12;
+  }
   if (three.slimeParts?.stickMat) three.slimeParts.stickMat.color.set(costume.color);
   // 武器の表示切替
   if (three.swordPivot) three.swordPivot.visible = (costume.weapon === "sword");
@@ -448,6 +713,11 @@ function applyCostume(costume) {
     plaza.playerMesh.traverse(child => {
       if (child.isMesh && child.material?.color) {
         child.material.color.set(costume.color);
+        // MeshPhysicalMaterialにはemissiveも更新
+        if (child.material.emissive) {
+          child.material.emissive.set(costume.color);
+          child.material.emissiveIntensity = 0.12;
+        }
       }
     });
   }
@@ -533,6 +803,12 @@ function confirmDressing() {
   // 着替え完了フィードバック
   dom.statusLine.textContent = `✨ ${costume.name} に着替えた！`;
   setTimeout(() => dom.statusLine.textContent = "", 2500);
+
+  // 商店から開かれていた場合は商店UIを更新
+  if (typeof window._dressingConfirmHook === "function") {
+    window._dressingConfirmHook();
+    window._dressingConfirmHook = null;
+  }
 }
 
 // ── お弁当 ───────────────────────────────────────────────────

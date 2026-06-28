@@ -55,6 +55,7 @@ function completeQuest(questId) {
   else if (reward.type === "bento_slot") state.maxBento += reward.slotCount;
   else if (reward.type === "accessory") state.accessories.push(reward.accessoryId);
 
+  SE.questComplete();
   dom.statusLine.textContent = `✨ クエスト「${QUESTS[questId].name}」達成！ ${QUESTS[questId].rewardText}`;
   setTimeout(() => dom.statusLine.textContent = "", 3000);
 }

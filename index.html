@@ -26,6 +26,7 @@
   <div id="statsArea">
     <span>ダメージ: <b id="totalDamage">0</b></span>
     <span>攻撃: <b id="attackCount">0</b>回</span>
+    <button id="muteBtn" title="サウンドON/OFF" style="margin-left:8px;background:none;border:1px solid rgba(255,255,255,0.4);border-radius:6px;color:#fff;font-size:14px;padding:2px 7px;cursor:pointer;vertical-align:middle;">🔊</button>
   </div>
 
   <!-- プレイヤーHP（左下、コントローラーパネルの上） -->
@@ -75,11 +76,57 @@
   <div id="homePlazaScreen">
     <div id="npcBubble" aria-live="polite"></div>
     <div id="plazaActionPrompt">Ａ で入る</div>
+    <!-- マップボタン（広場右上） -->
+    <button id="plazaMapBtn" title="マップ">🗺️</button>
     <!-- NPC会話ウィンドウ -->
     <div id="npcDialog" role="dialog" aria-modal="true" aria-labelledby="npcDialogName">
       <div id="npcDialogName"></div>
       <div id="npcDialogText"></div>
       <button id="npcDialogNext">次へ ▶</button>
+    </div>
+  </div>
+
+  <!-- ワールドマップ画面 -->
+  <div id="plazaMapScreen">
+    <div id="plazaMapBox">
+      <div id="plazaMapTitle">🗺️ 広場マップ</div>
+      <div id="plazaMapCanvas">
+        <svg id="plazaMapSvg" viewBox="0 0 320 280" xmlns="http://www.w3.org/2000/svg">
+          <rect x="0" y="0" width="320" height="280" rx="12" fill="#5a9e4a"/>
+          <ellipse cx="160" cy="140" rx="55" ry="50" fill="#9a8a7a"/>
+          <circle cx="160" cy="140" r="10" fill="#6aacdf" stroke="#4488bb" stroke-width="2"/>
+          <text x="160" y="144" text-anchor="middle" font-size="10" fill="white">💧</text>
+          <rect x="135" y="62" width="50" height="38" rx="6" fill="#7a5030" stroke="#5a3010" stroke-width="2"/>
+          <text x="160" y="79" text-anchor="middle" font-size="9" fill="#ffeebb" font-weight="bold">冒険の門</text>
+          <text x="160" y="92" text-anchor="middle" font-size="13">⚔️</text>
+          <rect x="38" y="104" width="48" height="36" rx="6" fill="#4f7ec4" stroke="#2a5090" stroke-width="2"/>
+          <text x="62" y="120" text-anchor="middle" font-size="9" fill="#ffeebb" font-weight="bold">商　店</text>
+          <text x="62" y="133" text-anchor="middle" font-size="12">🛍</text>
+          <rect x="234" y="104" width="48" height="36" rx="6" fill="#c84040" stroke="#902020" stroke-width="2"/>
+          <text x="258" y="120" text-anchor="middle" font-size="9" fill="#ffeebb" font-weight="bold">食　堂</text>
+          <text x="258" y="133" text-anchor="middle" font-size="12">🍜</text>
+          <rect x="220" y="178" width="80" height="64" rx="8" fill="#1a5a80" stroke="#0a3050" stroke-width="2"/>
+          <ellipse cx="260" cy="210" rx="28" ry="20" fill="#3a8ac0" opacity="0.9"/>
+          <text x="260" y="200" text-anchor="middle" font-size="8" fill="#cceeff">池</text>
+          <text x="260" y="216" text-anchor="middle" font-size="14">🎣</text>
+          <text x="260" y="232" text-anchor="middle" font-size="9" fill="#aaddff" font-weight="bold">釣り場</text>
+          <rect x="22" y="178" width="80" height="64" rx="8" fill="#5a1a70" stroke="#3a0050" stroke-width="2"/>
+          <circle cx="52" cy="205" r="8" fill="#ff88cc" opacity="0.9"/>
+          <circle cx="68" cy="200" r="7" fill="#ffdd44" opacity="0.9"/>
+          <circle cx="82" cy="208" r="8" fill="#aa66ff" opacity="0.9"/>
+          <text x="62" y="228" text-anchor="middle" font-size="14">🌸</text>
+          <text x="62" y="236" text-anchor="middle" font-size="9" fill="#ffccee" font-weight="bold">花　畑</text>
+          <circle id="mapPlayerDot" cx="160" cy="140" r="7" fill="#ffee44" stroke="#cc8800" stroke-width="2"/>
+          <text id="mapPlayerIcon" x="160" y="144" text-anchor="middle" font-size="8">🫧</text>
+        </svg>
+        <button class="map-area-btn" id="mapBtnStage"      style="left:42%;top:22%;width:16%;height:14%;" title="冒険の門"></button>
+        <button class="map-area-btn" id="mapBtnShop"       style="left:12%;top:37%;width:15%;height:13%;" title="商店"></button>
+        <button class="map-area-btn" id="mapBtnRestaurant" style="left:73%;top:37%;width:15%;height:13%;" title="食堂"></button>
+        <button class="map-area-btn" id="mapBtnPond"       style="left:69%;top:64%;width:25%;height:23%;" title="釣り場"></button>
+        <button class="map-area-btn" id="mapBtnFlower"     style="left:7%;top:64%;width:25%;height:23%;" title="花畑"></button>
+      </div>
+      <div id="plazaMapDesc">行きたい場所をタップ！</div>
+      <button id="plazaMapCloseBtn">✕ とじる</button>
     </div>
   </div>
 
@@ -238,6 +285,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="config.js"></script>
+<script src="se.js"></script>
 <script src="costume_art.js"></script>
 <script src="boss_models.js"></script>
 <script src="main.js"></script>

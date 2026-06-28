@@ -50,6 +50,7 @@ function startFishing() {
   fishingUI.style.display = "flex";
   document.getElementById("fishingPrompt").textContent = "浮きがそっと揺れるのを待つ…";
   document.getElementById("fishingAction").style.opacity = "0";
+  SE.fishingCast();
 
   const waitTime = FISHING_WAIT_MIN + Math.random() * (FISHING_WAIT_MAX - FISHING_WAIT_MIN);
   fishingTimer = setTimeout(() => {
@@ -57,6 +58,7 @@ function startFishing() {
     fishingPhase = "strike";
     document.getElementById("fishingPrompt").textContent = "…きた。";
     document.getElementById("fishingAction").style.opacity = "1";
+    SE.fishingBite();
     const now = Date.now();
     fishingHitZone.start = now;
     fishingHitZone.end = now + FISHING_HIT_DURATION;
@@ -76,6 +78,7 @@ function endFishing(success) {
     if (!state.inventory.ingredients[fish.id]) state.inventory.ingredients[fish.id] = 0;
     state.inventory.ingredients[fish.id]++;
     state.dailyFishCount++;
+    SE.fishingSuccess();
 
     document.getElementById("fishingPrompt").textContent = `${fish.icon} ${fish.name} をそっと釣り上げた。`;
     document.getElementById("fishingAction").style.display = "none";
@@ -92,6 +95,7 @@ function endFishing(success) {
       _afterFishingInArea();
     }, 1500);
   } else {
+    SE.fishingMiss();
     document.getElementById("fishingPrompt").textContent = "…そっと逃がしてしまった。";
     document.getElementById("fishingAction").style.display = "none";
     setTimeout(() => {

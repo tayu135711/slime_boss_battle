@@ -17,12 +17,14 @@ function initScene() {
   three.scene.background = new THREE.Color(s0.bgColor);
   three.camera = new THREE.PerspectiveCamera(CONFIG.camera.fov, w / h, 0.1, 120);
   three.renderer = new THREE.WebGLRenderer({ antialias: true });
+  // ★ スマホ対応：デバイスピクセル比を最大1.5に制限（高解像スマホでの重さを軽減）
+  three.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   three.renderer.setSize(w, h);
   three.renderer.shadowMap.enabled = true;
   three.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   three.renderer.outputColorSpace = THREE.SRGBColorSpace; // ★ MeshPhysicalMaterial用
   three.renderer.toneMapping = THREE.ACESFilmicToneMapping; // ★ ゼリー質感をきれいに表示
-  three.renderer.toneMappingExposure = 1.2;
+  three.renderer.toneMappingExposure = 1.0; // ★ 露出を下げて白飛びを抑制
   dom.sceneContainer.appendChild(three.renderer.domElement);
   setupLights();
   buildGround();
@@ -33,11 +35,11 @@ function initScene() {
 }
 
 function setupLights() {
-  // ★ 全体の基本明るさを大幅アップ（0.5→1.4）
-  three.scene.add(new THREE.AmbientLight(0xfff5e0, 1.4));
+  // ★ 全体の基本明るさ（白飛びしない程度に抑える）
+  three.scene.add(new THREE.AmbientLight(0xfff5e0, 0.7));
 
-  // ★ 太陽光（メインの明るい昼光）を追加
-  const sun = new THREE.DirectionalLight(0xfff8d0, 2.2);
+  // ★ 太陽光（メインの昼光）
+  const sun = new THREE.DirectionalLight(0xfff8d0, 1.4);
   sun.position.set(10, 20, 8);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -48,21 +50,21 @@ function setupLights() {
   three.scene.add(sun);
 
   // ★ 補助ライト（影を柔らかくする逆方向の光）
-  const fill = new THREE.DirectionalLight(0xc8e8ff, 0.8);
+  const fill = new THREE.DirectionalLight(0xc8e8ff, 0.4);
   fill.position.set(-6, 8, -4);
   three.scene.add(fill);
 
   // ★ 地面反射光（下からの跳ね返り）
-  const bounce = new THREE.HemisphereLight(0x88dd88, 0x44aa44, 0.6);
+  const bounce = new THREE.HemisphereLight(0x88dd88, 0x44aa44, 0.3);
   three.scene.add(bounce);
 
-  // ★ ボス周辺の光（色はそのままだが明るく）
-  three.bossLight = new THREE.PointLight(0xcc66ff, 2.0, 12);
+  // ★ ボス周辺の光
+  three.bossLight = new THREE.PointLight(0xcc66ff, 1.2, 12);
   three.bossLight.position.set(0, 1.5, -2.5);
   three.scene.add(three.bossLight);
 
-  // ★ フィールド中央の暖かい環境光
-  const centerGlow = new THREE.PointLight(0xffdd88, 0.8, 30);
+  // ★ フィールド中央の暖かい環境光（控えめに）
+  const centerGlow = new THREE.PointLight(0xffdd88, 0.4, 30);
   centerGlow.position.set(0, 5, 0);
   three.scene.add(centerGlow);
 }
@@ -72,42 +74,52 @@ function buildGround() {
   const size = CONFIG.field.halfSize * 2 + 60;
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(size, size, 20, 20),
-    new THREE.MeshStandardMaterial({ color: 0x3a7d2a, roughness: 0.85 })
+    new THREE.MeshStandardMaterial({
+      color: 0x3a7d2a, roughness: 0.85,
+      polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1,
+    })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   three.scene.add(ground);
 
-  // ★ バトルアリーナ（明るめの緑）
+  // ★ バトルアリーナ（明るめの緑）- y=0.02で確実に浮かせてZファイティング防止
   const arena = new THREE.Mesh(
     new THREE.CircleGeometry(CONFIG.field.halfSize * 0.95, 64),
-    new THREE.MeshStandardMaterial({ color: 0x4a9e38, roughness: 0.75 })
+    new THREE.MeshStandardMaterial({
+      color: 0x4a9e38, roughness: 0.75,
+      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
+    })
   );
   arena.rotation.x = -Math.PI / 2;
-  arena.position.y = 0.01;
+  arena.position.y = 0.02;
   arena.receiveShadow = true;
   three.scene.add(arena);
 
-  // ★ 境界リング（柔らかいトーン）
+  // ★ 境界リング（柔らかいトーン）- y=0.04
   const ring = new THREE.Mesh(
     new THREE.RingGeometry(CONFIG.field.halfSize * 0.95, CONFIG.field.halfSize + 0.8, 64),
-    new THREE.MeshBasicMaterial({ color: 0x2a5a20, side: THREE.DoubleSide })
+    new THREE.MeshBasicMaterial({
+      color: 0x2a5a20, side: THREE.DoubleSide,
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    })
   );
   ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.01;
+  ring.position.y = 0.04;
   three.scene.add(ring);
 
-  // ★ 遠方の草原（段階的に広がる）
+  // ★ 遠方の草原（段階的に広がる）- y=0.015
   for (let r = CONFIG.field.halfSize + 8; r < CONFIG.field.halfSize + 40; r += 12) {
     const farGrass = new THREE.Mesh(
       new THREE.RingGeometry(r, r + 10, 32),
       new THREE.MeshStandardMaterial({
         color: r % 24 === (CONFIG.field.halfSize + 8) % 24 ? 0x3a7d2a : 0x336e25,
-        roughness: 0.9
+        roughness: 0.9,
+        polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
       })
     );
     farGrass.rotation.x = -Math.PI / 2;
-    farGrass.position.y = 0.005;
+    farGrass.position.y = 0.015;
     three.scene.add(farGrass);
   }
 }
@@ -585,14 +597,17 @@ function buildCuteSlimeBody(group, r, color) {
   // ── MeshPhysicalMaterialでゼリー質感 ──
   const bodyMat = new THREE.MeshPhysicalMaterial({
     color,
-    roughness: 0.08,
+    roughness: 0.15,
     metalness: 0.0,
-    transmission: 0.25,   // 光を透過させてゼリー感
-    thickness: r * 1.2,
-    clearcoat: 1.0,       // 表面のツヤツヤコーティング
-    clearcoatRoughness: 0.05,
-    ior: 1.4,
-    envMapIntensity: 1.2,
+    transmission: 0.08,   // ★ 0.25→0.08に下げる（白くなりすぎる原因）
+    thickness: r * 0.8,
+    clearcoat: 0.8,       // ★ コーティングを少し抑える
+    clearcoatRoughness: 0.10,
+    ior: 1.35,
+    envMapIntensity: 0.8, // ★ 環境マップ反射も少し抑制
+    // ★ emissiveで色を主張させる（白飛び対策）
+    emissive: color,
+    emissiveIntensity: 0.12,
   });
   const body = new THREE.Mesh(geo, bodyMat);
   body.scale.set(1.0, 1.0, 1.0);

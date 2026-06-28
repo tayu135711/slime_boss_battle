@@ -54,6 +54,7 @@ function doPickFlower() {
   nearestFlower.visible = false;
   nearestFlower.userData.picked = true;
   nearestFlower.userData.respawnTime = Date.now() + 86400000;
+  SE.flowerPick();
 
   if (!state.inventory.ingredients[flowerType.id]) state.inventory.ingredients[flowerType.id] = 0;
   state.inventory.ingredients[flowerType.id]++;

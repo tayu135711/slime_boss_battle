@@ -5,6 +5,13 @@
 
 const SAVE_API = "https://slime-boss-battle.onrender.com/api/save";
 
+// ── Renderのコールドスタート対策：アプリ起動時にウォームアップリクエストを送る ──
+(function warmUpServer() {
+  // バックグラウンドでGETを叩いてサーバーを起こしておく（404でもOK）
+  fetch(`${SAVE_API}/__warmup__`, { method: "GET", signal: AbortSignal.timeout(30000) })
+    .catch(() => {}); // エラーは無視
+})();
+
 // プレイヤーIDをlocalStorageで管理（端末ごとに固定）
 function getPlayerId() {
   let id = localStorage.getItem("slime_player_id");
@@ -13,6 +20,17 @@ function getPlayerId() {
     localStorage.setItem("slime_player_id", id);
   }
   return id;
+}
+
+// ★ fetchをタイムアウト付きで実行するラッパー
+async function fetchWithTimeout(url, options, timeoutMs = 25000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // stateをAPIに保存
@@ -38,37 +56,39 @@ async function saveToServer() {
     totalClears:       state.totalClears ?? 0,
   };
 
-  try {
-    const res = await fetch(SAVE_API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (res.ok) {
-      dom.statusLine.textContent = "💾 セーブしました！";
-      setTimeout(() => dom.statusLine.textContent = "", 2000);
-      console.log("[save] セーブ成功:", playerId);
-    } else {
-      const errText = await res.text().catch(() => "");
-      console.warn("[save] セーブ失敗 status=" + res.status, errText);
-      dom.statusLine.textContent = "⚠️ セーブに失敗しました（通信エラー）";
-      setTimeout(() => dom.statusLine.textContent = "", 3000);
-    }
-  } catch (e) {
-    console.warn("[save] セーブ例外:", e);
-    // Renderのコールドスタートで失敗した場合はリトライ（15秒後）
-    setTimeout(async () => {
-      try {
-        await fetch(SAVE_API, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        console.log("[save] リトライ成功");
-      } catch (e2) {
-        console.warn("[save] リトライも失敗:", e2);
+  const reqOptions = {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  };
+
+  // ★ 最大3回リトライ（コールドスタートで1回目が失敗してもリトライで成功させる）
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetchWithTimeout(SAVE_API, reqOptions, 25000);
+      if (res.ok) {
+        dom.statusLine.textContent = "💾 セーブしました！";
+        setTimeout(() => dom.statusLine.textContent = "", 2000);
+        console.log("[save] セーブ成功:", playerId, `(attempt ${attempt})`);
+        return;
+      } else {
+        const errText = await res.text().catch(() => "");
+        console.warn(`[save] セーブ失敗 attempt=${attempt} status=` + res.status, errText);
+        if (attempt === 3) {
+          dom.statusLine.textContent = "⚠️ セーブに失敗しました（通信エラー）";
+          setTimeout(() => dom.statusLine.textContent = "", 3000);
+        }
       }
-    }, 15000);
+    } catch (e) {
+      console.warn(`[save] セーブ例外 attempt=${attempt}:`, e);
+      if (attempt < 3) {
+        // リトライ前に少し待つ（コールドスタート起動待ち）
+        await new Promise(r => setTimeout(r, attempt * 8000));
+      } else {
+        dom.statusLine.textContent = "⚠️ セーブに失敗しました（サーバー起動中かも）";
+        setTimeout(() => dom.statusLine.textContent = "", 4000);
+      }
+    }
   }
 }
 
@@ -76,7 +96,8 @@ async function saveToServer() {
 async function loadFromServer() {
   const playerId = getPlayerId();
   try {
-    const res = await fetch(`${SAVE_API}/${playerId}`);
+    // ★ ロードもタイムアウト付き（Renderのコールドスタートは最大30秒かかる）
+    const res = await fetchWithTimeout(`${SAVE_API}/${playerId}`, {}, 30000);
     if (!res.ok) {
       console.log("[load] セーブデータなし（新規プレイ）", res.status);
       return false; // 初回プレイなどで404の場合

@@ -97,15 +97,18 @@ function executeCooking() {
   if (matchedRecipe) {
     if (state.bento.length >= state.maxBento) {
       resultDiv.innerHTML = `<p>お弁当がいっぱいだ…。先に食べてからにしてね。</p>`;
+      SE.fishingMiss(); // 残念音
     } else {
       selectedIngredients.forEach(id => {
         state.inventory.ingredients[id]--;
         if (state.inventory.ingredients[id] <= 0) delete state.inventory.ingredients[id];
       });
       state.bento.push(matchedRecipe);
+      SE.itemGet();
       resultDiv.innerHTML = `<p>✨ ${matchedRecipe.icon} ${matchedRecipe.name} が完成！</p><p>${matchedRecipe.effectDesc}</p><p>お弁当に入れたよ🍱</p>`;
     }
   } else {
+    SE.fishingMiss(); // 失敗音
     resultDiv.innerHTML = `<p>その組み合わせでは何もできなかった…。別の素材を試してみよう。</p>`;
   }
 

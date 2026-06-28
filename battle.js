@@ -308,8 +308,11 @@ function attackBoss() {
   state.specialGauge = Math.min(100, state.specialGauge + specialGaugePerHit);
 
   startAttackMotion();
+  // SE: 攻撃
+  if (isCrit) { SE.attackCritical(); } else { SE.attack(); }
   spawnDamageNumber(damage, isCrit);
   flashBossHit(isCrit ? 200 : 120);
+  SE.bossHit();
   triggerCameraShake();
   three.bossGroup.scale.set(0.85, 0.85, 0.85);
   setTimeout(() => { if (!state.cleared) three.bossGroup.scale.set(1, 1, 1); }, 100);
@@ -336,13 +339,17 @@ function useSpecialMove() {
   const skillId = state.equippedCostume?.skillId || null;
 
   if (skillId === "wave") {
+    SE.specialWave();
     spawnWaveSkill(damage);
   } else if (skillId === "ice") {
+    SE.specialIce();
     spawnIceSkill(damage);
   } else if (skillId === "thunder") {
+    SE.specialThunder();
     spawnThunderSkill(damage);
   } else {
     // デフォルト（スキルなしコスチューム）
+    SE.specialDefault();
     spawnMagicCircle();
     spawnDamageNumber(damage, true);
     triggerCameraShake();
@@ -544,6 +551,7 @@ function startBossCharge() {
   state.bossAI.mode         = "charge";
   state.bossAI.chargeTarget = { x: state.player.x, z: state.player.z };
   three.bossMat.color.set(0xff3300);
+  SE.bossCharge();
 }
 
 function checkChargeHit() {
@@ -555,6 +563,7 @@ function checkChargeHit() {
 function startBossShockwave() {
   if (state.cleared || state.gameOver) return;
   state.bossAI.mode = "shockwave";
+  SE.bossShockwave();
   spawnShockwave();
   setTimeout(() => { if (!state.gameOver && !state.cleared) state.bossAI.mode = "wander"; }, 600);
 }
@@ -591,6 +600,7 @@ function spawnShockwave() {
 function onPhaseChange(phase) {
   const msgs = { 2: "⚠️ ボスが怒り始めた！", 3: "🔥 ボスが本気を出した！！" };
   dom.statusLine.textContent = msgs[phase] || "";
+  SE.phaseChange();
   three.bossMat.color.set(0xffffff);
   const idx = state.stageIndex;
   setTimeout(() => {
@@ -610,6 +620,7 @@ function applyPlayerDamage(damage) {
 
   dom.damageFlash.classList.add("active");
   setTimeout(() => dom.damageFlash.classList.remove("active"), 150);
+  SE.playerHit();
 
   const bodyMat = three.slimeParts?.bodyMat;
   if (bodyMat) {
@@ -623,6 +634,7 @@ function applyPlayerDamage(damage) {
 
 function handleGameOver() {
   state.gameOver = true;
+  SE.gameOver();
   dom.gameOverScreen.classList.add("visible");
   dom.statusLine.textContent = "";
 }
