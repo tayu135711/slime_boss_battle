@@ -1656,6 +1656,9 @@ function setBattleObjectsVisible(visible) {
   if (three.playerGroup) three.playerGroup.visible = visible;
   if (three.rangeRing) three.rangeRing.visible = visible;
   if (three.bossLight) three.bossLight.visible = visible;
+  // ★ バトル用地面・森装飾（岩・苔・きのこ・木・花）も一緒に切り替える
+  if (three.battleGround) three.battleGround.forEach(o => { if (o) o.visible = visible; });
+  if (three.battleDecors) three.battleDecors.forEach(o => { if (o) o.visible = visible; });
 }
 
 // 花摘み関連のグローバル変数（flower.js で使う）

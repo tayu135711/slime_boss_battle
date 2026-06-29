@@ -70,6 +70,8 @@ function setupLights() {
 }
 
 function buildGround() {
+  three.battleGround = []; // ★ バトル用地面オブジェクト管理
+
   // ★ 広い草原（オープンワールド感）
   const size = CONFIG.field.halfSize * 2 + 60;
   const ground = new THREE.Mesh(
@@ -82,6 +84,7 @@ function buildGround() {
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   three.scene.add(ground);
+  three.battleGround.push(ground);
 
   // ★ バトルアリーナ（明るめの緑）- y=0.02で確実に浮かせてZファイティング防止
   const arena = new THREE.Mesh(
@@ -95,6 +98,7 @@ function buildGround() {
   arena.position.y = 0.02;
   arena.receiveShadow = true;
   three.scene.add(arena);
+  three.battleGround.push(arena);
 
   // ★ 境界リング（柔らかいトーン）- y=0.04
   const ring = new THREE.Mesh(
@@ -107,6 +111,7 @@ function buildGround() {
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 0.04;
   three.scene.add(ring);
+  three.battleGround.push(ring);
 
   // ★ 遠方の草原（段階的に広がる）- y=0.015
   for (let r = CONFIG.field.halfSize + 8; r < CONFIG.field.halfSize + 40; r += 12) {
@@ -121,6 +126,7 @@ function buildGround() {
     farGrass.rotation.x = -Math.PI / 2;
     farGrass.position.y = 0.015;
     three.scene.add(farGrass);
+    three.battleGround.push(farGrass);
   }
 }
 
@@ -254,32 +260,37 @@ function makePond(x, z, radius = 1.5) {
 }
 
 function buildForestDecor() {
+  three.battleDecors = []; // ★ バトル用装飾オブジェクト管理
   const half = CONFIG.field.halfSize;
   const rng = (min, max) => Math.random() * (max - min) + min;
 
   // アリーナ周辺の木（近い輪）
   for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
     const r = rng(half + 1.5, half + 4.5);
-    three.scene.add(makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(2.8, 5.2)));
+    const obj = makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(2.8, 5.2));
+    three.scene.add(obj); three.battleDecors.push(obj);
   }
 
   // ★ 中距離の木（広い輪 1）
   for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 12) {
     const r = rng(half + 6, half + 14);
-    three.scene.add(makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(4, 8)));
+    const obj = makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(4, 8));
+    three.scene.add(obj); three.battleDecors.push(obj);
   }
 
   // ★ 遠距離の木（広い輪 2）
   for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 18) {
     const r = rng(half + 16, half + 30);
-    three.scene.add(makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(6, 12)));
+    const obj = makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(6, 12));
+    three.scene.add(obj); three.battleDecors.push(obj);
   }
 
   // ★ ランダム散在木（オープンワールド感）
   for (let i = 0; i < 40; i++) {
     const angle = Math.random() * Math.PI * 2;
     const r = rng(half + 5, half + 35);
-    three.scene.add(makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(3, 10)));
+    const obj = makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(3, 10));
+    three.scene.add(obj); three.battleDecors.push(obj);
   }
 
   // 岩
@@ -289,13 +300,14 @@ function buildForestDecor() {
     [2, -half - 2.5, 0.7], [-1.5, half + 2.2, 0.6],
     [half + 8, -5, 1.3], [-half - 9, 4, 1.0], [6, half + 10, 0.9],
     [-8, -half - 11, 1.2],
-  ].forEach(([x, z, s]) => three.scene.add(makeRock(x, z, s)));
+  ].forEach(([x, z, s]) => { const obj = makeRock(x, z, s); three.scene.add(obj); three.battleDecors.push(obj); });
 
   // 苔（広い範囲に）
   for (let i = 0; i < 60; i++) {
     const angle = Math.random() * Math.PI * 2;
     const r = rng(half * 0.3, half * 2.5);
-    three.scene.add(makeMoss(Math.cos(angle) * r, Math.sin(angle) * r));
+    const obj = makeMoss(Math.cos(angle) * r, Math.sin(angle) * r);
+    three.scene.add(obj); three.battleDecors.push(obj);
   }
 
   // 光るきのこ（アリーナ内外に増量）
@@ -303,19 +315,20 @@ function buildForestDecor() {
     [half - 0.8, 1.5], [-half + 0.6, -1.0], [1.8, half - 0.5], [-2.2, -half + 0.8],
     [half + 2.0, -3.5], [-half - 2.0, 2.5], [0, -half - 2.0], [half + 5, 5],
     [-half - 6, -3], [half - 3, half + 3],
-  ].forEach(([x, z]) => three.scene.add(makeGlowMushroom(x, z)));
+  ].forEach(([x, z]) => { const obj = makeGlowMushroom(x, z); three.scene.add(obj); three.battleDecors.push(obj); });
 
   // ★ 花畑（オープンワールド点在）
   for (let i = 0; i < 80; i++) {
     const angle = Math.random() * Math.PI * 2;
     const r = rng(half * 0.5, half * 3.0);
-    three.scene.add(makeFlower(Math.cos(angle) * r, Math.sin(angle) * r));
+    const obj = makeFlower(Math.cos(angle) * r, Math.sin(angle) * r);
+    three.scene.add(obj); three.battleDecors.push(obj);
   }
 
   // ★ 小さな池（遠くに点在）
   [
     [half + 12, -8], [-half - 14, 6], [half - 5, half + 15], [-half - 8, -half - 12],
-  ].forEach(([x, z]) => three.scene.add(makePond(x, z, rng(1.2, 2.5))));
+  ].forEach(([x, z]) => { const obj = makePond(x, z, rng(1.2, 2.5)); three.scene.add(obj); three.battleDecors.push(obj); });
 }
 
 // --- スライム顔パーツ ---
