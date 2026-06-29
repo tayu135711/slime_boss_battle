@@ -61,6 +61,8 @@ function dismissTitle() {
 
     // ★ バックグラウンドでロードし、完了したらUIを更新する
     try {
+      // サーバーを起こすためのウォームアップ（エラー無視）
+      if (typeof SAVE_API !== 'undefined') fetch(SAVE_API.replace("/save", "/_warmup"), { method: "GET" }).catch(() => {});
       const loaded = await loadFromServer();
       if (loaded) {
         dom.statusLine.textContent = "📂 セーブデータを読み込みました！";

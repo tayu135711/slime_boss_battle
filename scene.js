@@ -613,7 +613,6 @@ function buildCuteSlimeBody(group, r, color) {
     roughness: 0.15,
     metalness: 0.0,
     transmission: 0.08,   // ★ 0.25→0.08に下げる（白くなりすぎる原因）
-    thickness: r * 0.8,
     clearcoat: 0.8,       // ★ コーティングを少し抑える
     clearcoatRoughness: 0.10,
     ior: 1.35,
@@ -622,6 +621,8 @@ function buildCuteSlimeBody(group, r, color) {
     emissive: color,
     emissiveIntensity: 0.12,
   });
+  // ★ thicknessはThree.js r137+でサポート。古いバージョンでの警告を防ぐ
+  if ('thickness' in bodyMat) bodyMat.thickness = r * 0.8;
   const body = new THREE.Mesh(geo, bodyMat);
   body.scale.set(1.0, 1.0, 1.0);
   body.position.y = r * 0.78;  // 底面が平らな分少し下げる

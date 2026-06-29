@@ -62,6 +62,9 @@ async function saveToServer() {
     body: JSON.stringify(body),
   };
 
+  // ★ サーバーエラー時用にローカルにバックアップを保存
+  localStorage.setItem("slime_boss_save_fallback", JSON.stringify(body));
+
   // ★ 最大3回リトライ（コールドスタートで1回目が失敗してもリトライで成功させる）
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -97,14 +100,31 @@ async function loadFromServer() {
   const playerId = getPlayerId();
   try {
     // ★ ロードもタイムアウト付き（Renderのコールドスタートは最大30秒かかる）
+    let data = null;
     const res = await fetchWithTimeout(`${SAVE_API}/${playerId}`, {}, 30000);
     if (!res.ok) {
-      console.log("[load] セーブデータなし（新規プレイ）", res.status);
-      return false; // 初回プレイなどで404の場合
+      console.log("[load] セーブデータなし（新規プレイまたは通信エラー）", res.status);
+    } else {
+      data = await res.json();
+      console.log("[load] サーバーからロード成功:", data);
     }
 
-    const data = await res.json();
-    console.log("[load] ロード成功:", data);
+    // ★ サーバーになくてもローカルにバックアップがあればマージする
+    const localDataRaw = localStorage.getItem("slime_boss_save_fallback");
+    if (localDataRaw) {
+      try {
+        const localData = JSON.parse(localDataRaw);
+        if (!data) {
+          data = localData;
+          console.log("[load] ローカルからロード成功:", data);
+        } else {
+          // 簡単なマージ（今回は簡略化してサーバー優先、なければローカル）
+          data = { ...localData, ...data };
+        }
+      } catch (e) { console.warn("ローカルバックアップ破損", e); }
+    }
+
+    if (!data) return false; // 初回プレイなどで両方ない場合
 
     state.stageIndex      = data.stageIndex      ?? 0;
     state.unlockedStages  = data.unlockedStages  ?? 1;

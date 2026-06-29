@@ -72,6 +72,7 @@ function endFishing(success) {
   clearTimeout(fishingTimer);
   fishingTimer = null;
   fishingActive = false;
+  fishingPhase = "idle";
 
   if (success) {
     const fish = selectFish();
@@ -85,7 +86,6 @@ function endFishing(success) {
     setTimeout(() => {
       fishingUI.style.display = "none";
       document.getElementById("fishingAction").style.display = "";
-      fishingPhase = "idle";
       subAreaCameraLocked = false;  // ★ カメラロック解除（釣り後は自由移動）
       dom.statusLine.textContent = `${fish.icon} ${fish.name}: ${fish.desc}`;
       setTimeout(() => dom.statusLine.textContent = "", 2500);
@@ -102,7 +102,6 @@ function endFishing(success) {
     setTimeout(() => {
       fishingUI.style.display = "none";
       document.getElementById("fishingAction").style.display = "";
-      fishingPhase = "idle";
       subAreaCameraLocked = false;  // ★ カメラロック解除
       if (typeof updatePlazaCameraFollow === "function") updatePlazaCameraFollow();
       // ★ 釣り場エリア内なら残り回数があれば次の一投を促す

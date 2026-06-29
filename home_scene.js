@@ -64,7 +64,7 @@ const POND_AREA_ENTRY   = { x: 18,  z: 12 };    // ★修正: pond建物(z:6)の
 const FLOWER_AREA_ENTRY = { x: -16, z: 20 };    // 花畑建物(z:14)の手前6ユニット
 // サブエリア用カメラ固定：trueの間はupdatePlazaCameraFollowでカメラを上書きしない
 let subAreaCameraLocked = false;
-// ★ エリア移動フェード中の二重実行防止ロック
+let _subAreaCameraTimer = null; // ★ カメラロック解除タイマー
 let _areaTransitionLocked = false;
 
 let plazaDialog = null;
@@ -1276,12 +1276,16 @@ function enterAreaWithFade(areaName, onEnter) {
       })();
       label.textContent = areaName;
       label.style.opacity = "1";
-      onEnter();
+      try {
+        onEnter();
+      } catch (e) {
+        console.error("Area transition error:", e);
+      }
       setTimeout(() => {
         label.style.transition = "opacity 0.4s";
         label.style.opacity = "0";
         overlay.style.background = "rgba(255,240,255,0)";
-        // ★ フェード完了後にロック解除
+        // ★ フェード完了後（または例外時）にロック解除
         _areaTransitionLocked = false;
       }, 600);
     }, 400);
@@ -1328,7 +1332,11 @@ function enterFlowerArea() {
     three.camera.position.set(fc.x, 4.5, fc.z + 13);
     three.camera.lookAt(fc.x, 0.3, fc.z);
     // 2秒後にカメラロック解除 → 以降は通常フォロー
-    setTimeout(() => { subAreaCameraLocked = false; }, 2000);
+    if (_subAreaCameraTimer) clearTimeout(_subAreaCameraTimer);
+    _subAreaCameraTimer = setTimeout(() => {
+      subAreaCameraLocked = false;
+      _subAreaCameraTimer = null;
+    }, 2000);
 
     // 花畑エリアではnearestFlowerを最寄り（距離近い方）の未採取花に強制セット
     const available = plaza.flowerField.filter(f => !f.userData.picked);
@@ -1410,6 +1418,7 @@ function leaveSubArea() {
 
   // カメラロック解除
   subAreaCameraLocked = false;
+  if (_subAreaCameraTimer) { clearTimeout(_subAreaCameraTimer); _subAreaCameraTimer = null; }
 
   // エリアに応じた戻り先座標を設定（フェード後に適用）
   const returnPos = currentSubArea === "pond" ? POND_AREA_ENTRY : FLOWER_AREA_ENTRY;
@@ -1580,6 +1589,7 @@ function exitHomePlaza() {
   // ★ サブエリアフラグ・「広場に戻る」ボタンをリセット
   currentSubArea = null;
   subAreaCameraLocked = false;
+  if (_subAreaCameraTimer) { clearTimeout(_subAreaCameraTimer); _subAreaCameraTimer = null; }
   const subBtn = document.getElementById("subAreaBackBtn");
   if (subBtn) subBtn.style.display = "none";
 
