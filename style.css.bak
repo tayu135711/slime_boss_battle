@@ -26,13 +26,6 @@ html, body {
   font-family: 'Noto Sans JP', "Hiragino Maru Gothic Pro", "M PLUS Rounded 1c", "ヒラギノ丸ゴ Pro", sans-serif;
   color: #3A2E20;
   touch-action: none;
-  /* iOS notch / Dynamic Island 対応 */
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
-  /* iOSバウンススクロール防止 */
-  overscroll-behavior: none;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* ===== 3Dシーン ===== */
@@ -142,9 +135,7 @@ html, body {
 /* ===== ステータスライン ===== */
 #statusLine {
   position: absolute;
-  /* コントローラーパネル(190px) + 余白 + safe-area対応 */
-  bottom: calc(200px + env(safe-area-inset-bottom, 0px));
-  left: 50%; transform: translateX(-50%);
+  bottom: 210px; left: 50%; transform: translateX(-50%);
   font-size: 13px; font-weight: 900;
   color: #4A8040;
   text-shadow: 0 1px 4px rgba(255,255,255,0.8), 0 1px 2px rgba(0,0,0,0.15);
@@ -154,9 +145,6 @@ html, body {
   padding: 4px 16px;
   border: 1.5px solid #A8C890;
   box-shadow: 0 2px 6px rgba(90,130,60,0.15);
-  max-width: 90vw;
-  white-space: normal;
-  text-align: center;
 }
 
 /* ===== リセットボタン ===== */
@@ -199,8 +187,6 @@ html, body {
   position: absolute;
   bottom: 0; left: 0; right: 0;
   height: 190px;
-  /* iOS/Android ホームバー対応 */
-  padding-bottom: env(safe-area-inset-bottom, 0px);
   background: linear-gradient(180deg, #D4A87A 0%, #C49060 100%);
   border-top: 3px solid #A87040;
   border-radius: 28px 28px 0 0;
@@ -208,8 +194,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-left: 20px;
-  padding-right: 20px;
+  padding: 0 20px;
   pointer-events: auto;
   user-select: none;
 }
@@ -350,8 +335,8 @@ html, body {
 /* ===== プレイヤーHPバー ===== */
 #playerHpArea {
   position: absolute;
-  bottom: calc(198px + env(safe-area-inset-bottom, 0px));
-  left: calc(12px + env(safe-area-inset-left, 0px));
+  bottom: 198px;
+  left: 12px;
   width: 160px;
   pointer-events: none;
   background: rgba(255,248,237,0.88);
@@ -744,7 +729,7 @@ html, body {
 #plazaActionPrompt {
   display: none;
   position: fixed;
-  bottom: calc(224px + env(safe-area-inset-bottom, 0px));
+  bottom: 224px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(255,252,240,0.94);
@@ -770,7 +755,7 @@ html, body {
 #npcDialog {
   display: none;
   position: fixed;
-  bottom: calc(218px + env(safe-area-inset-bottom, 0px));
+  bottom: 218px;
   left: 50%;
   transform: translateX(-50%);
   width: min(90vw, 360px);
@@ -1161,10 +1146,10 @@ html, body {
   background: linear-gradient(160deg, #EEF8FF, #DCF0F8);
   border: 2.5px solid #7EC8E3;
   border-radius: 24px;
-  padding: 24px 28px;
+  padding: 24px 32px;
   text-align: center;
   box-shadow: 0 12px 36px rgba(40,120,160,0.2), inset 0 1px 0 rgba(255,255,255,0.9);
-  width: min(90vw, 320px);
+  min-width: 280px;
 }
 #fishingPrompt {
   font-size: 20px; font-weight: 900;
@@ -1176,13 +1161,10 @@ html, body {
   color: #fff;
   background: linear-gradient(135deg, #4A7EA0, #6AA8C8);
   border: none; border-radius: 50px;
-  padding: 16px 40px;
-  min-height: 56px;
-  width: 100%;
-  display: block;
+  padding: 13px 32px;
+  display: inline-block;
   cursor: pointer;
   box-shadow: 0 4px 0 #2A5070, 0 6px 14px rgba(40,100,160,0.3);
-  touch-action: manipulation;
 }
 
 /* ===== 料理画面 ===== */
@@ -1251,13 +1233,11 @@ html, body {
 }
 #cookingButtons { display: flex; gap: 10px; justify-content: center; }
 #cookBtn, #cookingBackBtn {
-  padding: 14px 20px;
-  min-height: 52px;
+  padding: 10px 20px;
   font-weight: 900;
   border: none;
   border-radius: 12px;
   cursor: pointer;
-  touch-action: manipulation;
 }
 #cookBtn {
   background: linear-gradient(135deg, #C4A27A, #D4B88A);
@@ -1292,10 +1272,10 @@ html, body {
   background: linear-gradient(160deg, #F0FFF0, #E8F8E0);
   border: 2.5px solid #A8C890;
   border-radius: 24px;
-  padding: 24px 28px;
+  padding: 24px 32px;
   text-align: center;
   box-shadow: 0 12px 36px rgba(60,100,40,0.18), inset 0 1px 0 rgba(255,255,255,0.9);
-  width: min(90vw, 320px);
+  min-width: 280px;
 }
 #flowerPrompt {
   font-size: 20px; font-weight: 900;
@@ -1307,13 +1287,10 @@ html, body {
   color: #fff;
   background: linear-gradient(135deg, #5A9A46, #78BE5C);
   border: none; border-radius: 50px;
-  padding: 16px 40px;
-  min-height: 56px;
-  width: 100%;
-  display: block;
+  padding: 13px 32px;
+  display: inline-block;
   cursor: pointer;
   box-shadow: 0 4px 0 #3A6830, 0 6px 14px rgba(60,130,40,0.25);
-  touch-action: manipulation;
 }
 
 /* ── 広場表示中のHUD非表示制御 ── */
@@ -1458,7 +1435,6 @@ button:focus-visible {
   color: #2A5018 !important;  /* #4A8040 → 濃く */
   padding: 6px 20px !important;
   background: rgba(255, 252, 240, 0.96) !important;
-  bottom: calc(200px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 /* ── リセットボタン：44×44pxタッチターゲット ── */
@@ -1959,104 +1935,3 @@ button:focus-visible {
   transition: transform 0.12s;
 }
 #plazaMapCloseBtn:active { transform: scale(0.94); }
-
-
-/* ══════════════════════════════════════════════════════════
-   📱 スマホ専用 UI 改善パッチ
-   - safe-area-inset 対応（ノッチ・ホームバー）
-   - 小画面での各UIの横はみ出し防止
-   - タップターゲット最小56px以上
-   ══════════════════════════════════════════════════════════ */
-
-/* 狭い画面（スマホ縦向き）でのコントローラー調整 */
-@media (max-width: 420px) {
-  #controllerPanel {
-    height: 170px;
-    padding-left: 12px;
-    padding-right: 12px;
-  }
-  #joystickBase {
-    width: 110px; height: 110px;
-  }
-  #joystickKnob {
-    width: 44px; height: 44px;
-  }
-  #actionPad {
-    width: 130px; height: 130px;
-  }
-  .action-btn {
-    width: 58px; height: 58px;
-  }
-  #statusLine {
-    bottom: calc(182px + env(safe-area-inset-bottom, 0px)) !important;
-    font-size: 13px !important;
-    max-width: 88vw;
-  }
-  #playerHpArea {
-    bottom: calc(178px + env(safe-area-inset-bottom, 0px));
-  }
-  #plazaActionPrompt {
-    bottom: calc(200px + env(safe-area-inset-bottom, 0px)) !important;
-  }
-  #npcDialog {
-    bottom: calc(196px + env(safe-area-inset-bottom, 0px));
-    width: 92vw;
-  }
-  #shopBox {
-    width: 96vw !important;
-    max-height: 85vh !important;
-  }
-  .shop-costume-card {
-    padding: 8px 4px 6px !important;
-  }
-  #cookingBox {
-    padding: 16px 12px !important;
-  }
-}
-
-/* subAreaBackBtn のコントローラー被り防止（JSで生成されるため !important） */
-/* home_scene.jsの bottom:90px をCSS側で上書き */
-#subAreaBackBtn {
-  bottom: calc(210px + env(safe-area-inset-bottom, 0px)) !important;
-  padding: 14px 32px !important;
-  min-height: 52px !important;
-  font-size: 16px !important;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* 全ボタン共通：ダブルタップズーム防止 */
-button {
-  touch-action: manipulation;
-}
-
-/* スクロール可能なパネル（商店・料理等）のスクロールバー非表示 */
-#shopBox::-webkit-scrollbar,
-#cookingBox::-webkit-scrollbar,
-#stageSelectBox::-webkit-scrollbar,
-#gachaBox::-webkit-scrollbar {
-  width: 4px;
-}
-#shopBox::-webkit-scrollbar-track,
-#cookingBox::-webkit-scrollbar-track {
-  background: transparent;
-}
-#shopBox::-webkit-scrollbar-thumb,
-#cookingBox::-webkit-scrollbar-thumb {
-  background: rgba(200,180,150,0.4);
-  border-radius: 4px;
-}
-
-/* 釣り・花摘みUIを画面中央上寄りに（コントローラーから離す） */
-#fishingUI,
-#flowerUI {
-  align-items: flex-start !important;
-  padding-top: max(80px, 15vh) !important;
-  padding-bottom: calc(200px + env(safe-area-inset-bottom, 0px)) !important;
-}
-
-/* マップボタン - ノッチ対応 */
-#plazaMapBtn {
-  top: calc(12px + env(safe-area-inset-top, 0px));
-  right: calc(14px + env(safe-area-inset-right, 0px));
-}
