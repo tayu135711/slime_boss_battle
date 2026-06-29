@@ -98,6 +98,10 @@ function showHomePlaza() {
   if (typeof updateMapBtnVisibility === "function") updateMapBtnVisibility();
   // 広場を初期化
   if (typeof initHomePlaza === "function") initHomePlaza();
+  // ★ initHomePlaza後に念押しで広場オブジェクトを確実に表示する
+  // （exitHomePlaza→showHomePlazaのルートでvisible=falseが残るバグ対策）
+  if (typeof setPlazaObjectsVisible === "function") setPlazaObjectsVisible(true);
+  if (typeof setBattleObjectsVisible === "function") setBattleObjectsVisible(false);
   // ★ ここではセーブしない（dismissTitle経由の場合、ロード完了前に空データを上書きしてしまうため）
   // セーブはバトルクリア後・アイテム取得後・着替え後など「データが変わったタイミング」のみ行う
 }

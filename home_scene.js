@@ -83,13 +83,19 @@ function initHomePlaza() {
   } else {
     setPlazaObjectsVisible(true);
     setBattleObjectsVisible(false);
+    // ★ 再入場時に時間帯を即座に再適用（空・ライト・skyObjectsを確実に設定）
+    applyTimeOfDay(getTimeOfDay(), false);
     // ★ 再入場時にコスチューム色を広場プレイヤーに反映
     if (plaza.playerMesh && state.equippedCostume) {
-      plaza.playerMesh.traverse(child => {
-        if (child.isMesh && child.material?.color) {
-          child.material.color.set(state.equippedCostume.color);
-        }
-      });
+      try {
+        plaza.playerMesh.traverse(child => {
+          if (child.isMesh && child.material?.color) {
+            child.material.color.set(state.equippedCostume.color);
+          }
+        });
+      } catch(e) {
+        console.warn("コスチューム色反映エラー:", e);
+      }
     }
   }
 
@@ -904,7 +910,9 @@ function buildDistantTrees() {
 
   treePositions.forEach(([x, z]) => {
     const h = 4.0 + Math.random() * 5;
-    three.scene.add(makeFirTree(x, z, h));
+    const tree = makeFirTree(x, z, h);
+    three.scene.add(tree);
+    plaza.decorObjects.push(tree); // ★ setPlazaObjectsVisible管理下に追加
   });
 }
 
