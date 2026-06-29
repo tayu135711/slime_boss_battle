@@ -26,6 +26,9 @@ const plaza = {
   flowerField: [],
   // 花壇・露店・フェンス等の装飾オブジェクト（setPlazaObjectsVisibleで一括管理）
   decorObjects: [],
+  // サブエリア（専用マップ）用のグループ
+  pondSceneGroup: null,
+  flowerSceneGroup: null,
   // 時間帯システム
   lastTimeOfDay: null,
   timeOfDayLabel: null,
@@ -76,12 +79,18 @@ function initHomePlaza() {
 
   if (!plaza.initialized) {
     buildPlazaScene();
+    buildPondScene();
+    buildFlowerScene();
     plaza.initialized = true;
     // ★ 初回も必ず広場オブジェクトを表示する（デフォルトvisible=falseのままだと何も見えない）
     setPlazaObjectsVisible(true);
+    setPondSceneVisible(false);
+    setFlowerSceneVisible(false);
     setBattleObjectsVisible(false);
   } else {
     setPlazaObjectsVisible(true);
+    setPondSceneVisible(false);
+    setFlowerSceneVisible(false);
     setBattleObjectsVisible(false);
     // ★ 再入場時に時間帯を即座に再適用（空・ライト・skyObjectsを確実に設定）
     applyTimeOfDay(getTimeOfDay(), false);
@@ -1590,6 +1599,8 @@ function exitHomePlaza() {
   currentSubArea = null;
   subAreaCameraLocked = false;
   if (_subAreaCameraTimer) { clearTimeout(_subAreaCameraTimer); _subAreaCameraTimer = null; }
+  setPondSceneVisible(false);
+  setFlowerSceneVisible(false);
   const subBtn = document.getElementById("subAreaBackBtn");
   if (subBtn) subBtn.style.display = "none";
 
@@ -1849,4 +1860,119 @@ function updateMapBtnVisibility() {
   if (!btn) return;
   const plazaVisible = dom.homePlazaScreen.classList.contains('visible');
   btn.style.display = plazaVisible ? 'flex' : 'none';
+}
+
+// ── サブエリア専用マップ構築 ──────────────────────────────────────
+function buildPondScene() {
+  plaza.pondSceneGroup = new THREE.Group();
+  plaza.pondSceneGroup.visible = false;
+  three.scene.add(plaza.pondSceneGroup);
+
+  // 地面
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(150, 150),
+    new THREE.MeshStandardMaterial({ color: 0x4d9c4a, roughness: 0.9 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  plaza.pondSceneGroup.add(ground);
+
+  // 巨大な池
+  const pond = new THREE.Mesh(
+    new THREE.CylinderGeometry(15, 15, 0.4, 32),
+    new THREE.MeshStandardMaterial({ color: 0x4a9cd4, roughness: 0.2, metalness: 0.3, transparent: true, opacity: 0.85 })
+  );
+  pond.position.set(0, 0.2, 0);
+  pond.receiveShadow = true;
+  plaza.pondSceneGroup.add(pond);
+
+  // 釣り桟橋
+  const dock = new THREE.Mesh(
+    new THREE.BoxGeometry(4, 0.6, 6),
+    new THREE.MeshStandardMaterial({ color: 0x7a5030, roughness: 0.9 })
+  );
+  dock.position.set(0, 0.5, 10);
+  dock.castShadow = true;
+  dock.receiveShadow = true;
+  plaza.pondSceneGroup.add(dock);
+
+  // 周囲の木々
+  for (let i = 0; i < 40; i++) {
+    const geo = new THREE.CylinderGeometry(0, 2 + Math.random(), 6 + Math.random() * 4, 5);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x2d6c2a, roughness: 0.9 });
+    const tree = new THREE.Mesh(geo, mat);
+    const angle = Math.random() * Math.PI * 2;
+    const r = 20 + Math.random() * 30;
+    tree.position.set(Math.cos(angle) * r, tree.geometry.parameters.height / 2, Math.sin(angle) * r);
+    tree.rotation.y = Math.random() * Math.PI;
+    tree.castShadow = true;
+    plaza.pondSceneGroup.add(tree);
+  }
+}
+
+function buildFlowerScene() {
+  plaza.flowerSceneGroup = new THREE.Group();
+  plaza.flowerSceneGroup.visible = false;
+  three.scene.add(plaza.flowerSceneGroup);
+
+  // 地面
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(150, 150),
+    new THREE.MeshStandardMaterial({ color: 0x5dae5a, roughness: 0.9 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  plaza.flowerSceneGroup.add(ground);
+
+  // 大量の花
+  // ※ ここでは装飾用の背景花を配置し、実際に摘む用の花は既存の logic (flower.js) で扱うために別配列 `plaza.flowerField` に入れる
+  plaza.flowerField = [];
+  const colors = [0xff88cc, 0xffdd44, 0xaa66ff, 0xffbbdd, 0x88ccff];
+  
+  for (let i = 0; i < 150; i++) {
+    // FLOWER_TYPESからランダムに選ぶ
+    const rType = Math.random();
+    let cumulative = 0;
+    let type = FLOWER_TYPES[0];
+    if (typeof FLOWER_TYPES !== 'undefined') {
+      for (const ft of FLOWER_TYPES) {
+        cumulative += ft.rarity;
+        if (rType < cumulative) { type = ft; break; }
+      }
+    }
+    const c = type.color;
+    
+    const geo = new THREE.SphereGeometry(0.35, 6, 6);
+    const mat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.6 });
+    const fl = new THREE.Mesh(geo, mat);
+    // 花畑エリアの中心付近に散らす
+    const r = Math.random() * 20;
+    const angle = Math.random() * Math.PI * 2;
+    fl.position.set(Math.cos(angle) * r, 0.35, Math.sin(angle) * r);
+    fl.castShadow = true;
+    fl.userData = { picked: false, baseColor: c, originalY: 0.35, flowerType: type };
+    plaza.flowerSceneGroup.add(fl);
+    plaza.flowerField.push(fl); // 摘む対象として登録
+  }
+
+  // 休憩ベンチ
+  const bench = new THREE.Mesh(
+    new THREE.BoxGeometry(3, 0.5, 1),
+    new THREE.MeshStandardMaterial({ color: 0xa87858, roughness: 0.9 })
+  );
+  bench.position.set(0, 0.6, 6);
+  bench.castShadow = true;
+  plaza.flowerSceneGroup.add(bench);
+
+  // 周囲の木々
+  for (let i = 0; i < 30; i++) {
+    const geo = new THREE.CylinderGeometry(0, 1.5, 5 + Math.random() * 3, 5);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x8dcc8a, roughness: 0.9 });
+    const tree = new THREE.Mesh(geo, mat);
+    const angle = Math.random() * Math.PI * 2;
+    const r = 25 + Math.random() * 20;
+    tree.position.set(Math.cos(angle) * r, tree.geometry.parameters.height / 2, Math.sin(angle) * r);
+    tree.castShadow = true;
+    plaza.flowerSceneGroup.add(tree);
+  }
 }
