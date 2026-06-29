@@ -661,243 +661,211 @@ const SE = (() => {
     gacha:          playGacha,
     gaugeFull:      playGaugeFull,
     reward:         playReward,
+
+    // ── 広場専用SE（IIFEスコープ内でctx等にアクセスできるよう移動） ──
+
+    /** 広場に入る: 「ほわーん」のどかなチャイム */
+    plazaEnter() {
+      if (!ctx || !enabled) return;
+      const t = now();
+      [523, 659, 784].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        g.gain.setValueAtTime(0.0, t + i * 0.15);
+        g.gain.linearRampToValueAtTime(0.18, t + i * 0.15 + 0.08);
+        g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.15 + 0.7);
+        osc.connect(g); g.connect(masterGain);
+        osc.start(t + i * 0.15); osc.stop(t + i * 0.15 + 0.8);
+      });
+    },
+
+    /** NPCに話しかける: 「ぽろん」 */
+    npcTalk() {
+      if (!ctx || !enabled) return;
+      const t = now();
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(880, t);
+      osc.frequency.exponentialRampToValueAtTime(660, t + 0.12);
+      g.gain.setValueAtTime(0.15, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      osc.connect(g); g.connect(masterGain);
+      osc.start(t); osc.stop(t + 0.2);
+    },
+
+    /** ダイアログ次へ: 「ぽっ」 */
+    dialogNext() {
+      if (!ctx || !enabled) return;
+      const t = now();
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(660, t);
+      osc.frequency.exponentialRampToValueAtTime(880, t + 0.06);
+      g.gain.setValueAtTime(0.12, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+      osc.connect(g); g.connect(masterGain);
+      osc.start(t); osc.stop(t + 0.12);
+    },
+
+    /** ダイアログ閉じる: 「ぱたん」 */
+    dialogClose() {
+      if (!ctx || !enabled) return;
+      const t = now();
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(440, t);
+      osc.frequency.exponentialRampToValueAtTime(330, t + 0.1);
+      g.gain.setValueAtTime(0.13, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+      osc.connect(g); g.connect(masterGain);
+      osc.start(t); osc.stop(t + 0.16);
+    },
+
+    /** 釣り開始: 「ポチャン」 */
+    fishingCast() {
+      if (!ctx || !enabled) return;
+      const t = now();
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(400, t);
+      osc.frequency.exponentialRampToValueAtTime(120, t + 0.15);
+      g.gain.setValueAtTime(0.3, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      osc.connect(g); g.connect(masterGain);
+      osc.start(t); osc.stop(t + 0.22);
+      createNoise(t, 0.12, 0.15, 1200);
+    },
+
+    /** 釣りアタリ: 「ピピッ！」 */
+    fishingBite() {
+      if (!ctx || !enabled) return;
+      const t = now();
+      [1047, 1319].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = "square";
+        osc.frequency.value = freq;
+        g.gain.setValueAtTime(0.25, t + i * 0.08);
+        g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.08 + 0.1);
+        osc.connect(g); g.connect(masterGain);
+        osc.start(t + i * 0.08); osc.stop(t + i * 0.08 + 0.12);
+      });
+    },
+
+    /** 釣り成功: 「ジャバン！チリーン✨」 */
+    fishingSuccess() {
+      if (!ctx || !enabled) return;
+      const t = now();
+      createNoise(t, 0.25, 0.4, 900);
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(200, t);
+      osc.frequency.exponentialRampToValueAtTime(60, t + 0.3);
+      g.gain.setValueAtTime(0.45, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      osc.connect(g); g.connect(masterGain);
+      osc.start(t); osc.stop(t + 0.4);
+      [1047, 1319, 1568].forEach((freq, i) => {
+        const o = ctx.createOscillator();
+        const gg = ctx.createGain();
+        const dt = 0.3 + i * 0.07;
+        o.type = "triangle";
+        o.frequency.value = freq;
+        gg.gain.setValueAtTime(0.2, t + dt);
+        gg.gain.exponentialRampToValueAtTime(0.001, t + dt + 0.3);
+        o.connect(gg); gg.connect(masterGain);
+        o.start(t + dt); o.stop(t + dt + 0.35);
+      });
+    },
+
+    /** 釣り失敗: 「ぽちゃん…」 */
+    fishingMiss() {
+      if (!ctx || !enabled) return;
+      const t = now();
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(330, t);
+      osc.frequency.exponentialRampToValueAtTime(180, t + 0.3);
+      g.gain.setValueAtTime(0.2, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      osc.connect(g); g.connect(masterGain);
+      osc.start(t); osc.stop(t + 0.4);
+      createNoise(t, 0.15, 0.1, 800);
+    },
+
+    /** 花を摘む: 「ふわっ」 */
+    flowerPick() {
+      if (!ctx || !enabled) return;
+      const t = now();
+      [784, 1047, 1319].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        g.gain.setValueAtTime(0.0, t + i * 0.06);
+        g.gain.linearRampToValueAtTime(0.17, t + i * 0.06 + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.06 + 0.35);
+        osc.connect(g); g.connect(masterGain);
+        osc.start(t + i * 0.06); osc.stop(t + i * 0.06 + 0.4);
+      });
+    },
+
+    /** クエスト受注: 「ジャン！」 */
+    questAccept() {
+      if (!ctx || !enabled) return;
+      const t = now();
+      [392, 523, 659].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = "square";
+        osc.frequency.value = freq;
+        g.gain.setValueAtTime(0.2, t + i * 0.1);
+        g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.1 + 0.3);
+        osc.connect(g); g.connect(masterGain);
+        osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.35);
+      });
+    },
+
+    /** クエスト達成: 「チャラーン！」 */
+    questComplete() {
+      if (!ctx || !enabled) return;
+      const t = now();
+      const melody = [523, 659, 784, 1047];
+      melody.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.value = freq;
+        g.gain.setValueAtTime(0.28, t + i * 0.1);
+        g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.1 + 0.4);
+        osc.connect(g); g.connect(masterGain);
+        osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.45);
+      });
+      createNoise(t + 0.35, 0.4, 0.15, 2000);
+    },
+
+    /** アイテム獲得: 「キラン」 */
+    itemGet() {
+      if (!ctx || !enabled) return;
+      const t = now();
+      [1319, 1760].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.value = freq;
+        g.gain.setValueAtTime(0.18, t + i * 0.07);
+        g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.07 + 0.3);
+        osc.connect(g); g.connect(masterGain);
+        osc.start(t + i * 0.07); osc.stop(t + i * 0.07 + 0.35);
+      });
+    },
   };
 })();
-
-// ── 広場専用SE（後から追加） ──────────────────────────────────
-
-Object.assign(SE, {
-
-  /**
-   * 広場に入る: 「ほわーん」のどかな音
-   */
-  plazaEnter() {
-    if (!ctx || !enabled) return;
-    const t = now();
-    // やさしいチャイム
-    [523, 659, 784].forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      g.gain.setValueAtTime(0.0, t + i * 0.15);
-      g.gain.linearRampToValueAtTime(0.18, t + i * 0.15 + 0.08);
-      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.15 + 0.7);
-      osc.connect(g); g.connect(masterGain);
-      osc.start(t + i * 0.15); osc.stop(t + i * 0.15 + 0.8);
-    });
-  },
-
-  /**
-   * NPCに話しかける: 「ぽろん」やさしいトーク音
-   */
-  npcTalk() {
-    if (!ctx || !enabled) return;
-    const t = now();
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(880, t);
-    osc.frequency.exponentialRampToValueAtTime(660, t + 0.12);
-    g.gain.setValueAtTime(0.15, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-    osc.connect(g); g.connect(masterGain);
-    osc.start(t); osc.stop(t + 0.2);
-  },
-
-  /**
-   * ダイアログ次へ: 「ぽっ」テキスト送り
-   */
-  dialogNext() {
-    if (!ctx || !enabled) return;
-    const t = now();
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(660, t);
-    osc.frequency.exponentialRampToValueAtTime(880, t + 0.06);
-    g.gain.setValueAtTime(0.12, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-    osc.connect(g); g.connect(masterGain);
-    osc.start(t); osc.stop(t + 0.12);
-  },
-
-  /**
-   * ダイアログ閉じる: 「ぱたん」
-   */
-  dialogClose() {
-    if (!ctx || !enabled) return;
-    const t = now();
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(440, t);
-    osc.frequency.exponentialRampToValueAtTime(330, t + 0.1);
-    g.gain.setValueAtTime(0.13, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
-    osc.connect(g); g.connect(masterGain);
-    osc.start(t); osc.stop(t + 0.16);
-  },
-
-  /**
-   * 釣り開始: 「ポチャン」水面への投入
-   */
-  fishingCast() {
-    if (!ctx || !enabled) return;
-    const t = now();
-    // 「ポチャン」水しぶき
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(400, t);
-    osc.frequency.exponentialRampToValueAtTime(120, t + 0.15);
-    g.gain.setValueAtTime(0.3, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-    osc.connect(g); g.connect(masterGain);
-    osc.start(t); osc.stop(t + 0.22);
-    createNoise(t, 0.12, 0.15, 1200);
-  },
-
-  /**
-   * 釣りアタリ: 「ピピッ！」緊張の合図
-   */
-  fishingBite() {
-    if (!ctx || !enabled) return;
-    const t = now();
-    [1047, 1319].forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = "square";
-      osc.frequency.value = freq;
-      g.gain.setValueAtTime(0.25, t + i * 0.08);
-      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.08 + 0.1);
-      osc.connect(g); g.connect(masterGain);
-      osc.start(t + i * 0.08); osc.stop(t + i * 0.08 + 0.12);
-    });
-  },
-
-  /**
-   * 釣り成功: 「ジャバン！チリーン✨」魚ゲット
-   */
-  fishingSuccess() {
-    if (!ctx || !enabled) return;
-    const t = now();
-    // 水しぶき
-    createNoise(t, 0.25, 0.4, 900);
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(200, t);
-    osc.frequency.exponentialRampToValueAtTime(60, t + 0.3);
-    g.gain.setValueAtTime(0.45, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-    osc.connect(g); g.connect(masterGain);
-    osc.start(t); osc.stop(t + 0.4);
-    // きらめき
-    [1047, 1319, 1568].forEach((freq, i) => {
-      const o = ctx.createOscillator();
-      const gg = ctx.createGain();
-      const dt = 0.3 + i * 0.07;
-      o.type = "triangle";
-      o.frequency.value = freq;
-      gg.gain.setValueAtTime(0.2, t + dt);
-      gg.gain.exponentialRampToValueAtTime(0.001, t + dt + 0.3);
-      o.connect(gg); gg.connect(masterGain);
-      o.start(t + dt); o.stop(t + dt + 0.35);
-    });
-  },
-
-  /**
-   * 釣り失敗（逃した）: 「ぽちゃん…」残念
-   */
-  fishingMiss() {
-    if (!ctx || !enabled) return;
-    const t = now();
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(330, t);
-    osc.frequency.exponentialRampToValueAtTime(180, t + 0.3);
-    g.gain.setValueAtTime(0.2, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-    osc.connect(g); g.connect(masterGain);
-    osc.start(t); osc.stop(t + 0.4);
-    createNoise(t, 0.15, 0.1, 800);
-  },
-
-  /**
-   * 花を摘む: 「ふわっ」やさしく
-   */
-  flowerPick() {
-    if (!ctx || !enabled) return;
-    const t = now();
-    [784, 1047, 1319].forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      g.gain.setValueAtTime(0.0, t + i * 0.06);
-      g.gain.linearRampToValueAtTime(0.17, t + i * 0.06 + 0.04);
-      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.06 + 0.35);
-      osc.connect(g); g.connect(masterGain);
-      osc.start(t + i * 0.06); osc.stop(t + i * 0.06 + 0.4);
-    });
-  },
-
-  /**
-   * クエスト受注: 「ジャン！」使命感
-   */
-  questAccept() {
-    if (!ctx || !enabled) return;
-    const t = now();
-    [392, 523, 659].forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = "square";
-      osc.frequency.value = freq;
-      g.gain.setValueAtTime(0.2, t + i * 0.1);
-      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.1 + 0.3);
-      osc.connect(g); g.connect(masterGain);
-      osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.35);
-    });
-  },
-
-  /**
-   * クエスト達成: 「チャラーン！」達成感
-   */
-  questComplete() {
-    if (!ctx || !enabled) return;
-    const t = now();
-    const melody = [523, 659, 784, 1047];
-    melody.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.value = freq;
-      g.gain.setValueAtTime(0.28, t + i * 0.1);
-      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.1 + 0.4);
-      osc.connect(g); g.connect(masterGain);
-      osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.45);
-    });
-    createNoise(t + 0.35, 0.4, 0.15, 2000);
-  },
-
-  /**
-   * アイテム獲得（料理/食材等）: 「キラン」
-   */
-  itemGet() {
-    if (!ctx || !enabled) return;
-    const t = now();
-    [1319, 1760].forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.value = freq;
-      g.gain.setValueAtTime(0.18, t + i * 0.07);
-      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.07 + 0.3);
-      osc.connect(g); g.connect(masterGain);
-      osc.start(t + i * 0.07); osc.stop(t + i * 0.07 + 0.35);
-    });
-  },
-
-});
