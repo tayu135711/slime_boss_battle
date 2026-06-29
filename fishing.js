@@ -90,6 +90,7 @@ function endFishing(success) {
       dom.statusLine.textContent = `${fish.icon} ${fish.name}: ${fish.desc}`;
       setTimeout(() => dom.statusLine.textContent = "", 2500);
       checkQuestProgress();
+      saveToServer(); // ★ 釣り結果（インベントリ・カウント）をセーブ
       if (typeof updatePlazaCameraFollow === "function") updatePlazaCameraFollow();
       // ★ 釣り場エリア内なら残り回数があれば自動で次の一投を促す
       _afterFishingInArea();

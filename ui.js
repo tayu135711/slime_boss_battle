@@ -98,8 +98,8 @@ function showHomePlaza() {
   if (typeof updateMapBtnVisibility === "function") updateMapBtnVisibility();
   // 広場を初期化
   if (typeof initHomePlaza === "function") initHomePlaza();
-  // セーブ
-  saveToServer();
+  // ★ ここではセーブしない（dismissTitle経由の場合、ロード完了前に空データを上書きしてしまうため）
+  // セーブはバトルクリア後・アイテム取得後・着替え後など「データが変わったタイミング」のみ行う
 }
 
 function showComingSoon(name) {
@@ -432,7 +432,13 @@ function startStage() {
   SE.resume();
   SE.battleStart();
 
-  // ★ バトル開始時に初回攻撃を2秒後に設定
+  // ★ お弁当バフ：specialStart を初期ゲージに反映
+  if (state._buffSpecialStart) {
+    state.specialGauge = Math.min(100, state._buffSpecialStart);
+    state._buffSpecialStart = 0;
+  }
+
+  // ★ バトル開始時にバトル初回攻撃を2秒後に設定
   state.bossAI.nextAttackAt = Date.now() + 2000;
 
   const stg = getCurrentStage(state.stageIndex);
@@ -468,7 +474,7 @@ function handleBossDefeated() {
 
   // ★ 最終ボス（古王スライム・ガガントス = stageIndex 5）討伐フラグ
   if (state.stageIndex >= 5) {
-    state.quests.king_slime_defeated = true;
+    state.quests.king_slime_defeated = { active: false, completed: true, collected: 1, goal: 1 };
   }
 
   // ★ 次ステージを正しく解放（現在+1 を unlockedStages に反映）
@@ -481,6 +487,13 @@ function handleBossDefeated() {
   const mm      = String(Math.floor(elapsed / 60)).padStart(2, "0");
   const ss      = String(elapsed % 60).padStart(2, "0");
   const stg     = getCurrentStage(state.stageIndex);
+
+  // ★ クリア記録を更新
+  state.totalClears += 1;
+  const stageKey = String(stg.stageNo);
+  if (!state.bestTimes[stageKey] || elapsed < state.bestTimes[stageKey]) {
+    state.bestTimes[stageKey] = elapsed;
+  }
 
   // ★ タイムアウト時点のステージ番号をキャプチャして保持
   const clearedStageIndex = state.stageIndex;
@@ -542,6 +555,9 @@ function renderRewardChoices(stageNo) {
       dom.rewardCards.querySelectorAll(".reward-card").forEach(c => c.classList.remove("reward-selected"));
       card.classList.add("reward-selected");
 
+      // ★ クリア報酬取得後にセーブ
+      saveToServer();
+
       // 次のステージへボタンを出す
       dom.nextStageBtn.style.display = "";
     });
@@ -565,7 +581,7 @@ function resetBattle() {
   document.querySelectorAll(".dpad-btn").forEach(b => b.classList.remove("pressed"));
 
   // モーションをすべてリセット
-  if (three.swordPivot) three.swordPivot.rotation.z = 0;
+  if (three.swordPivot) three.swordPivot.rotation.x = 0;
   if (three.swordSwing)  three.swordSwing  = { active: false, progress: 0 };
   if (three.dashAttack) {
     three.dashAttack = { active: false, progress: 0 };
@@ -588,6 +604,14 @@ function resetBattle() {
   state.player.invincibleUntil = 0;
   state.player.vx              = 0;   // ★ 慣性速度リセット
   state.player.vz              = 0;
+
+  // ★ お弁当バフをリセット（ステージ毎に再適用）
+  // ※ specialStart は startStage() で消費済みのため不要だがクリアしておく
+  state._buffAttackMult  = 1;
+  state._buffSpeedMult   = 1;
+  state._buffCritMult    = 1;
+  state._buffDefenseMult = 1;
+  state._buffSpecialStart = 0;
 
   // ★ nextAttackAt を Infinity に戻す（startStage() で正式に設定する）
   state.bossAI = { phase: 1, nextAttackAt: Infinity, mode: "wander", chargeTarget: null };

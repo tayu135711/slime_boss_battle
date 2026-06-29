@@ -42,7 +42,7 @@ async function saveToServer() {
     unlockedStages:    state.unlockedStages,
     equippedCostumeId: state.equippedCostume?.id || "c01",
     ownedCostumes:     JSON.stringify(state.ownedCostumes.map(c => c.id)),
-    inventory:         JSON.stringify(state.inventory),
+    inventory:         JSON.stringify(state.inventory?.ingredients !== undefined ? state.inventory : { ingredients: {} }),
     bento:             JSON.stringify(state.bento),
     dailyFishCount:    state.dailyFishCount,
     lastFishDate:      state.lastFishDate || "",
@@ -125,13 +125,34 @@ async function loadFromServer() {
 
     // インベントリ
     if (data.inventory) {
-      try { state.inventory = JSON.parse(data.inventory); } catch (e) { console.warn("[load] inventory parse失敗", e); }
+      try {
+        const parsed = JSON.parse(data.inventory);
+        // ★ { ingredients: {...} } 形式を保証する（古いセーブデータ互換対策）
+        if (parsed && typeof parsed === "object") {
+          if (parsed.ingredients && typeof parsed.ingredients === "object") {
+            state.inventory = parsed; // 正常フォーマット
+          } else if (!parsed.ingredients) {
+            // ingredientsキーがない場合：parsed自体がingredientsとして保存されていた古い形式
+            state.inventory = { ingredients: parsed };
+          }
+        }
+      } catch (e) { console.warn("[load] inventory parse失敗", e); }
+    }
+    // ★ ingredientsが存在しない場合は必ず初期化
+    if (!state.inventory || !state.inventory.ingredients) {
+      state.inventory = { ingredients: {} };
     }
 
     // お弁当
     if (data.bento) {
-      try { state.bento = JSON.parse(data.bento); } catch (e) { console.warn("[load] bento parse失敗", e); }
+      try {
+        const parsed = JSON.parse(data.bento);
+        // ★ 配列形式を保証する
+        state.bento = Array.isArray(parsed) ? parsed : [];
+      } catch (e) { console.warn("[load] bento parse失敗", e); }
     }
+    // ★ bentoが配列でない場合は初期化
+    if (!Array.isArray(state.bento)) state.bento = [];
 
     // コスチューム
     if (data.ownedCostumes) {

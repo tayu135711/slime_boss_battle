@@ -106,6 +106,7 @@ function executeCooking() {
       state.bento.push(matchedRecipe);
       SE.itemGet();
       resultDiv.innerHTML = `<p>✨ ${matchedRecipe.icon} ${matchedRecipe.name} が完成！</p><p>${matchedRecipe.effectDesc}</p><p>お弁当に入れたよ🍱</p>`;
+      saveToServer(); // ★ 料理結果（インベントリ・お弁当）をセーブ
     }
   } else {
     SE.fishingMiss(); // 失敗音

@@ -72,6 +72,7 @@ function doPickFlower() {
 
   updateFlowerQuests(flowerType.id);
   checkQuestProgress();
+  saveToServer(); // ★ 花摘み結果（インベントリ・カウント）をセーブ
 }
 
 function updateFlowerQuests(flowerId) {

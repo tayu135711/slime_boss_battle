@@ -299,8 +299,14 @@ function attackBoss() {
   state.lastAttackAt = now;
 
   const { minDamage, maxDamage, criticalThreshold, specialGaugePerHit } = CONFIG.battle;
-  const damage = Math.floor(Math.random() * (maxDamage - minDamage + 1)) + minDamage;
-  const isCrit = damage >= criticalThreshold;
+  // ★ お弁当バフ（攻撃力・クリティカル率）を反映
+  const atkMult  = state._buffAttackMult  || 1;
+  const critMult = state._buffCritMult    || 1;
+  const baseMin  = Math.floor(minDamage * atkMult);
+  const baseMax  = Math.floor(maxDamage * atkMult);
+  const threshold = Math.floor(criticalThreshold / critMult); // 閾値を下げる→クリット増加
+  const damage = Math.floor(Math.random() * (baseMax - baseMin + 1)) + baseMin;
+  const isCrit = damage >= threshold;
 
   state.currentHp    = Math.max(0, state.currentHp - damage);
   state.totalDamage += damage;
@@ -615,7 +621,10 @@ function applyPlayerDamage(damage) {
   if (now < state.player.invincibleUntil) return;
   if (state.cleared || state.gameOver) return;
 
-  state.player.hp             = Math.max(0, state.player.hp - damage);
+  // ★ お弁当バフ（防御力）を反映してダメージ軽減
+  const defMult = state._buffDefenseMult || 1;
+  const actualDamage = Math.max(1, Math.floor(damage / defMult));
+  state.player.hp             = Math.max(0, state.player.hp - actualDamage);
   state.player.invincibleUntil = now + CONFIG.player.invincibleMs;
 
   dom.damageFlash.classList.add("active");

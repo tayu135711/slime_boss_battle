@@ -64,6 +64,8 @@ const POND_AREA_ENTRY   = { x: 18,  z: 12 };    // ★修正: pond建物(z:6)の
 const FLOWER_AREA_ENTRY = { x: -16, z: 20 };    // 花畑建物(z:14)の手前6ユニット
 // サブエリア用カメラ固定：trueの間はupdatePlazaCameraFollowでカメラを上書きしない
 let subAreaCameraLocked = false;
+// ★ エリア移動フェード中の二重実行防止ロック
+let _areaTransitionLocked = false;
 
 let plazaDialog = null;
 
@@ -922,12 +924,32 @@ function updateHomePlazaLoop() {
     if (!currentSubArea) {
       checkPlazaEntrances();
     } else {
-      // サブエリア内では花の近接チェックのみ実行（花畑エリア用）
+      // サブエリア内では建物プロンプト・NPC泡を消す
       dom.plazaActionPrompt.classList.remove("visible");
       plazaNearBuilding = null;
-      if (currentSubArea === "flower") checkFlowerProximity();
+      if (currentSubArea === "flower") {
+        checkFlowerProximity();
+        // ★ 花畑エリア内でプロンプトを表示
+        if (plazaNearFlower && nearestFlower) {
+          dom.plazaActionPrompt.textContent = "Ａ で花を摘む";
+          dom.plazaActionPrompt.classList.add("visible");
+        } else {
+          dom.plazaActionPrompt.classList.remove("visible");
+        }
+      } else if (currentSubArea === "pond") {
+        // ★ 釣り場エリア内で釣り待機中のプロンプトを表示
+        if (!fishingActive) {
+          dom.plazaActionPrompt.textContent = "Ａ で釣り糸を垂らす";
+          dom.plazaActionPrompt.classList.add("visible");
+        } else {
+          dom.plazaActionPrompt.classList.remove("visible");
+        }
+      }
     }
     if (!currentSubArea) checkFlowerProximity();
+  } else {
+    // ★ UI表示中はプロンプトを必ず消す
+    dom.plazaActionPrompt.classList.remove("visible");
   }
   updatePlazaNPCs();
   updateFountain();
@@ -1185,11 +1207,17 @@ function handlePlazaAction() {
   if (currentSubArea) {
     // 花畑エリア内: Aで花を摘む
     if (currentSubArea === "flower" && plazaNearFlower && nearestFlower) {
-      pickFlower();
+      if (window._flowerWaiting) {
+        doPickFlower();
+      } else {
+        pickFlower();
+      }
+      return;
     }
-    // 釣り場エリア内: Aで釣り（UI経由で既に釣りが始まっていない場合）
+    // 釣り場エリア内: Aで釣りを開始（釣り中でなければ）
     if (currentSubArea === "pond" && !fishingActive) {
       startFishing();
+      return;
     }
     return;
   }
@@ -1209,6 +1237,10 @@ function handlePlazaAction() {
 
 // ── エリア移動（フェードイン・アウト演出付き） ─────────────────
 function enterAreaWithFade(areaName, onEnter) {
+  // ★ フェード中の二重実行を防止
+  if (_areaTransitionLocked) return;
+  _areaTransitionLocked = true;
+
   const overlay = document.getElementById("areaTransitionOverlay") || (() => {
     const el = document.createElement("div");
     el.id = "areaTransitionOverlay";
@@ -1241,6 +1273,8 @@ function enterAreaWithFade(areaName, onEnter) {
         label.style.transition = "opacity 0.4s";
         label.style.opacity = "0";
         overlay.style.background = "rgba(255,240,255,0)";
+        // ★ フェード完了後にロック解除
+        _areaTransitionLocked = false;
       }, 600);
     }, 400);
   });
@@ -1263,9 +1297,10 @@ function enterPondArea() {
     three.camera.position.set(px, 4.5, pz + 12);
     three.camera.lookAt(px, 0.2, pz);
 
-    dom.statusLine.textContent = "池のほとりに来た。のんびり釣りでもしよう。";
+    dom.statusLine.textContent = "池のほとりに来た。Ａ で釣り糸を垂らそう！";
     setTimeout(() => dom.statusLine.textContent = "", 3000);
-    startFishing();
+    // ★ 自動でstartFishingを呼ばない → プレイヤーがAボタンで開始する
+    // （フェード中に呼ぶと二重実行・タイミングバグの原因になる）
   });
 }
 
@@ -1418,10 +1453,42 @@ function eatBentoOnBench() {
   if (!state._benchBentoReady || state.bento.length === 0) return false;
   const recipe = state.bento.shift();
   state._benchBentoReady = false;
-  const msg = recipe.buff?.hpRecover
-    ? `HP が ${recipe.buff.hpRecover} 回復した！`
-    : "なんだか元気が出てきた！";
-  state.player.hp = Math.min(CONFIG.player.maxHp, state.player.hp + (recipe.buff?.hpRecover || 0));
+  const buff = recipe.buff || {};
+
+  // ★ HPかいふく
+  if (buff.hpRecover) {
+    state.player.hp = Math.min(CONFIG.player.maxHp, state.player.hp + buff.hpRecover);
+  }
+  // ★ 必殺技ゲージ先行チャージ（次バトル開始時に反映させるためstateに保存）
+  if (buff.specialStart) {
+    state._buffSpecialStart = (state._buffSpecialStart || 0) + buff.specialStart;
+  }
+  // ★ 攻撃力アップ（バトル中の minDamage / maxDamage に一時乗算）
+  if (buff.attackUp) {
+    state._buffAttackMult = (state._buffAttackMult || 1) * buff.attackUp;
+  }
+  // ★ 移動速度アップ
+  if (buff.speedUp) {
+    state._buffSpeedMult = (state._buffSpeedMult || 1) * buff.speedUp;
+  }
+  // ★ クリティカル率アップ（criticalThresholdを下げる）
+  if (buff.critUp) {
+    state._buffCritMult = (state._buffCritMult || 1) * buff.critUp;
+  }
+  // ★ 防御力アップ（被ダメージ軽減）
+  if (buff.defenseUp) {
+    state._buffDefenseMult = (state._buffDefenseMult || 1) * buff.defenseUp;
+  }
+
+  const parts = [];
+  if (buff.hpRecover)  parts.push(`HP +${buff.hpRecover}`);
+  if (buff.attackUp)   parts.push(`攻撃×${buff.attackUp}`);
+  if (buff.speedUp)    parts.push(`速度×${buff.speedUp}`);
+  if (buff.critUp)     parts.push(`会心×${buff.critUp}`);
+  if (buff.defenseUp)  parts.push(`防御×${buff.defenseUp}`);
+  if (buff.specialStart) parts.push(`ゲージ+${buff.specialStart}%`);
+  const msg = parts.length > 0 ? parts.join("・") : "なんだか元気が出てきた！";
+
   dom.statusLine.textContent = `${recipe.icon} ${recipe.name} を食べた。${msg}`;
   setTimeout(() => { dom.statusLine.textContent = ""; updatePlazaCameraFollow(); }, 3000);
   refreshUi();
@@ -1454,8 +1521,9 @@ function startNPCConversation(npc) {
   }
 
   plazaDialog = { npc, currentLineIndex: 0, lines };
+  // ★ NPC自身のname（home_npcs.jsで定義）を使う。なければcostume名にフォールバック
   const costume = COSTUMES.find(c => c.id === npc.costumeId);
-  dom.npcDialogName.textContent = costume ? costume.name : "???";
+  dom.npcDialogName.textContent = npc.name || (costume ? costume.name : "???");
   showDialogLine();
   dom.npcDialog.classList.add("visible");
   SE.npcTalk();
@@ -1491,6 +1559,8 @@ function closeNpcDialog() {
 }
 
 function exitHomePlaza() {
+  // ★ エリア移動ロックを強制解除
+  _areaTransitionLocked = false;
   dom.homePlazaScreen.classList.remove("visible");
   dom.npcBubble.classList.remove("visible");
   dom.plazaActionPrompt.classList.remove("visible");
@@ -1680,6 +1750,7 @@ function warpToArea(dest) {
     if (currentSubArea) {
       currentSubArea = null;
       subAreaCameraLocked = false;
+      _areaTransitionLocked = false; // ★ ロックも解除
       const btn = document.getElementById('subAreaBackBtn');
       if (btn) btn.style.display = 'none';
     }

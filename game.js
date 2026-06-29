@@ -189,7 +189,9 @@ function updatePlayerMovement() {
   }
 
   const half    = CONFIG.field.halfSize;
-  const topSpeed = CONFIG.player.moveSpeed * 1.8;
+  // ★ お弁当バフ（速度アップ）を反映
+  const speedMult = state._buffSpeedMult || 1;
+  const topSpeed = CONFIG.player.moveSpeed * 1.8 * speedMult;
   const accel    = 0.12;
   const friction = 0.82;
 

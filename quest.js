@@ -63,10 +63,12 @@ function completeQuest(questId) {
 function checkQuestProgress() {
   Object.keys(state.quests).forEach(qid => {
     const quest = state.quests[qid];
-    if (!quest.active) return;
-    if (qid === "fish_delivery") quest.collected = state.inventory.ingredients["funa"] || 0;
-    if (qid === "seaweed_collect") quest.collected = state.inventory.ingredients["weed"] || 0;
-    if (qid === "stone_collect") quest.collected = state.inventory.ingredients["stone"] || 0;
+    // ★ クエストオブジェクトでない場合（例: king_slime_defeated）はスキップ
+    if (!quest || typeof quest !== "object" || !quest.active) return;
+    if (qid === "fish_delivery")   quest.collected = state.inventory.ingredients["funa"]        || 0;
+    if (qid === "seaweed_collect") quest.collected = state.inventory.ingredients["weed"]        || 0;
+    if (qid === "stone_collect")   quest.collected = state.inventory.ingredients["stone"]       || 0;
+    // ★ flower_beginner の collected は flower.js の updateFlowerQuests() が直接インクリメントするためここでは上書きしない
     if (quest.collected >= quest.goal) completeQuest(qid);
   });
 }
