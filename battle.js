@@ -274,7 +274,7 @@ function flashBossHit(ms = 120) {
   const idx = state.stageIndex;
   three.bossMat.color.set(getCurrentStage(idx).hitColor);
   setTimeout(() => {
-    if (!state.cleared) three.bossMat.color.set(getCurrentStage(state.stageIndex).color);
+    if (!state.cleared) three.bossMat.color.set(getCurrentStage(idx).color);
   }, ms);
 }
 

@@ -283,11 +283,7 @@ function animate() {
     requestAnimationFrame(animate);
     return;
   }
-  if (fishingActive) {
-    three.renderer.render(three.scene, three.camera);
-    requestAnimationFrame(animate);
-    return;
-  }
+  // ※ fishingActiveはhomePlazaScreen内でのみ発生するため、ここには到達しない
   updatePlayerMovement();
   updateBossMovement();
   updateCameraFollow();

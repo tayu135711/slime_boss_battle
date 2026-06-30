@@ -24,6 +24,7 @@ const plaza = {
   bench: null,
   dragonflies: [],
   flowerField: [],
+  flowerSceneField: [], // サブエリア（花畑シーン）専用の花配列
   // 花壇・露店・フェンス等の装飾オブジェクト（setPlazaObjectsVisibleで一括管理）
   decorObjects: [],
   // サブエリア（専用マップ）用のグループ
@@ -1306,6 +1307,11 @@ function enterPondArea() {
     currentSubArea = "pond";
     showSubAreaBackButton("pond");
 
+    // サブエリアのシーングループを切り替え
+    setPlazaObjectsVisible(false);
+    setPondSceneVisible(true);
+    setFlowerSceneVisible(false);
+
     // ★ プレイヤーをpond実体の手前（桟橋の前）に移動
     const px = plaza.pondPos.x;
     const pz = plaza.pondPos.z;
@@ -1330,6 +1336,11 @@ function enterFlowerArea() {
     currentSubArea = "flower";
     showSubAreaBackButton("flower");
 
+    // サブエリアのシーングループを切り替え
+    setPlazaObjectsVisible(false);
+    setPondSceneVisible(false);
+    setFlowerSceneVisible(true);
+
     // ★ プレイヤーを花畑の入口（中心から少し手前）に移動
     const fc = { x: -16, z: 14 };
     plazaPlayer.x = fc.x;
@@ -1348,7 +1359,7 @@ function enterFlowerArea() {
     }, 2000);
 
     // 花畑エリアではnearestFlowerを最寄り（距離近い方）の未採取花に強制セット
-    const available = plaza.flowerField.filter(f => !f.userData.picked);
+    const available = plaza.flowerSceneField.filter(f => !f.userData.picked);
     if (available.length > 0) {
       // ランダムではなく、プレイヤー移動先に最も近い花を選ぶ
       available.sort((a, b) => {
@@ -1432,10 +1443,15 @@ function leaveSubArea() {
   if (_subAreaCameraTimer) { clearTimeout(_subAreaCameraTimer); _subAreaCameraTimer = null; }
 
   // エリアに応じた戻り先座標を設定（フェード後に適用）
+  // ★ currentSubAreaはコールバック内でnullになるため事前にキャプチャ
   const returnPos = currentSubArea === "pond" ? POND_AREA_ENTRY : FLOWER_AREA_ENTRY;
 
   enterAreaWithFade("🏡 広　場", () => {
     currentSubArea = null;
+    // 広場シーンに切り戻す
+    setPlazaObjectsVisible(true);
+    setPondSceneVisible(false);
+    setFlowerSceneVisible(false);
     plazaPlayer.x = returnPos.x;
     plazaPlayer.z = returnPos.z;
     if (plaza.playerMesh) plaza.playerMesh.position.set(plazaPlayer.x, 0, plazaPlayer.z);
@@ -1668,15 +1684,18 @@ function exitHomePlaza() {
 function setPlazaObjectsVisible(visible) {
   const targets = [
     plaza.ground, plaza.cobble, plaza.fountain,
-    plaza.playerMesh, plaza.sunLight, plaza.ambientLight,
+    plaza.sunLight, plaza.ambientLight,
     plaza.pond, plaza.bigTree, plaza.bench,
     ...plaza.buildings.map(b => b.mesh),
     ...npcState.map(n => n.mesh).filter(Boolean),
     ...plaza.dock,
-    ...plaza.flowerField,
     ...(plaza.decorObjects || []),
   ];
   targets.forEach(obj => { if (obj) obj.visible = visible; });
+  // 広場の花（flowerField）は広場シーン専用なのでここで制御
+  plaza.flowerField.forEach(f => { if (f) f.visible = visible; });
+  // playerMeshは広場・サブエリア両方で見えるため visible に関わらず常に表示
+  if (plaza.playerMesh) plaza.playerMesh.visible = true;
   if (plaza.waterDrops) plaza.waterDrops.forEach(d => d.visible = visible);
   if (plaza.dragonflies) plaza.dragonflies.forEach(d => d.visible = visible);
   if (plaza.lamps) plaza.lamps.forEach(l => l.visible = visible);
@@ -1697,7 +1716,9 @@ let nearestFlower = null;
 const FLOWER_PICK_RADIUS = 1.8;
 function checkFlowerProximity() {
   nearestFlower = null;
-  plaza.flowerField.forEach(flower => {
+  // サブエリア（花畑シーン）内では flowerSceneField、広場では flowerField を参照
+  const targetField = (currentSubArea === "flower") ? plaza.flowerSceneField : plaza.flowerField;
+  targetField.forEach(flower => {
     if (flower.userData.picked) return;
     const dx = plazaPlayer.x - flower.position.x;
     const dz = plazaPlayer.z - flower.position.z;
@@ -1709,7 +1730,9 @@ function checkFlowerProximity() {
 function updateFlowers() {
   const now = Date.now();
   const t = now * 0.001;
-  plaza.flowerField.forEach(flower => {
+  // 広場の花とサブエリアの花、両方を更新する
+  const allFlowers = [...plaza.flowerField, ...(plaza.flowerSceneField || [])];
+  allFlowers.forEach(flower => {
     // 翌日リスポーン：respawnTimeを過ぎたら花を復活させる
     if (flower.userData.picked) {
       if (flower.userData.respawnTime > 0 && now >= flower.userData.respawnTime) {
@@ -1936,8 +1959,8 @@ function buildFlowerScene() {
   plaza.flowerSceneGroup.add(ground);
 
   // 大量の花
-  // ※ ここでは装飾用の背景花を配置し、実際に摘む用の花は既存の logic (flower.js) で扱うために別配列 `plaza.flowerField` に入れる
-  plaza.flowerField = [];
+  // ★ サブエリア専用の花は plaza.flowerSceneField で管理（広場の plaza.flowerField とは分離）
+  plaza.flowerSceneField = [];
   const colors = [0xff88cc, 0xffdd44, 0xaa66ff, 0xffbbdd, 0x88ccff];
   
   for (let i = 0; i < 150; i++) {
@@ -1961,9 +1984,9 @@ function buildFlowerScene() {
     const angle = Math.random() * Math.PI * 2;
     fl.position.set(Math.cos(angle) * r, 0.35, Math.sin(angle) * r);
     fl.castShadow = true;
-    fl.userData = { picked: false, baseColor: c, originalY: 0.35, flowerType: type };
+    fl.userData = { picked: false, baseColor: c, originalY: 0.35, flowerType: type, respawnTime: 0, phase: Math.random() * Math.PI * 2 };
     plaza.flowerSceneGroup.add(fl);
-    plaza.flowerField.push(fl); // 摘む対象として登録
+    plaza.flowerSceneField.push(fl); // サブエリア専用配列に登録
   }
 
   // 休憩ベンチ
