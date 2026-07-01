@@ -739,18 +739,15 @@ function applyCostume(costume) {
   // 帽子差し替え
   rebuildHat(costume);
   // ── 広場プレイヤーにも色を反映 ──
-  if (plaza?.playerMesh) {
-    plaza.playerMesh.traverse(child => {
-      if (child.isMesh && child.material?.color) {
-        child.material.color.set(costume.color);
-        // MeshPhysicalMaterialにはemissiveも更新
-        if (child.material.emissive) {
-          child.material.emissive.set(costume.color);
-          child.material.emissiveIntensity = 0.12;
-        }
-      }
-    });
+  // ★修正: 以前は traverse() で「色を持つメッシュ全部」を問答無用でボディ色に
+  //         塗り替えていたため、帽子(hatGroup)も巻き込まれて単色に潰れてしまう。
+  //         バトル側と同じく bodyMat/stickMat だけを狙い撃ちで更新する。
+  if (plaza?.slimeParts?.bodyMat) {
+    plaza.slimeParts.bodyMat.color.set(costume.color);
+    plaza.slimeParts.bodyMat.emissive?.set(costume.color);
+    if (plaza.slimeParts.bodyMat.emissive) plaza.slimeParts.bodyMat.emissiveIntensity = 0.12;
   }
+  if (plaza?.slimeParts?.stickMat) plaza.slimeParts.stickMat.color.set(costume.color);
 }
 
 // ── 着替え画面（ドレッシングルーム） ─────────────────────────────
@@ -815,8 +812,14 @@ function confirmDressing() {
   const costume = _dressingTargetCostume;
 
   // 着替えモーション：3Dスライムをくるっと回転
-  if (three.playerGroup || plaza?.playerMesh) {
-    const mesh = three.playerGroup || plaza.playerMesh;
+  // ★修正: 以前は `three.playerGroup || plaza.playerMesh` で常にplayerGroup優先だった。
+  //         playerGroupは広場表示中はvisible=falseで非表示になっているため、
+  //         ショップ／図鑑（＝常に広場内からしか開けない）で着替えても
+  //         画面上には何も回転して見えないバグになっていた。
+  //         実際に表示中の画面（広場かバトルか）に応じて回すメッシュを切り替える。
+  const inPlaza = dom.homePlazaScreen?.classList.contains("visible");
+  const mesh = inPlaza ? plaza?.playerMesh : three.playerGroup;
+  if (mesh) {
     let spins = 0;
     const spinFn = () => {
       mesh.rotation.y += 0.35;

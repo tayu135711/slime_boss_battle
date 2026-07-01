@@ -47,8 +47,15 @@ function pickFlower() {
 }
 
 function doPickFlower() {
-  if (!window._flowerWaiting || !nearestFlower || nearestFlower.userData.picked) return;
+  if (!window._flowerWaiting) return;
+  // ★修正: 以前は nearestFlower が null/picked済みの場合に早期returnして
+  //         _flowerWaiting が false に戻らず、以降ずっとAボタンが「花摘み待機」に
+  //         乗っ取られたまま固まる可能性があった。必ずここで解除する。
   window._flowerWaiting = false;
+  if (!nearestFlower || nearestFlower.userData.picked) {
+    if (flowerUI) flowerUI.style.display = "none";
+    return;
+  }
 
   const flowerType = nearestFlower.userData.flowerType;
   nearestFlower.visible = false;

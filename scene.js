@@ -663,8 +663,14 @@ function buildCuteSlimeBody(group, r, color) {
 
 // ── 帽子差し替えシステム ──────────────────────────────────────
 function rebuildHat(costume) {
-  const hg = three.slimeParts?.hatGroup;
-  if (!hg) return;
+  // ★修正: 以前は three.slimeParts（バトル用スライム）の帽子しか更新しておらず、
+  //         広場のスライム(plaza.slimeParts)には帽子付きコスチュームが一切反映されなかった。
+  //         両方のhatGroupを更新するようにする。
+  const hatGroups = [three.slimeParts?.hatGroup, plaza?.slimeParts?.hatGroup].filter(Boolean);
+  hatGroups.forEach(hg => _rebuildHatGroup(hg, costume));
+}
+
+function _rebuildHatGroup(hg, costume) {
   while (hg.children.length > 0) {
     const c = hg.children[0];
     c.traverse(x => { if (x.isMesh) { x.geometry?.dispose(); x.material?.dispose(); } });

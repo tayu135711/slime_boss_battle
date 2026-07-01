@@ -65,9 +65,12 @@ function checkQuestProgress() {
     const quest = state.quests[qid];
     // ★ クエストオブジェクトでない場合（例: king_slime_defeated）はスキップ
     if (!quest || typeof quest !== "object" || !quest.active) return;
-    if (qid === "fish_delivery")   quest.collected = state.inventory.ingredients["funa"]        || 0;
-    if (qid === "seaweed_collect") quest.collected = state.inventory.ingredients["weed"]        || 0;
-    if (qid === "stone_collect")   quest.collected = state.inventory.ingredients["stone"]       || 0;
+    // ★修正: 以前は所持数をそのまま代入していたため、達成前に料理で素材を
+    //         消費すると進捗が巻き戻ってしまうバグがあった。
+    //         「一度到達した進捗は減らさない」よう Math.max で単調増加にする。
+    if (qid === "fish_delivery")   quest.collected = Math.max(quest.collected, state.inventory.ingredients["funa"]  || 0);
+    if (qid === "seaweed_collect") quest.collected = Math.max(quest.collected, state.inventory.ingredients["weed"]  || 0);
+    if (qid === "stone_collect")   quest.collected = Math.max(quest.collected, state.inventory.ingredients["stone"] || 0);
     // ★ flower_beginner の collected は flower.js の updateFlowerQuests() が直接インクリメントするためここでは上書きしない
     if (quest.collected >= quest.goal) completeQuest(qid);
   });

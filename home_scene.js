@@ -12,6 +12,7 @@ const plaza = {
   fountainPos: { x: 0, z: 0 },
   buildings: [],
   playerMesh: null,
+  slimeParts: null, // ★追加: buildCuteSlimeBodyの戻り値(帽子グループ等)を保持
   initialized: false,
   sunLight: null,
   ambientLight: null,
@@ -19,6 +20,7 @@ const plaza = {
   waterDrops: [],
   pond: null,
   pondPos: { x: 18, z: 6 },   // ★修正: pond_area建物(x:18,z:6)と同座標に統一
+  flowerAreaPos: { x: -16, z: 14 }, // ★修正: flower_area建物(x:-16,z:14)と同座標に統一（buildFlowerScene/enterFlowerAreaで共有）
   dock: [],
   bigTree: null,
   bench: null,
@@ -697,11 +699,17 @@ function buildPlazaNPCs() {
 
 function buildPlazaPlayer() {
   const group = new THREE.Group();
-  const color = state.equippedCostume ? state.equippedCostume.color : CONFIG.player.color;
-  buildCuteSlimeBody(group, CONFIG.player.radius, color);
+  const costume = state.equippedCostume;
+  const color = costume ? costume.color : CONFIG.player.color;
+  // ★修正: 戻り値(bodyMat/hatGroup等)を捨てずに plaza.slimeParts に保持する。
+  //         これが無いと rebuildHat() が広場プレイヤーの帽子グループを
+  //         見つけられず、帽子付きコスチュームが広場では永遠に反映されないバグになる。
+  plaza.slimeParts = buildCuteSlimeBody(group, CONFIG.player.radius, color);
   group.position.set(0, 0, 0);
   three.scene.add(group);
   plaza.playerMesh = group;
+  // ★修正: 生成直後に現在の装備帽子を反映する（それまでは常に帽子なしのままだった）
+  if (costume && typeof rebuildHat === "function") rebuildHat(costume);
 }
 
 function buildFishingSpot() {
@@ -1323,6 +1331,13 @@ function enterPondArea() {
     subAreaCameraLocked = true;
     three.camera.position.set(px, 4.5, pz + 12);
     three.camera.lookAt(px, 0.2, pz);
+    // 2秒後にカメラロック解除 → 以降は通常フォロー
+    // （★修正: このタイマーが無いとカメラが演出位置に固まったまま二度と追従しなくなるバグがあった）
+    if (_subAreaCameraTimer) clearTimeout(_subAreaCameraTimer);
+    _subAreaCameraTimer = setTimeout(() => {
+      subAreaCameraLocked = false;
+      _subAreaCameraTimer = null;
+    }, 2000);
 
     dom.statusLine.textContent = "池のほとりに来た。Ａ で釣り糸を垂らそう！";
     setTimeout(() => dom.statusLine.textContent = "", 3000);
@@ -1342,7 +1357,7 @@ function enterFlowerArea() {
     setFlowerSceneVisible(true);
 
     // ★ プレイヤーを花畑の入口（中心から少し手前）に移動
-    const fc = { x: -16, z: 14 };
+    const fc = plaza.flowerAreaPos; // ★修正: buildFlowerSceneと同じ定数を共有し座標ズレを防止
     plazaPlayer.x = fc.x;
     plazaPlayer.z = fc.z + 6;  // 花畑の入口付近
     if (plaza.playerMesh) plaza.playerMesh.position.set(plazaPlayer.x, 0, plazaPlayer.z);
@@ -1900,6 +1915,11 @@ function setFlowerSceneVisible(visible) {
 function buildPondScene() {
   plaza.pondSceneGroup = new THREE.Group();
   plaza.pondSceneGroup.visible = false;
+  // ★修正: グループ自体はオフセットしない。
+  //         checkFlowerProximity等のゲーム内判定は各メッシュの .position.x/z を
+  //         そのままワールド座標として扱っているため、グループ側でオフセットすると
+  //         見た目の位置と当たり判定の位置がズレてしまう。よって各オブジェクトの
+  //         position.set()に直接 plaza.pondPos を加算する方式にする。
   three.scene.add(plaza.pondSceneGroup);
 
   // 地面
@@ -1908,6 +1928,7 @@ function buildPondScene() {
     new THREE.MeshStandardMaterial({ color: 0x4d9c4a, roughness: 0.9 })
   );
   ground.rotation.x = -Math.PI / 2;
+  ground.position.set(plaza.pondPos.x, 0, plaza.pondPos.z);
   ground.receiveShadow = true;
   plaza.pondSceneGroup.add(ground);
 
@@ -1916,7 +1937,7 @@ function buildPondScene() {
     new THREE.CylinderGeometry(15, 15, 0.4, 32),
     new THREE.MeshStandardMaterial({ color: 0x4a9cd4, roughness: 0.2, metalness: 0.3, transparent: true, opacity: 0.85 })
   );
-  pond.position.set(0, 0.2, 0);
+  pond.position.set(plaza.pondPos.x, 0.2, plaza.pondPos.z);
   pond.receiveShadow = true;
   plaza.pondSceneGroup.add(pond);
 
@@ -1925,7 +1946,7 @@ function buildPondScene() {
     new THREE.BoxGeometry(4, 0.6, 6),
     new THREE.MeshStandardMaterial({ color: 0x7a5030, roughness: 0.9 })
   );
-  dock.position.set(0, 0.5, 10);
+  dock.position.set(plaza.pondPos.x, 0.5, plaza.pondPos.z + 10);
   dock.castShadow = true;
   dock.receiveShadow = true;
   plaza.pondSceneGroup.add(dock);
@@ -1937,7 +1958,7 @@ function buildPondScene() {
     const tree = new THREE.Mesh(geo, mat);
     const angle = Math.random() * Math.PI * 2;
     const r = 20 + Math.random() * 30;
-    tree.position.set(Math.cos(angle) * r, tree.geometry.parameters.height / 2, Math.sin(angle) * r);
+    tree.position.set(plaza.pondPos.x + Math.cos(angle) * r, tree.geometry.parameters.height / 2, plaza.pondPos.z + Math.sin(angle) * r);
     tree.rotation.y = Math.random() * Math.PI;
     tree.castShadow = true;
     plaza.pondSceneGroup.add(tree);
@@ -1947,6 +1968,9 @@ function buildPondScene() {
 function buildFlowerScene() {
   plaza.flowerSceneGroup = new THREE.Group();
   plaza.flowerSceneGroup.visible = false;
+  // ★修正: グループ自体はオフセットしない（理由はbuildPondSceneのコメント参照）。
+  //         各花の position.set()に直接 plaza.flowerAreaPos を加算し、
+  //         checkFlowerProximity/enterFlowerAreaのワールド座標判定と一致させる。
   three.scene.add(plaza.flowerSceneGroup);
 
   // 地面
@@ -1955,6 +1979,7 @@ function buildFlowerScene() {
     new THREE.MeshStandardMaterial({ color: 0x5dae5a, roughness: 0.9 })
   );
   ground.rotation.x = -Math.PI / 2;
+  ground.position.set(plaza.flowerAreaPos.x, 0, plaza.flowerAreaPos.z);
   ground.receiveShadow = true;
   plaza.flowerSceneGroup.add(ground);
 
@@ -1979,10 +2004,10 @@ function buildFlowerScene() {
     const geo = new THREE.SphereGeometry(0.35, 6, 6);
     const mat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.6 });
     const fl = new THREE.Mesh(geo, mat);
-    // 花畑エリアの中心付近に散らす
+    // 花畑エリアの中心付近に散らす（★修正: flowerAreaPosを加算してワールド座標に合わせる）
     const r = Math.random() * 20;
     const angle = Math.random() * Math.PI * 2;
-    fl.position.set(Math.cos(angle) * r, 0.35, Math.sin(angle) * r);
+    fl.position.set(plaza.flowerAreaPos.x + Math.cos(angle) * r, 0.35, plaza.flowerAreaPos.z + Math.sin(angle) * r);
     fl.castShadow = true;
     fl.userData = { picked: false, baseColor: c, originalY: 0.35, flowerType: type, respawnTime: 0, phase: Math.random() * Math.PI * 2 };
     plaza.flowerSceneGroup.add(fl);
@@ -1994,7 +2019,7 @@ function buildFlowerScene() {
     new THREE.BoxGeometry(3, 0.5, 1),
     new THREE.MeshStandardMaterial({ color: 0xa87858, roughness: 0.9 })
   );
-  bench.position.set(0, 0.6, 6);
+  bench.position.set(plaza.flowerAreaPos.x, 0.6, plaza.flowerAreaPos.z + 6);
   bench.castShadow = true;
   plaza.flowerSceneGroup.add(bench);
 
@@ -2005,7 +2030,7 @@ function buildFlowerScene() {
     const tree = new THREE.Mesh(geo, mat);
     const angle = Math.random() * Math.PI * 2;
     const r = 25 + Math.random() * 20;
-    tree.position.set(Math.cos(angle) * r, tree.geometry.parameters.height / 2, Math.sin(angle) * r);
+    tree.position.set(plaza.flowerAreaPos.x + Math.cos(angle) * r, tree.geometry.parameters.height / 2, plaza.flowerAreaPos.z + Math.sin(angle) * r);
     tree.castShadow = true;
     plaza.flowerSceneGroup.add(tree);
   }
