@@ -321,6 +321,7 @@ function _renderShopTab(tab) {
           dom.statusLine.textContent = `📋 クエスト「${QUESTS[qid].name}」を受けた！`;
           setTimeout(() => { dom.statusLine.textContent = ""; }, 2500);
           setTimeout(() => _renderShopTab("quests"), 500);
+          saveToServer(); // ★修正: 受注直後にアプリを閉じると受注状態が消えるバグの修正
         }
       });
     });
@@ -544,11 +545,19 @@ function renderRewardChoices(stageNo) {
   });
   dom.rewardCards.innerHTML = html;
 
-  // カードクリックで取得 & 装備
+  // ★修正: 以前はどのカードをクリックしても取得できてしまい、
+  //         3枚とも順にクリックすれば3体とも無料で入手できるバグがあった。
+  //         「3択のうち1体だけ選べる」よう、一度選んだら他のカードを無効化する。
+  let rewardChosen = false;
+
+  // カードクリックで取得 & 装備（1回だけ）
   dom.rewardCards.querySelectorAll(".reward-card").forEach(card => {
     card.addEventListener("click", () => {
+      if (rewardChosen) return; // ★ 既に選択済みなら何もしない
       const costume = COSTUMES.find(c => c.id === card.dataset.id);
       if (!costume) return;
+
+      rewardChosen = true;
 
       // 所持リストに追加
       if (!state.ownedCostumes.find(o => o.id === costume.id)) {
@@ -557,8 +566,14 @@ function renderRewardChoices(stageNo) {
       // 装備
       equipCostume(costume);
 
-      // 選択済みスタイル
-      dom.rewardCards.querySelectorAll(".reward-card").forEach(c => c.classList.remove("reward-selected"));
+      // 選択済みスタイル・他のカードは選べないように無効化
+      dom.rewardCards.querySelectorAll(".reward-card").forEach(c => {
+        c.classList.remove("reward-selected");
+        if (c !== card) {
+          c.classList.add("reward-card-locked");
+          c.style.pointerEvents = "none";
+        }
+      });
       card.classList.add("reward-selected");
 
       // ★ クリア報酬取得後にセーブ

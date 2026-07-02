@@ -556,6 +556,12 @@ html, body {
   box-shadow: 0 0 0 3px rgba(212,168,75,0.35), 0 6px 18px rgba(180,130,20,0.25);
   transform: scale(1.05);
 }
+/* ★修正: 3択のうち選ばれなかったカードは選択不可であることが分かるよう減光する */
+.reward-card.reward-card-locked {
+  opacity: 0.4;
+  cursor: default;
+  transform: none !important;
+}
 .reward-card-r1 { }
 .reward-card-r2 { background: linear-gradient(160deg, #EEF8FF, #DCF0FF); border-color: #7EC8E3; }
 .reward-card-r3 { background: linear-gradient(160deg, #FFFCE8, #FFF0B0); border-color: #D4A84B; }
