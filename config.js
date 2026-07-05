@@ -62,6 +62,62 @@ const STAGES = [
     phase2At: 0.6, phase3At: 0.3, hasShockwave: true,
     bgColor: 0x8870cc, groundColor: 0x202050, fogDensity: 0.018,
   },
+  // ★修正: Chapter2のステージ定義が丸ごと存在しなかったため、
+  //         Stage6（古王スライム）を倒した瞬間に「STAGES.length-1」に必ず一致して
+  //         エンディング画面が出てしまい、第二chapterへ絶対に進めないバグになっていた。
+  //         boss_models.js側にはChapter2の異形モンスター5体（buildMonsterGolem〜Gaganthos）が
+  //         用意済みだったので、それに対応するステージデータをここに追加する。
+  //         monsterIndex: CHAPTER2_MONSTERS配列（boss_models.js）内の対応するビルダーの添字。
+  {
+    stageNo: 7, chapter: 2, monsterIndex: 0, name: "ぬめゴーレム",
+    color: 0x556677, hitColor: 0xffaa22,
+    maxHp: 6800, radius: 1.15, floatHeight: 0.10, floatSpeedMs: 700,
+    moveSpeed: 0.026, wanderRadius: 4.6,
+    attackIntervalMs: 2850, chargeDamage: 90, shockwaveDamage: 65,
+    chargeSpeed: 0.23, shockwaveRadius: 3.9,
+    phase2At: 0.6, phase3At: 0.3, hasShockwave: true,
+    bgColor: 0x445566, groundColor: 0x1c1c2a, fogDensity: 0.020,
+  },
+  {
+    stageNo: 8, chapter: 2, monsterIndex: 1, name: "くさモンスター",
+    color: 0x2f7a3a, hitColor: 0xccff33,
+    maxHp: 8200, radius: 1.2, floatHeight: 0.10, floatSpeedMs: 680,
+    moveSpeed: 0.027, wanderRadius: 4.8,
+    attackIntervalMs: 2700, chargeDamage: 98, shockwaveDamage: 72,
+    chargeSpeed: 0.24, shockwaveRadius: 4.0,
+    phase2At: 0.6, phase3At: 0.3, hasShockwave: true,
+    bgColor: 0x3d6b3a, groundColor: 0x1a2e14, fogDensity: 0.022,
+  },
+  {
+    stageNo: 9, chapter: 2, monsterIndex: 2, name: "どろベヒモス",
+    color: 0x6a4a30, hitColor: 0xff5500,
+    maxHp: 9800, radius: 1.3, floatHeight: 0.10, floatSpeedMs: 660,
+    moveSpeed: 0.028, wanderRadius: 5.0,
+    attackIntervalMs: 2550, chargeDamage: 108, shockwaveDamage: 80,
+    chargeSpeed: 0.25, shockwaveRadius: 4.2,
+    phase2At: 0.6, phase3At: 0.3, hasShockwave: true,
+    bgColor: 0x5a4028, groundColor: 0x2a1c10, fogDensity: 0.024,
+  },
+  {
+    stageNo: 10, chapter: 2, monsterIndex: 3, name: "きのこ魔人",
+    color: 0xaa3377, hitColor: 0xff33cc,
+    maxHp: 11500, radius: 1.35, floatHeight: 0.10, floatSpeedMs: 640,
+    moveSpeed: 0.029, wanderRadius: 5.2,
+    attackIntervalMs: 2400, chargeDamage: 118, shockwaveDamage: 88,
+    chargeSpeed: 0.26, shockwaveRadius: 4.4,
+    phase2At: 0.6, phase3At: 0.3, hasShockwave: true,
+    bgColor: 0x552255, groundColor: 0x200a20, fogDensity: 0.026,
+  },
+  {
+    stageNo: 11, chapter: 2, monsterIndex: 4, name: "古王ガガントス",
+    color: 0x9b5de5, hitColor: 0xffffff,
+    maxHp: 14000, radius: 1.4, floatHeight: 0.10, floatSpeedMs: 620,
+    moveSpeed: 0.030, wanderRadius: 5.5,
+    attackIntervalMs: 2250, chargeDamage: 130, shockwaveDamage: 100,
+    chargeSpeed: 0.27, shockwaveRadius: 4.6,
+    phase2At: 0.6, phase3At: 0.3, hasShockwave: true,
+    bgColor: 0x2a1040, groundColor: 0x120522, fogDensity: 0.028,
+  },
 ];
 
 const CONFIG = {
@@ -107,6 +163,13 @@ const COSTUMES = [
   { id:"c24", no:"No.24", name:"スライムスピア",       stars:3, color:0x818cf8, weapon:"spear", hat:null,      skillId:null,      rarity:0.03 },
 ];
 
+// skillId → 表示用の名前・説明（着替え画面で使用）
+const SKILL_INFO = {
+  wave:    { name: "キングウェーブ",   desc: "青い衝撃波リングで大海嘯！" },
+  ice:     { name: "アイスニードル",   desc: "氷柱を乱立させ極寒乱撃！" },
+  thunder: { name: "サンダーボルト",   desc: "天からの雷撃で天罰一撃！" },
+};
+
 function getGachaPool() {
   const total = COSTUMES.reduce((s, c) => s + c.rarity, 0);
   return COSTUMES.map(c => ({ ...c, weight: c.rarity / total }));
@@ -119,6 +182,15 @@ const STAGE_REWARD_POOLS = {
   4: ["c11", "c12", "c13"],
   5: ["c12", "c13", "c21"],
   6: ["c21", "c22", "c23"],
+  // ★修正: ★3スキル持ちコスチューム（wave/ice/thunder）はrarity 0.03と非常に低く、
+  //         ガチャ運が悪いとスキルが一切解放されないまま詰みかねなかった。
+  //         Chapter2の各ステージ報酬にも繰り返し★3を混ぜることで、
+  //         周回すればいずれ全スキルを確実に入手できるようにする。
+  7:  ["c21", "c22", "c23"],
+  8:  ["c21", "c22", "c24"],
+  9:  ["c21", "c23", "c24"],
+  10: ["c22", "c23", "c24"],
+  11: ["c21", "c22", "c23"],
 };
 
 function getStageRewardPool(stageNo) {

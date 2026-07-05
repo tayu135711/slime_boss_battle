@@ -472,6 +472,7 @@ function goNextStage() {
 // ── クリア・ゲームオーバー ─────────────────────────────────────
 function handleBossDefeated() {
   state.cleared = true;
+  clearBentoBuffs(); // ★修正: このバトルで使い切ったお弁当バフをここでクリアする
   SE.victory();
   dom.attackBtn.disabled = true;
   dom.attackBtn.classList.add("disabled-look");
@@ -497,6 +498,8 @@ function handleBossDefeated() {
 
   // ★ クリア記録を更新
   state.totalClears += 1;
+  // ★ ガチャ石（チケット）をクリア報酬として付与。図鑑のガチャ機能を実際に回せるようにする。
+  state.gachaTickets = (state.gachaTickets ?? 0) + (stg.chapter >= 2 ? 2 : 1);
   const stageKey = String(stg.stageNo);
   if (!state.bestTimes[stageKey] || elapsed < state.bestTimes[stageKey]) {
     state.bestTimes[stageKey] = elapsed;
@@ -626,13 +629,12 @@ function resetBattle() {
   state.player.vx              = 0;   // ★ 慣性速度リセット
   state.player.vz              = 0;
 
-  // ★ お弁当バフをリセット（ステージ毎に再適用）
-  // ※ specialStart は startStage() で消費済みのため不要だがクリアしておく
-  state._buffAttackMult  = 1;
-  state._buffSpeedMult   = 1;
-  state._buffCritMult    = 1;
-  state._buffDefenseMult = 1;
-  state._buffSpecialStart = 0;
+  // ★修正: 以前はここ（resetBattle）でお弁当バフを毎回リセットしていたが、
+  //         広場でお弁当を食べてからステージを選ぶ操作は必ず
+  //         「resetBattle() → showStageStart() → startStage()」の順で呼ばれるため、
+  //         バトルが始まる前にバフが消えてしまい、お弁当の効果が一切発動しない
+  //         バグになっていた。バフのクリアは実際に消費し終えた後
+  //         （handleBossDefeated / handleGameOver）で行うようにする。
 
   // ★ nextAttackAt を Infinity に戻す（startStage() で正式に設定する）
   state.bossAI = { phase: 1, nextAttackAt: Infinity, mode: "wander", chargeTarget: null };
@@ -680,6 +682,8 @@ function showGacha() {
   dom.gachaScreen.classList.add("visible");
   renderGachaCollection();
   renderCurrentCostume();
+  refreshGachaTicketDisplay();
+  if (dom.gachaResult) dom.gachaResult.innerHTML = "";
 }
 
 function renderCurrentCostume() {
@@ -707,6 +711,82 @@ function equipCostume(costume) {
   if (three.playerGroup) applyCostume(costume);
   renderCurrentCostume();
   renderGachaCollection();
+}
+
+// ── ガチャ抽選 ────────────────────────────────────────────────
+// ★修正: getGachaPool()（重み付き抽選）・SE.gacha()・SE.reward()・
+//         .gacha-pull-btn / .gacha-pull-10btn / #gachaResult 用CSSは
+//         すべて実装済みだったが、実際に呼び出す処理がどこにも存在せず、
+//         「図鑑」画面はコレクション閲覧しかできなかった（ランダム排出手段が無かった）。
+//         ここで実際に単発・10連ガチャとして繋ぎ込む。
+
+/** レア度の重みに従って COSTUMES から1体を抽選する */
+function weightedGachaPick(pool) {
+  const r = Math.random();
+  let acc = 0;
+  for (const c of pool) {
+    acc += c.weight;
+    if (r <= acc) return c;
+  }
+  return pool[pool.length - 1]; // 浮動小数誤差の保険
+}
+
+/** ガチャ石の残数表示・ボタンの有効/無効を更新 */
+function refreshGachaTicketDisplay() {
+  if (dom.gachaTicketNum) dom.gachaTicketNum.textContent = state.gachaTickets ?? 0;
+  const tickets = state.gachaTickets ?? 0;
+  if (dom.gachaPullBtn)   dom.gachaPullBtn.disabled   = tickets < 1;
+  if (dom.gachaPull10Btn) dom.gachaPull10Btn.disabled = tickets < 10;
+}
+
+/** n連ガチャを実行（1 or 10） */
+function pullGacha(n) {
+  if ((state.gachaTickets ?? 0) < n) return;
+  state.gachaTickets -= n;
+
+  const pool = getGachaPool();
+  const results = [];
+  for (let i = 0; i < n; i++) {
+    const picked = weightedGachaPick(pool);
+    const isNew  = !state.ownedCostumes.find(o => o.id === picked.id);
+    if (isNew) state.ownedCostumes.push(COSTUMES.find(c => c.id === picked.id));
+    results.push({ costume: picked, isNew });
+  }
+
+  SE.gacha();
+  if (results.some(r => r.isNew)) setTimeout(() => SE.reward(), 300);
+
+  renderGachaResult(results);
+  renderGachaCollection();
+  refreshGachaTicketDisplay();
+  saveToServer();
+}
+
+function renderGachaResult(results) {
+  const title = results.length > 1 ? `🎉 ${results.length}連ガチャ結果！` : "🎉 ガチャ結果！";
+  let html = `<div class="gacha-result-title">${title}</div><div class="gacha-result-cards">`;
+  results.forEach(r => {
+    const c = r.costume;
+    const rareCls = c.stars === 3 ? "gacha-card-r3" : c.stars === 2 ? "gacha-card-r2" : "gacha-card-r1";
+    const isEquipped = state.equippedCostume?.id === c.id;
+    html += `<div class="gacha-card ${rareCls}">
+      ${r.isNew ? '<div class="gacha-card-new">NEW!</div>' : ""}
+      <div class="gacha-card-art">${getSlimeSVG(c.id, 56)}</div>
+      <div class="gacha-card-stars">${"⭐".repeat(c.stars)}</div>
+      <div class="gacha-card-name">${c.name}</div>
+      <div class="gacha-card-weapon">${weaponLabel(c.weapon)}</div>
+      ${isEquipped ? "" : `<button class="gacha-card-equip-btn" data-id="${c.id}">装備する</button>`}
+    </div>`;
+  });
+  html += `</div>`;
+  dom.gachaResult.innerHTML = html;
+
+  dom.gachaResult.querySelectorAll(".gacha-card-equip-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const costume = COSTUMES.find(c => c.id === btn.dataset.id);
+      if (costume) { equipCostume(costume); saveToServer(); }
+    });
+  });
 }
 
 function renderGachaCollection() {
@@ -793,8 +873,12 @@ function showDressingRoom(costume) {
   const infoEl = document.getElementById("dressingInfo");
   if (infoEl) {
     const wpnLabel = weaponLabel(costume.weapon);
-    const skillText = costume.skill
-      ? `<div class="dressing-skill">✨ 特技: ${costume.skill.name} ─ ${costume.skill.desc}</div>`
+    // ★修正: costume.skill という存在しないプロパティを参照していたため、
+    //         キングスライム／ライリン／イカズチなど特技持ちコスチュームでも
+    //         特技情報が表示されないバグがあった。skillId → SKILL_INFO で解決する。
+    const skillInfo = costume.skillId ? SKILL_INFO[costume.skillId] : null;
+    const skillText = skillInfo
+      ? `<div class="dressing-skill">✨ 特技: ${skillInfo.name} ─ ${skillInfo.desc}</div>`
       : "";
     infoEl.innerHTML = `
       <div class="dressing-weapon">武器: ${wpnLabel}</div>

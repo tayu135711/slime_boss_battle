@@ -1100,6 +1100,14 @@ html, body {
   font-size: 0.78rem; color: #6BAB5A; text-align: center;
   width: 100%; margin-top: 6px; letter-spacing: 0.2em; font-weight: 900;
 }
+#gachaTicketCount {
+  text-align: center; font-size: 0.85rem; font-weight: 900;
+  color: #6B4E2E; margin-top: 4px;
+}
+#gachaTicketCount span { color: #A07020; font-size: 0.95rem; }
+.gacha-pull-btn:disabled, .gacha-pull-10btn:disabled {
+  opacity: 0.4; cursor: not-allowed; box-shadow: none; transform: none;
+}
 #gachaCollection {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));

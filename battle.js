@@ -646,4 +646,17 @@ function handleGameOver() {
   SE.gameOver();
   dom.gameOverScreen.classList.add("visible");
   dom.statusLine.textContent = "";
+  clearBentoBuffs(); // ★修正: このバトルで使い切ったお弁当バフをここでクリアする
+}
+
+// ★修正: お弁当バフのクリアをresetBattle()から移動。
+//         resetBattle()はバトル開始前にも呼ばれるため、そこでクリアすると
+//         広場で食べた直後のバフがバトルに反映されないまま消えてしまっていた。
+//         代わりにバトルの決着（勝敗）が付いたタイミングでクリアする。
+function clearBentoBuffs() {
+  state._buffAttackMult   = 1;
+  state._buffSpeedMult    = 1;
+  state._buffCritMult     = 1;
+  state._buffDefenseMult  = 1;
+  state._buffSpecialStart = 0;
 }

@@ -433,31 +433,35 @@ function addSlimeFace(parent, r, eyeY = 0.25) {
 
 // --- ボス ---
 function buildBoss() {
-  // ★ 古いbossGroupのgeometry・materialをdispose（メモリリーク防止）
-  if (three.bossMesh) {
-    three.bossMesh.geometry.dispose();
-    // bossMat は三.bossMat として別途参照されているので後でdispose
-  }
-  if (three.bossMat) {
-    three.bossMat.dispose();
-  }
-  // ★ bossFaceGroupの全子メッシュをdispose
-  if (three.bossFaceGroup) {
-    three.bossFaceGroup.traverse(child => {
+  // ★修正: 以前はボスを常に「共通の球体＋汎用スライム顔」で組み立てていたため、
+  //         boss_models.js に用意されていたステージ別モデル（Stage1〜6の専用スライム顔や
+  //         Chapter2以降の異形モンスター群）が一度も呼ばれず、完全な死にコードになっていた。
+  //         buildBossModel() を呼び、ステージ・チャプターに応じた専用モデルを実際に構築する。
+
+  // 古いbossGroup配下の全パーツ（geometry・material）をdispose（メモリリーク防止）
+  if (three.bossGroup) {
+    three.bossGroup.traverse(child => {
       if (child.isMesh) {
         child.geometry?.dispose();
-        child.material?.dispose();
+        if (child.material && child.material !== three.bossMat) {
+          if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+          else child.material.dispose();
+        }
       }
     });
   }
+  if (three.bossMat) three.bossMat.dispose();
 
   const s = getCurrentStage(state.stageIndex);
   three.bossMat   = new THREE.MeshStandardMaterial({ color: s.color, roughness: 0.4, metalness: 0.1 });
   three.bossGroup = new THREE.Group();
-  three.bossMesh  = new THREE.Mesh(new THREE.SphereGeometry(s.radius, 28, 28), three.bossMat);
+
+  // ★ ステージ／チャプターごとの専用ボスモデルを構築（boss_models.js）
+  const built = buildBossModel(three.bossGroup, s, three.bossMat);
+  three.bossMesh = built.mesh;
   three.bossMesh.castShadow = true;
-  three.bossGroup.add(three.bossMesh);
-  three.bossFaceGroup = addSlimeFace(three.bossGroup, s.radius, 0.15);
+  three.bossFaceGroup = null; // 顔パーツは各モデル内部で構築されるためここでは個別管理しない
+
   three.bossGroup.position.set(state.boss.x, s.radius, state.boss.z);
   three.scene.add(three.bossGroup);
 }

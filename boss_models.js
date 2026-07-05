@@ -548,9 +548,11 @@ function buildBossModel(group, stage, mat) {
     }
   } else {
     // Chapter2+ は異形モンスターを順番に出す
-    // ステージ1～5はそれぞれ異なるモンスター、ステージ6以降はガガントスを繰り返す
-    const chapterStageIndex = stage.stageNo - 1; // 0始まり
-    const idx = Math.min(chapterStageIndex, 4);   // 4以上はすべてガガントス
+    // ★修正: 以前は「stage.stageNo - 1」をそのままchapter内インデックスとして使っていたが、
+    //         chapter2以降のstageNoは（bestTimesやSTAGE_REWARD_POOLSのキーの一意性を保つため）
+    //         7,8,9...のようにグローバルに連番なので、常にidx>=4となり全ステージがガガントス固定
+    //         になってしまっていた。config.js側で明示的に振られる monsterIndex（0始まり）を使う。
+    const idx = Math.min(stage.monsterIndex ?? (stage.stageNo - 1), CHAPTER2_MONSTERS.length - 1);
     const builder = CHAPTER2_MONSTERS[idx];
     return builder(group, stage, mat);
   }

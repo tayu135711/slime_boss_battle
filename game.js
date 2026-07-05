@@ -150,6 +150,8 @@ function setupInput() {
   });
   dom.endingRetryBtn.addEventListener("click", () => { state.stageIndex = 0; dom.endingScreen.classList.remove("visible"); resetBattle(); showMenu(); });
   dom.gachaBackBtn.addEventListener("click", () => { dom.gachaScreen.classList.remove("visible"); dom.menuScreen.classList.add("visible"); });
+  dom.gachaPullBtn?.addEventListener("click", () => pullGacha(1));
+  dom.gachaPull10Btn?.addEventListener("click", () => pullGacha(10));
 
   // ── 着替え画面ボタン ──────────────────────────────────────────
   document.getElementById("dressingConfirmBtn")?.addEventListener("click", confirmDressing);

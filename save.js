@@ -54,6 +54,7 @@ async function saveToServer() {
     accessories:       JSON.stringify(state.accessories  || []),
     bestTimes:         JSON.stringify(state.bestTimes    || {}),
     totalClears:       state.totalClears ?? 0,
+    gachaTickets:      state.gachaTickets ?? 0,
   };
 
   const reqOptions = {
@@ -206,6 +207,8 @@ async function loadFromServer() {
       try { state.bestTimes = JSON.parse(data.bestTimes); } catch (e) { console.warn("[load] bestTimes parse失敗", e); }
     }
     state.totalClears = data.totalClears ?? 0;
+    // ★ 既存セーブにはまだ無いフィールドなので、無ければ初回同様に少額プレゼント
+    state.gachaTickets = data.gachaTickets ?? 3;
 
     return true;
   } catch (e) {

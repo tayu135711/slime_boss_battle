@@ -972,7 +972,6 @@ function updateHomePlazaLoop() {
         }
       }
     }
-    if (!currentSubArea) checkFlowerProximity();
   } else {
     // ★ UI表示中はプロンプトを必ず消す
     dom.plazaActionPrompt.classList.remove("visible");
@@ -1198,6 +1197,12 @@ function checkPlazaEntrances() {
   plazaNearFountain = Math.hypot(plazaPlayer.x - plaza.fountainPos.x, plazaPlayer.z - plaza.fountainPos.z) < FOUNTAIN_INTERACT_RADIUS;
   plazaNearPond = Math.hypot(plazaPlayer.x - plaza.pondPos.x, plazaPlayer.z - plaza.pondPos.z) < POND_INTERACT_RADIUS;
   if (plaza.bench) plazaNearBench = Math.hypot(plazaPlayer.x - plaza.bench.position.x, plazaPlayer.z - plaza.bench.position.z) < BENCH_INTERACT_RADIUS;
+  // ★修正: 以前は上でplazaNearFlowerをfalseにリセットした後、
+  //         このスコープ内では一度も再計算しないまま下のif/else-ifで参照していたため、
+  //         「else if (plazaNearFlower)」が常にfalseになり、広場に咲いている花に近づいても
+  //         「Ａ で花を摘む」プロンプトが絶対に表示されないバグになっていた。
+  //         ここでchekFlowerProximity()を呼んで実際の距離判定を行う。
+  checkFlowerProximity();
 
   if (plazaNearBuilding) {
     dom.plazaActionPrompt.textContent = `Ａ で「${plazaNearBuilding.label}」に入る`;

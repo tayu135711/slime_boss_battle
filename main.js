@@ -45,6 +45,10 @@ const dom = {
   gachaCollection:     document.getElementById("gachaCollection"),
   gachaCurrentCostume: document.getElementById("gachaCurrentCostume"),
   gachaBackBtn:        document.getElementById("gachaBackBtn"),
+  gachaTicketNum:      document.getElementById("gachaTicketNum"),
+  gachaPullBtn:        document.getElementById("gachaPullBtn"),
+  gachaPull10Btn:      document.getElementById("gachaPull10Btn"),
+  gachaResult:         document.getElementById("gachaResult"),
   // ホーム広場
   homePlazaScreen:     document.getElementById("homePlazaScreen"),
   npcBubble:           document.getElementById("npcBubble"),
@@ -94,6 +98,7 @@ const state = {
   },
   equippedCostume: COSTUMES[0],
   ownedCostumes:   [COSTUMES[0]],
+  gachaTickets:    3, // ★ ガチャ石（初回プレイ向けの少額プレゼント。以降はステージクリアで加算）
   // サブシステム（save.jsで保存・ロードされる）
   quests: {},
   inventory: { ingredients: {} },
