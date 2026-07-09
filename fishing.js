@@ -30,6 +30,14 @@ function initFishingUI() {
 
 function startFishing() {
   if (fishingActive) return;
+  // ★修正: endFishing() は「釣り上げた／逃してしまった」の結果メッセージを約1〜1.5秒
+  //         表示している間に fishingActive を先に false へ戻す。そのため、この結果表示中に
+  //         Ａボタンを押すと（handlePlazaAction経由で）startFishing()が再実行されてしまい、
+  //         直前のUI・タイマーと競合して表示が壊れたり釣果が正しく反映されなかったりする
+  //         不具合があった。結果表示中（fishingUIがまだ非表示になっていない間）は
+  //         新しい釣りを開始しない。
+  const existingUI = document.getElementById("fishingUI");
+  if (existingUI && existingUI.style.display !== "none" && existingUI.style.display !== "") return;
   fishingActive = true;  // ← フェードアニメーション中の連打を即ブロック
 
   const today = new Date().toDateString();

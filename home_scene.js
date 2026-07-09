@@ -347,6 +347,22 @@ function buildPlazaScene() {
   plaza.sunLight = new THREE.DirectionalLight(0xfff0c0, 0.80);
   plaza.sunLight.position.set(10, 20, 10);
   plaza.sunLight.castShadow = true;
+  // ★修正: シャドウカメラの範囲を未設定のままにしていたため、Three.jsのデフォルト
+  //         (-5〜5の非常に狭い正方形)が使われていた。広場の建物はx:±18、z:-18〜14まで
+  //         広がっているため、そのほとんどがシャドウカメラの外側に置かれ、影が一切
+  //         計算されず常に直射光のみの明るさで描画されていた（家が白っぽく欠けて見える
+  //         不具合の原因）。広場全体をカバーするように範囲を拡張し、シャドウアクネを
+  //         抑えるためのbiasも設定する。
+  plaza.sunLight.shadow.mapSize.set(2048, 2048);
+  plaza.sunLight.shadow.camera.near = 0.5;
+  plaza.sunLight.shadow.camera.far = 150;
+  plaza.sunLight.shadow.camera.left = -50;
+  plaza.sunLight.shadow.camera.right = 50;
+  plaza.sunLight.shadow.camera.top = 50;
+  plaza.sunLight.shadow.camera.bottom = -50;
+  plaza.sunLight.shadow.bias = -0.0015;
+  plaza.sunLight.shadow.normalBias = 0.02;
+  plaza.sunLight.shadow.camera.updateProjectionMatrix();
   three.scene.add(plaza.sunLight);
   plaza.ambientLight = new THREE.AmbientLight(0x8ab4cc, 0.32);
   three.scene.add(plaza.ambientLight);
@@ -937,10 +953,19 @@ function buildDistantTrees() {
 
 function updateHomePlazaLoop() {
   // 料理・花摘みUI、または釣り中はプレイヤー移動・インタラクションをスキップ
-  const cookUI  = document.getElementById("cookingUI");
-  const flUI    = document.getElementById("flowerUI");
+  const cookUI    = document.getElementById("cookingUI");
+  const flUI      = document.getElementById("flowerUI");
+  const fishUI    = document.getElementById("fishingUI");
+  // ★修正: 以前は fishingActive フラグだけを見ていたが、endFishing() は結果メッセージ
+  //         （「釣り上げた」「逃してしまった」）を表示している間に fishingActive を
+  //         先に false へ戻してしまうため、その約1〜1.5秒の間だけ操作ブロックが解除され、
+  //         プレイヤーがAボタンを連打すると startFishing() が結果表示中に再実行されてしまい、
+  //         カメラ演出やタイマーが競合して「反応がおかしい」「釣れたはずなのに反映が変」
+  //         といった不具合の原因になっていた。花摘み・料理UIと同様に、実際のUI表示状態
+  //         （style.display）を見て判定することで、結果メッセージが消えるまで確実にブロックする。
   const uiOpen  = (cookUI && cookUI.style.display !== "none") ||
                   (flUI   && flUI.style.display   !== "none") ||
+                  (fishUI && fishUI.style.display !== "none") ||
                   (typeof fishingActive !== "undefined" && fishingActive);
 
   if (!uiOpen) {
@@ -1204,7 +1229,18 @@ function checkPlazaEntrances() {
   //         ここでchekFlowerProximity()を呼んで実際の距離判定を行う。
   checkFlowerProximity();
 
-  if (plazaNearBuilding) {
+  // ★修正: pond_area/flower_area建物のエリア入場判定(半径5)が、池のすぐそば(釣り半径4.5)や
+  //         個別の花(摘み取り半径1.8)と同じ座標を中心にしているため、これまでは常に
+  //         「建物に入る」プロンプトが「釣り糸を垂らす」「花を摘む」を上書きしてしまい、
+  //         実質的に池のほとりで直接釣ることも、広場に咲く個々の花を摘むこともほぼ不可能になっていた。
+  //         個別インタラクション(花・池)は建物入場より優先度を上げる。
+  if (plazaNearFlower) {
+    dom.plazaActionPrompt.textContent = `Ａ で花を摘む`;
+    dom.plazaActionPrompt.classList.add("visible");
+  } else if (plazaNearPond) {
+    dom.plazaActionPrompt.textContent = `Ａ で釣り糸を垂らす`;
+    dom.plazaActionPrompt.classList.add("visible");
+  } else if (plazaNearBuilding) {
     dom.plazaActionPrompt.textContent = `Ａ で「${plazaNearBuilding.label}」に入る`;
     dom.plazaActionPrompt.classList.add("visible");
   } else if (plazaNearNPC) {
@@ -1213,14 +1249,8 @@ function checkPlazaEntrances() {
   } else if (plazaNearFountain) {
     dom.plazaActionPrompt.textContent = `Ａ で回復する`;
     dom.plazaActionPrompt.classList.add("visible");
-  } else if (plazaNearPond) {
-    dom.plazaActionPrompt.textContent = `Ａ で釣り糸を垂らす`;
-    dom.plazaActionPrompt.classList.add("visible");
   } else if (plazaNearBench) {
     dom.plazaActionPrompt.textContent = `Ａ でベンチに座る`;
-    dom.plazaActionPrompt.classList.add("visible");
-  } else if (plazaNearFlower) {
-    dom.plazaActionPrompt.textContent = `Ａ で花を摘む`;
     dom.plazaActionPrompt.classList.add("visible");
   } else {
     dom.plazaActionPrompt.classList.remove("visible");
@@ -1253,7 +1283,12 @@ function handlePlazaAction() {
     return;
   }
 
-  if (plazaNearBuilding) {
+  // ★修正: プロンプト表示側と同じ優先順位に統一。個別インタラクション（花・池）を
+  //         建物入場より先に判定しないと、プロンプトは「花を摘む」なのに実際に押すと
+  //         花畑エリアに入ってしまう…といった表示と動作のズレが起きる。
+  if (plazaNearFlower && nearestFlower) { pickFlower(); }
+  else if (plazaNearPond)       { startFishing(); }
+  else if (plazaNearBuilding) {
     if (plazaNearBuilding.type === "stage")          { exitHomePlaza(); showStageSelect("plaza"); }
     else if (plazaNearBuilding.type === "shop")       { showShop(); }
     else if (plazaNearBuilding.type === "restaurant") { showCooking(); }
@@ -1261,9 +1296,7 @@ function handlePlazaAction() {
     else if (plazaNearBuilding.type === "flower_area"){ enterFlowerArea(); }
   } else if (plazaNearNPC)      { startNPCConversation(plazaNearNPC); }
   else if (plazaNearFountain)   { recoverAtFountain(); }
-  else if (plazaNearPond)       { startFishing(); }
   else if (plazaNearBench)      { sitOnBench(); }
-  else if (plazaNearFlower && nearestFlower) { pickFlower(); }
 }
 
 // ── エリア移動（フェードイン・アウト演出付き） ─────────────────
@@ -1821,7 +1854,34 @@ function warpToArea(dest) {
   const target = WARP_TARGETS[dest];
   if (!target) return;
 
-  // フェード演出でワープ
+  // ★修正: enterPondArea()/enterFlowerArea() は「サブエリアに入る」ための
+  //         専用フェード演出（enterAreaWithFade）を内部で持っている。
+  //         ここで外側にもう一枚 enterAreaWithFade をかけると、外側のロック
+  //         （_areaTransitionLocked、約1秒間保持）がまだ解除されていない
+  //         タイミングで内側のフェードが呼ばれてしまい、ロック競合で
+  //         内側の処理（currentSubAreaの設定・シーン切り替え）が
+  //         まるごと無視される不具合があった。結果、マップから「釣り場」
+  //         「花畑」を選んでも中途半端な座標に取り残されるだけで、
+  //         シーンが切り替わらずAボタンにも反応しなくなっていた。
+  //         pond/flowerは外側の汎用フェードを使わず、位置だけ更新してから
+  //         内側の専用フェード演出にそのまま任せる。
+  if (dest === "pond" || dest === "flower") {
+    if (currentSubArea) {
+      currentSubArea = null;
+      subAreaCameraLocked = false;
+      if (_subAreaCameraTimer) { clearTimeout(_subAreaCameraTimer); _subAreaCameraTimer = null; }
+      const btn = document.getElementById('subAreaBackBtn');
+      if (btn) btn.style.display = 'none';
+    }
+    plazaPlayer.x = target.x;
+    plazaPlayer.z = target.z;
+    if (plaza.playerMesh) plaza.playerMesh.position.set(plazaPlayer.x, 0, plazaPlayer.z);
+    updatePlazaCameraFollow();
+    target.action(); // enterPondArea/enterFlowerAreaが自前でフェード演出を行う
+    return;
+  }
+
+  // フェード演出でワープ（stage/shop/restaurantは専用フェードを持たないためここで演出する）
   enterAreaWithFade('', () => {
     // ★修正: pond/flowerへワープする場合も含め、常にサブエリア状態をリセットしてから入り直す
     if (currentSubArea) {
@@ -1957,7 +2017,8 @@ function buildPondScene() {
   plaza.pondSceneGroup.add(dock);
 
   // 周囲の木々
-  for (let i = 0; i < 40; i++) {
+  // ★軽量化: 40本→18本に削減（サブエリアは表示中ずっとシャドウ計算コストがかかるため）
+  for (let i = 0; i < 18; i++) {
     const geo = new THREE.CylinderGeometry(0, 2 + Math.random(), 6 + Math.random() * 4, 5);
     const mat = new THREE.MeshStandardMaterial({ color: 0x2d6c2a, roughness: 0.9 });
     const tree = new THREE.Mesh(geo, mat);
@@ -1993,7 +2054,9 @@ function buildFlowerScene() {
   plaza.flowerSceneField = [];
   const colors = [0xff88cc, 0xffdd44, 0xaa66ff, 0xffbbdd, 0x88ccff];
   
-  for (let i = 0; i < 150; i++) {
+  // ★軽量化: 150本→70本に削減。また花は小さくシャドウへの寄与がほぼ無いため
+  //         castShadowをfalseにしてシャドウマップ描画コストを削減する（重い問題の対策）。
+  for (let i = 0; i < 70; i++) {
     // FLOWER_TYPESからランダムに選ぶ
     const rType = Math.random();
     let cumulative = 0;
@@ -2013,7 +2076,7 @@ function buildFlowerScene() {
     const r = Math.random() * 20;
     const angle = Math.random() * Math.PI * 2;
     fl.position.set(plaza.flowerAreaPos.x + Math.cos(angle) * r, 0.35, plaza.flowerAreaPos.z + Math.sin(angle) * r);
-    fl.castShadow = true;
+    fl.castShadow = false;
     fl.userData = { picked: false, baseColor: c, originalY: 0.35, flowerType: type, respawnTime: 0, phase: Math.random() * Math.PI * 2 };
     plaza.flowerSceneGroup.add(fl);
     plaza.flowerSceneField.push(fl); // サブエリア専用配列に登録
@@ -2029,7 +2092,8 @@ function buildFlowerScene() {
   plaza.flowerSceneGroup.add(bench);
 
   // 周囲の木々
-  for (let i = 0; i < 30; i++) {
+  // ★軽量化: 30本→15本に削減
+  for (let i = 0; i < 15; i++) {
     const geo = new THREE.CylinderGeometry(0, 1.5, 5 + Math.random() * 3, 5);
     const mat = new THREE.MeshStandardMaterial({ color: 0x8dcc8a, roughness: 0.9 });
     const tree = new THREE.Mesh(geo, mat);

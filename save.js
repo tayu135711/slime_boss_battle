@@ -33,8 +33,35 @@ async function fetchWithTimeout(url, options, timeoutMs = 25000) {
   }
 }
 
-// stateをAPIに保存
+// ★修正: 釣りや花摘みで短時間に何度もアイテムを獲得すると、その都度 saveToServer() が
+//         呼ばれる。Renderのコールドスタート対策で1回のセーブが最大3回リトライ（間に
+//         8秒・16秒の待機を挟む）するため、複数のセーブ処理が同時に並走してしまうことが
+//         あった。ネットワークの遅延次第では「後から送った新しいセーブ」より「先に送った
+//         古いセーブ」がサーバーに遅れて到達し、結果的に新しく取得したアイテムが古いデータ
+//         で上書きされて消えてしまう（次回ロード時にインベントリが減って見える）不具合の
+//         原因になっていた。同時に1件しか通信しないようキューイングし、進行中のセーブが
+//         終わった後に「その時点の最新state」でもう一度だけ送り直すようにする。
+let _saveInFlight = false;
+let _saveQueued = false;
+
 async function saveToServer() {
+  if (_saveInFlight) {
+    _saveQueued = true; // 今のセーブが終わったら、最新stateでもう一度だけ送る
+    return;
+  }
+  _saveInFlight = true;
+  try {
+    do {
+      _saveQueued = false;
+      await _saveToServerOnce();
+    } while (_saveQueued);
+  } finally {
+    _saveInFlight = false;
+  }
+}
+
+// stateをAPIに保存（実際の通信処理・常に呼び出し時点の最新stateを送る）
+async function _saveToServerOnce() {
   const playerId = getPlayerId();
   const body = {
     playerId,
