@@ -721,6 +721,20 @@ function buildPlazaPlayer() {
   //         これが無いと rebuildHat() が広場プレイヤーの帽子グループを
   //         見つけられず、帽子付きコスチュームが広場では永遠に反映されないバグになる。
   plaza.slimeParts = buildCuteSlimeBody(group, CONFIG.player.radius, color);
+
+  // ★修正: 広場のスライムには武器パーツ自体が存在せず、剣・槍コスチューム
+  //         を装備してもホーム画面では見た目に反映されなかった。
+  //         buildSwordPivot/buildSpearPivot（scene.js）で同じ武器パーツを
+  //         組み立てて追加し、装備中の武器種別に応じて表示切替する。
+  plaza.swordPivot = buildSwordPivot();
+  group.add(plaza.swordPivot);
+  plaza.spearPivot = buildSpearPivot();
+  group.add(plaza.spearPivot);
+  if (costume) {
+    plaza.swordPivot.visible = (costume.weapon === "sword");
+    plaza.spearPivot.visible = (costume.weapon === "spear");
+  }
+
   group.position.set(0, 0, 0);
   three.scene.add(group);
   plaza.playerMesh = group;

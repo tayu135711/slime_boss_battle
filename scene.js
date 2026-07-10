@@ -467,17 +467,17 @@ function buildBoss() {
 }
 
 // --- プレイヤー ---
-function buildPlayer() {
-  three.playerGroup = new THREE.Group();
-  // buildCuteSlimeBodyでbody/bodyMat/hatGroup/stickMatを生成しthree.slimePartsに保存
-  const parts = buildCuteSlimeBody(three.playerGroup, CONFIG.player.radius, CONFIG.player.color);
-  three.slimeParts = parts;
-  const body = parts.body;
+// ★修正: 剣・槍のメッシュ生成をbuildPlayer専用の処理から独立関数に切り出した。
+//         これまでバトル用の three.playerGroup にしか武器パーツが存在せず、
+//         広場（ホーム画面）のスライムには武器の見た目が一切反映されなかった。
+//         この関数を home_scene.js の buildPlazaPlayer() からも呼び出すことで、
+//         ホーム画面でもコスチュームの武器（剣・槍）が表示されるようにする。
 
-  // ---- 剣（ナイトスライム装備時に表示・デフォルト非表示） ----
-  three.swordPivot = new THREE.Group();
-  three.swordPivot.position.set(0.55, 0.75, 0);
-  three.swordPivot.visible = false;
+// ---- 剣メッシュ（ナイトスライム装備時に表示・デフォルト非表示） ----
+function buildSwordPivot() {
+  const pivot = new THREE.Group();
+  pivot.position.set(0.55, 0.75, 0);
+  pivot.visible = false;
 
   // 刀身：細長く大きく・強い輝き
   const blade = new THREE.Mesh(
@@ -495,7 +495,7 @@ function buildPlayer() {
     new THREE.MeshStandardMaterial({ color: 0xaaccff, metalness: 1.0, roughness: 0.0, emissive: 0x88ccff, emissiveIntensity: 0.8 })
   );
   fuller.position.set(0, 0.72, 0.033);
-  three.swordPivot.add(fuller);
+  pivot.add(fuller);
 
   // 鍔（クロスガード）：しっかりした十字
   const guard = new THREE.Mesh(
@@ -510,7 +510,7 @@ function buildPlayer() {
     new THREE.MeshStandardMaterial({ color: 0xddbb33, metalness: 0.85, roughness: 0.2 })
   );
   guardV.position.y = 0.04;
-  three.swordPivot.add(guardV);
+  pivot.add(guardV);
 
   // グリップ
   const grip = new THREE.Mesh(
@@ -526,13 +526,15 @@ function buildPlayer() {
   );
   pommel.position.y = -0.45;
 
-  three.swordPivot.add(blade, guard, grip, pommel);
-  three.playerGroup.add(three.swordPivot);
+  pivot.add(blade, guard, grip, pommel);
+  return pivot;
+}
 
-  // ---- 槍（スライムスピア装備時に表示・デフォルト非表示） ----
-  three.spearPivot = new THREE.Group();
-  three.spearPivot.position.set(0.5, 0.5, 0);
-  three.spearPivot.visible = false;
+// ---- 槍メッシュ（スライムスピア装備時に表示・デフォルト非表示） ----
+function buildSpearPivot() {
+  const pivot = new THREE.Group();
+  pivot.position.set(0.5, 0.5, 0);
+  pivot.visible = false;
 
   // 柄：長く太く
   const shaft = new THREE.Mesh(
@@ -540,6 +542,7 @@ function buildPlayer() {
     new THREE.MeshStandardMaterial({ color: 0x6b3d0f, roughness: 0.75, metalness: 0.05 })
   );
   shaft.position.y = 1.1;
+  pivot.add(shaft);
 
   // 柄の中央に巻き革のリング
   [0.5, 0.9, 1.3].forEach(py => {
@@ -548,7 +551,7 @@ function buildPlayer() {
       new THREE.MeshStandardMaterial({ color: 0x3a1a05, roughness: 0.95 })
     );
     wrap.position.y = py;
-    three.spearPivot.add(wrap);
+    pivot.add(wrap);
   });
 
   // 穂先：大きく鋭く、強発光
@@ -560,6 +563,7 @@ function buildPlayer() {
     })
   );
   tip.position.y = 2.47;
+  pivot.add(tip);
 
   // 穂先の根元リング（ソケット）
   const socket = new THREE.Mesh(
@@ -567,6 +571,7 @@ function buildPlayer() {
     new THREE.MeshStandardMaterial({ color: 0x99aacc, metalness: 0.9, roughness: 0.15 })
   );
   socket.position.y = 2.18;
+  pivot.add(socket);
 
   // 石突き（下端）
   const butt = new THREE.Mesh(
@@ -575,8 +580,22 @@ function buildPlayer() {
   );
   butt.position.y = -0.11;
   butt.rotation.z = Math.PI;
+  pivot.add(butt);
 
-  three.spearPivot.add(shaft, tip, socket, butt);
+  return pivot;
+}
+
+function buildPlayer() {
+  three.playerGroup = new THREE.Group();
+  // buildCuteSlimeBodyでbody/bodyMat/hatGroup/stickMatを生成しthree.slimePartsに保存
+  const parts = buildCuteSlimeBody(three.playerGroup, CONFIG.player.radius, CONFIG.player.color);
+  three.slimeParts = parts;
+  const body = parts.body;
+
+  three.swordPivot = buildSwordPivot();
+  three.playerGroup.add(three.swordPivot);
+
+  three.spearPivot = buildSpearPivot();
   three.playerGroup.add(three.spearPivot);
 
   // アニメーション状態

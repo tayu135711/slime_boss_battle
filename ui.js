@@ -126,25 +126,25 @@ function showShop() {
   screen.style.cssText = [
     "position:fixed","inset:0","z-index:400",
     "display:flex","align-items:center","justify-content:center",
-    "background:rgba(10,20,40,0.72)","backdrop-filter:blur(4px)",
+    "background:rgba(30,18,8,0.72)","backdrop-filter:blur(4px)",
   ].join(";");
 
   screen.innerHTML = `
   <div id="shopBox" style="
-    background:linear-gradient(160deg,#1a2a4a 0%,#0f1a30 100%);
-    border:2px solid #4a6aaa; border-radius:20px;
+    background:linear-gradient(160deg,#3a2410 0%,#1f1408 100%);
+    border:2px solid #C89030; border-radius:20px;
     padding:0 0 24px 0; width:min(96vw,680px); max-height:92vh;
-    overflow-y:auto; box-shadow:0 8px 40px rgba(0,60,160,0.5);
-    font-family:'Hiragino Sans','Yu Gothic',sans-serif; color:#e8eeff;
+    overflow-y:auto; box-shadow:0 8px 40px rgba(160,90,20,0.5);
+    font-family:'Noto Sans JP','Hiragino Maru Gothic Pro','M PLUS Rounded 1c',sans-serif; color:#f5e8d0;
   ">
     <!-- ヘッダー -->
     <div style="
-      background:linear-gradient(90deg,#1a3a7a,#2a5aaa,#1a3a7a);
+      background:linear-gradient(90deg,#8a4a1a,#D4A030,#8a4a1a);
       border-radius:18px 18px 0 0; padding:16px 20px 12px;
       text-align:center; position:relative;
     ">
       <div style="font-size:22px;font-weight:900;letter-spacing:0.1em;">🛍 商　店</div>
-      <div style="font-size:11px;color:#9ab0e0;margin-top:2px;">きがえ・クエスト・コレクション</div>
+      <div style="font-size:11px;color:#d8b888;margin-top:2px;">きがえ・クエスト・コレクション</div>
       <button id="shopCloseBtn" style="
         position:absolute;right:14px;top:12px;
         background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);
@@ -154,20 +154,20 @@ function showShop() {
     </div>
 
     <!-- タブ -->
-    <div id="shopTabs" style="display:flex;gap:0;border-bottom:2px solid #2a3a6a;">
+    <div id="shopTabs" style="display:flex;gap:0;border-bottom:2px solid #4a3420;">
       <button class="shop-tab-btn active" data-tab="wardrobe" style="
         flex:1;padding:10px 4px;font-size:13px;font-weight:700;
-        background:none;border:none;color:#88aaff;cursor:pointer;
-        border-bottom:3px solid #4a8aff;letter-spacing:0.05em;
+        background:none;border:none;color:#F0B05A;cursor:pointer;
+        border-bottom:3px solid #E8834A;letter-spacing:0.05em;
       ">👗 きがえる</button>
       <button class="shop-tab-btn" data-tab="quests" style="
         flex:1;padding:10px 4px;font-size:13px;font-weight:700;
-        background:none;border:none;color:#6688cc;cursor:pointer;
+        background:none;border:none;color:#a88858;cursor:pointer;
         border-bottom:3px solid transparent;letter-spacing:0.05em;
       ">📋 クエスト</button>
       <button class="shop-tab-btn" data-tab="collection" style="
         flex:1;padding:10px 4px;font-size:13px;font-weight:700;
-        background:none;border:none;color:#6688cc;cursor:pointer;
+        background:none;border:none;color:#a88858;cursor:pointer;
         border-bottom:3px solid transparent;letter-spacing:0.05em;
       ">📖 図　鑑</button>
     </div>
@@ -183,11 +183,11 @@ function showShop() {
   screen.querySelectorAll(".shop-tab-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       screen.querySelectorAll(".shop-tab-btn").forEach(b => {
-        b.style.color = "#6688cc";
+        b.style.color = "#a88858";
         b.style.borderBottom = "3px solid transparent";
       });
-      btn.style.color = "#88aaff";
-      btn.style.borderBottom = "3px solid #4a8aff";
+      btn.style.color = "#F0B05A";
+      btn.style.borderBottom = "3px solid #E8834A";
       _renderShopTab(btn.dataset.tab);
     });
   });
@@ -209,27 +209,27 @@ function _renderShopTab(tab) {
     const equipped = state.equippedCostume;
     let html = `
       <div style="margin-bottom:12px;">
-        <div style="font-size:12px;color:#9ab0e0;margin-bottom:8px;">▼ 現在の装備</div>
+        <div style="font-size:12px;color:#d8b888;margin-bottom:8px;">▼ 現在の装備</div>
         <div style="background:rgba(255,255,255,0.06);border-radius:12px;padding:10px 14px;
           display:flex;align-items:center;gap:12px;">
           <div style="width:76px;height:76px;flex-shrink:0;">${getSlimeSVG(equipped.id, 76)}</div>
           <div>
             <div style="font-weight:800;font-size:15px;">${equipped.name}</div>
             <div style="font-size:13px;color:#ffd060;">${"⭐".repeat(equipped.stars)}</div>
-            <div style="font-size:11px;color:#9ab0e0;margin-top:2px;">武器: ${_weaponLabel(equipped.weapon)}</div>
+            <div style="font-size:11px;color:#d8b888;margin-top:2px;">武器: ${_weaponLabel(equipped.weapon)}</div>
           </div>
         </div>
       </div>
-      <div style="font-size:12px;color:#9ab0e0;margin-bottom:8px;">▼ 所持コスチューム（タップで着替え）</div>
+      <div style="font-size:12px;color:#d8b888;margin-bottom:8px;">▼ 所持コスチューム（タップで着替え）</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">`;
 
     COSTUMES.forEach(c => {
       const owned    = !!state.ownedCostumes.find(o => o.id === c.id);
       const isEquip  = equipped?.id === c.id;
       const starBg   = c.stars === 3 ? "linear-gradient(135deg,#2a1a50,#4a2a80)" :
-                       c.stars === 2 ? "linear-gradient(135deg,#1a2a50,#2a4070)" :
+                       c.stars === 2 ? "linear-gradient(135deg,#3a2818,#2a4070)" :
                                        "linear-gradient(135deg,#1a2020,#2a3040)";
-      const border   = isEquip ? "2px solid #ffd060" : owned ? "1px solid #3a5090" : "1px solid #2a3050";
+      const border   = isEquip ? "2px solid #ffd060" : owned ? "1px solid #8a6030" : "1px solid #3a2818";
       html += `
         <div class="shop-costume-card" data-id="${c.id}" data-owned="${owned}" style="
           background:${starBg};border:${border};border-radius:12px;
@@ -239,11 +239,11 @@ function _renderShopTab(tab) {
         ">
           ${isEquip ? '<div style="position:absolute;top:4px;right:6px;font-size:9px;color:#ffd060;font-weight:700;">装備中</div>' : ""}
           <div style="width:68px;height:68px;margin:0 auto 4px;">
-            ${owned ? getSlimeSVG(c.id, 68) : '<div style="width:68px;height:68px;line-height:68px;font-size:30px;text-align:center;color:#4a5080;">？</div>'}
+            ${owned ? getSlimeSVG(c.id, 68) : '<div style="width:68px;height:68px;line-height:68px;font-size:30px;text-align:center;color:#6a5030;">？</div>'}
           </div>
           <div style="font-size:10px;color:#ffd060;">${"⭐".repeat(c.stars)}</div>
           <div style="font-size:11px;font-weight:700;margin-top:2px;line-height:1.2;">${owned ? c.name : "?????"}</div>
-          <div style="font-size:9px;color:#6888aa;margin-top:2px;">${c.no}</div>
+          <div style="font-size:9px;color:#a88858;margin-top:2px;">${c.no}</div>
         </div>`;
     });
     html += `</div><div style="height:16px;"></div>`;
@@ -270,7 +270,7 @@ function _renderShopTab(tab) {
 
   } else if (tab === "quests") {
     // ── クエスト掲示板 ──
-    let html = `<div style="font-size:13px;color:#9ab0e0;margin-bottom:10px;">📋 クエスト一覧</div>`;
+    let html = `<div style="font-size:13px;color:#d8b888;margin-bottom:10px;">📋 クエスト一覧</div>`;
 
     Object.entries(QUESTS).forEach(([qid, def]) => {
       const qs = state.quests[qid];
@@ -280,20 +280,20 @@ function _renderShopTab(tab) {
       const goal        = def.goal;
 
       const barPct  = isAccepted && !isCompleted ? Math.min(100, Math.round(collected / goal * 100)) : (isCompleted ? 100 : 0);
-      const barCol  = isCompleted ? "#44cc88" : "#4a8aff";
+      const barCol  = isCompleted ? "#44cc88" : "#E8834A";
       const badgeText = isCompleted ? "✅ 達成" : isAccepted ? "🔵 進行中" : "⬜ 未受注";
-      const badgeBg   = isCompleted ? "rgba(50,160,80,0.25)" : isAccepted ? "rgba(40,80,180,0.25)" : "rgba(60,60,80,0.25)";
+      const badgeBg   = isCompleted ? "rgba(90,154,70,0.28)" : isAccepted ? "rgba(232,131,74,0.28)" : "rgba(120,96,64,0.25)";
 
       html += `
-        <div style="background:rgba(255,255,255,0.05);border:1px solid #2a3a6a;border-radius:12px;
+        <div style="background:rgba(255,255,255,0.05);border:1px solid #4a3420;border-radius:12px;
           padding:12px 14px;margin-bottom:10px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
             <div style="font-weight:700;font-size:13px;">${def.name}</div>
             <div style="font-size:10px;background:${badgeBg};padding:2px 8px;border-radius:20px;">${badgeText}</div>
           </div>
-          <div style="font-size:11px;color:#9ab0e0;margin-bottom:8px;">${def.description}</div>
+          <div style="font-size:11px;color:#d8b888;margin-bottom:8px;">${def.description}</div>
           ${isAccepted ? `
-            <div style="background:#1a2a50;border-radius:6px;height:8px;margin-bottom:6px;overflow:hidden;">
+            <div style="background:#3a2818;border-radius:6px;height:8px;margin-bottom:6px;overflow:hidden;">
               <div style="height:100%;width:${barPct}%;background:${barCol};border-radius:6px;transition:width 0.5s;"></div>
             </div>
             <div style="font-size:10px;color:#7a9acc;">進捗: ${isCompleted ? goal : collected} / ${goal}</div>
@@ -303,7 +303,7 @@ function _renderShopTab(tab) {
           ${!isAccepted ? `
             <button class="shop-quest-accept" data-qid="${qid}" style="
               margin-top:8px;padding:6px 16px;font-size:11px;font-weight:700;
-              background:linear-gradient(90deg,#2a4aaa,#3a6acc);border:1px solid #4a7aee;
+              background:linear-gradient(90deg,#5A9A46,#78BE5C);border:1px solid #E8834A;
               color:#fff;border-radius:20px;cursor:pointer;
             ">✋ クエストを受ける</button>
           ` : ""}
@@ -332,10 +332,10 @@ function _renderShopTab(tab) {
     const owned  = COSTUMES.filter(c => state.ownedCostumes.find(o => o.id === c.id)).length;
     let html = `
       <div style="text-align:center;margin-bottom:14px;">
-        <div style="font-size:22px;font-weight:900;color:#ffd060;">${owned}<span style="font-size:14px;color:#9ab0e0;"> / ${total}</span></div>
-        <div style="font-size:11px;color:#9ab0e0;">コスチューム収集率</div>
-        <div style="background:#1a2a50;border-radius:6px;height:10px;margin:8px auto;max-width:200px;overflow:hidden;">
-          <div style="height:100%;width:${Math.round(owned/total*100)}%;background:linear-gradient(90deg,#4a8aff,#a060ff);border-radius:6px;"></div>
+        <div style="font-size:22px;font-weight:900;color:#ffd060;">${owned}<span style="font-size:14px;color:#d8b888;"> / ${total}</span></div>
+        <div style="font-size:11px;color:#d8b888;">コスチューム収集率</div>
+        <div style="background:#3a2818;border-radius:6px;height:10px;margin:8px auto;max-width:200px;overflow:hidden;">
+          <div style="height:100%;width:${Math.round(owned/total*100)}%;background:linear-gradient(90deg,#E8834A,#F0B05A);border-radius:6px;"></div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">`;
@@ -346,7 +346,7 @@ function _renderShopTab(tab) {
       html += `
         <div style="background:${starBg};border-radius:10px;padding:8px 4px;text-align:center;opacity:${isOwned?1:0.4};">
           <div style="width:58px;height:58px;margin:0 auto 3px;">
-            ${isOwned ? getSlimeSVG(c.id,58) : '<div style="width:58px;height:58px;line-height:58px;font-size:26px;text-align:center;color:#4a5080;">？</div>'}
+            ${isOwned ? getSlimeSVG(c.id,58) : '<div style="width:58px;height:58px;line-height:58px;font-size:26px;text-align:center;color:#6a5030;">？</div>'}
           </div>
           <div style="font-size:9px;color:#ffd060;">${"⭐".repeat(c.stars)}</div>
           <div style="font-size:9px;font-weight:700;line-height:1.2;margin-top:1px;">${isOwned ? c.name : "?????"}</div>
@@ -843,6 +843,9 @@ function applyCostume(costume) {
     if (plaza.slimeParts.bodyMat.emissive) plaza.slimeParts.bodyMat.emissiveIntensity = 0.12;
   }
   if (plaza?.slimeParts?.stickMat) plaza.slimeParts.stickMat.color.set(costume.color);
+  // ★修正: 広場プレイヤーの武器表示もバトル側と同様に切り替える
+  if (plaza?.swordPivot) plaza.swordPivot.visible = (costume.weapon === "sword");
+  if (plaza?.spearPivot) plaza.spearPivot.visible = (costume.weapon === "spear");
 }
 
 // ── 着替え画面（ドレッシングルーム） ─────────────────────────────

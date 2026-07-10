@@ -71,27 +71,34 @@ function updateSwordSwing() {
   if (!three.swordSwing?.active) return;
   three.swordSwing.progress += 0.055;
   const t = three.swordSwing.progress;
-  let angle, bodyTilt = 0, bodyScaleX = 1, bodyScaleY = 1;
+  // ★修正: 以前はX軸のみの回転で、剣が体の横に固定されたまま上下にしか
+  //         動かず「蹴り」のように見えていた。Z軸の回転（右肩→左下への
+  //         横振り）を組み合わせることで、斜めに振り下ろすスラッシュらしい
+  //         軌道にする。
+  let angleX, angleZ, bodyTilt = 0, bodyScaleX = 1, bodyScaleY = 1;
 
   if (t < 0.2) {
-    // 大きく振りかぶる（上へ）
+    // 大きく振りかぶる（右肩の上・斜め後方へ）
     const s = t / 0.2;
-    angle = s * 2.5;                    // 剣先が上後方へ（＋角度）
+    angleX = s * 2.0;                   // 剣先が上後方へ
+    angleZ = -s * 0.9;                  // 右側に大きく開いて構える
     bodyTilt = -s * 0.3;                // 体を後ろに反らす
     bodyScaleX = 1 - s * 0.1;
     bodyScaleY = 1 + s * 0.15;
   } else if (t < 0.5) {
-    // 振り下ろし（高速）
+    // 斜め振り下ろし（右上 → 左下、高速）
     const s = (t - 0.2) / 0.3;
     const ease = s * s * (3 - 2*s);
-    angle = 2.5 - ease * 6.0;          // -3.5rad（前下方へ）
-    bodyTilt = -0.3 + s * 0.7;         // 体を前に倒す
+    angleX = 2.0 - ease * 5.5;          // 前下方へ
+    angleZ = -0.9 + ease * 2.0;         // 右→左へ横振り抜け
+    bodyTilt = -0.3 + s * 0.7;          // 体を前に倒す
     bodyScaleX = 0.9 + s * 0.3;
     bodyScaleY = 1.15 - s * 0.25;
   } else if (t < 0.65) {
     // 衝撃のめり込み
     const s = (t - 0.5) / 0.15;
-    angle = -3.5 + s * 0.8;
+    angleX = -3.5 + s * 0.8;
+    angleZ = 1.1 - s * 0.15;
     bodyTilt = 0.4 - s * 0.2;
     bodyScaleX = 1.2 - s * 0.15;
     bodyScaleY = 0.9 + s * 0.05;
@@ -99,19 +106,21 @@ function updateSwordSwing() {
     // 戻り
     const s = (t - 0.65) / 0.35;
     const ease = 1 - (1-s)*(1-s);
-    angle = -2.7 + ease * 2.7;
+    angleX = -2.7 + ease * 2.7;
+    angleZ = 0.95 - ease * 0.95;
     bodyTilt = 0.2 * (1 - ease);
     bodyScaleX = 1.05 - ease * 0.05;
     bodyScaleY = 0.95 + ease * 0.05;
   }
 
-  three.swordPivot.rotation.x = angle;   // 縦回転（X軸）
+  three.swordPivot.rotation.x = angleX;    // 縦の振り（X軸）
+  three.swordPivot.rotation.z = angleZ;    // 横の振り抜け（Z軸）→ 斜め斬りの軌道
   three.playerGroup.rotation.x = bodyTilt; // 体の前後傾き
   three.playerGroup.scale.set(bodyScaleX, bodyScaleY, bodyScaleX);
 
   if (t >= 1.0) {
     three.swordSwing.active = false;
-    three.swordPivot.rotation.x = 0;
+    three.swordPivot.rotation.set(0, 0, 0);
     three.playerGroup.rotation.x = 0;
     three.playerGroup.scale.set(1, 1, 1);
   }
