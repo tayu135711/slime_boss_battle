@@ -174,7 +174,7 @@ const battleWalk = {
   landTimer: 0,
 };
 
-function updatePlayerMovement() {
+function updatePlayerMovement(dtScale) {
   if (state.gameOver || !state.battleStarted) return;
   let dx = 0, dz = 0;
 
@@ -208,7 +208,9 @@ function updatePlayerMovement() {
     state.player.vx = (state.player.vx || 0) + (targetVx - (state.player.vx || 0)) * accel;
     state.player.vz = (state.player.vz || 0) + (targetVz - (state.player.vz || 0)) * accel;
     three.playerGroup.rotation.y = Math.atan2(dx, dz);
-    battleWalk.phase += 0.20;
+    // ★修正: 60fps前提の固定値だったため、高リフレッシュレート端末だと歩行アニメが
+    //         早く進みすぎていた。dtScale（60fps基準の経過フレーム比）で補正する。
+    battleWalk.phase += 0.20 * dtScale;
   } else {
     state.player.vx = (state.player.vx || 0) * friction;
     state.player.vz = (state.player.vz || 0) * friction;
@@ -226,7 +228,10 @@ function updatePlayerMovement() {
   // 着地検出
   if (battleWalk.wasMoving && !isMoving) battleWalk.landTimer = 120;
   battleWalk.wasMoving = isMoving;
-  if (battleWalk.landTimer > 0) battleWalk.landTimer -= 16;
+  // ★修正: 「-= 16」は1フレーム=16ms(60fps)前提の固定値だったため、
+  //         高リフレッシュレート端末では着地アニメが実時間より早く終わっていた。
+  //         dtScaleで実際の経過時間相当にスケーリングする。
+  if (battleWalk.landTimer > 0) battleWalk.landTimer -= 16 * dtScale;
 
   let posY = 0;
   let hopScaleX = 1, hopScaleY = 1;
@@ -276,23 +281,41 @@ function updateCameraFollow() {
 
 function clamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
 
-function animate() {
+// ★修正: 一部のアニメーション（歩行モーションの周期・着地アニメの減衰）が
+//         「1フレーム=約16ms(60fps)」を前提にした固定値で更新されており、
+//         120Hz/144Hzなど高リフレッシュレート環境では実時間より速く進んでしまっていた。
+//         requestAnimationFrameが渡す高精度タイムスタンプから経過時間(dt)を求め、
+//         60fps基準の相対フレーム数(dtScale)に変換して各アニメーションに適用する。
+let _lastFrameTime = null;
+const REF_FRAME_MS = 1000 / 60;
+
+function animate(timestamp) {
+  let dtScale = 1;
+  if (typeof timestamp === "number") {
+    if (_lastFrameTime !== null) {
+      const dt = timestamp - _lastFrameTime;
+      // タブが非アクティブだった後の巨大なdtで演出が一気に進まないようクランプ
+      dtScale = clamp(dt / REF_FRAME_MS, 0, 4);
+    }
+    _lastFrameTime = timestamp;
+  }
+
   if (dom.homePlazaScreen.classList.contains("visible")) {
     // 釣り中もNPC・噴水・ドラゴンフライの更新は継続する
     // updateHomePlazaLoop内でプレイヤー移動はuiOpenフラグでスキップ済み
-    updateHomePlazaLoop();
+    updateHomePlazaLoop(dtScale);
     three.renderer.render(three.scene, three.camera);
     requestAnimationFrame(animate);
     return;
   }
   // ※ fishingActiveはhomePlazaScreen内でのみ発生するため、ここには到達しない
-  updatePlayerMovement();
+  updatePlayerMovement(dtScale);
   updateBossMovement();
   updateCameraFollow();
   updateAttackButtonState();
-  updateSwordSwing();
-  updateDashAttack();
-  updateSpearThrust();
+  updateSwordSwing(dtScale);
+  updateDashAttack(dtScale);
+  updateSpearThrust(dtScale);
   three.renderer.render(three.scene, three.camera);
   requestAnimationFrame(animate);
 }

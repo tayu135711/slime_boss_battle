@@ -58,5 +58,13 @@ public class PlayerSave {
     /** 累計クリア数 ★ 追加 */
     private int totalClears;
 
+    /** ガチャ石（チケット）所持数
+     *  ★修正: フロントエンド(save.js)は毎回 gachaTickets をリクエストボディに含めて送信しているが、
+     *          このエンティティにフィールドが存在しなかったため、DBには一切保存されずに
+     *          サーバー再起動やブラウザのlocalStorageクリア・別端末でのロード時に
+     *          ガチャ石の所持数が毎回3個にリセットされてしまうバグがあった。
+     */
+    private int gachaTickets;
+
     private LocalDateTime updatedAt;
 }

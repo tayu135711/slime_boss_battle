@@ -16,9 +16,9 @@ function startDashAttack() {
   three.dashAttack.dirZ = dz / len;
 }
 
-function updateDashAttack() {
+function updateDashAttack(dtScale = 1) {
   if (!three.dashAttack?.active) return;
-  three.dashAttack.progress += 0.075;
+  three.dashAttack.progress += 0.075 * dtScale;
   const t = three.dashAttack.progress;
 
   let offset, squishX, squishY, squishZ, rotY = 0;
@@ -67,9 +67,9 @@ function startSwordSwing() {
   three.swordSwing.progress = 0;
 }
 
-function updateSwordSwing() {
+function updateSwordSwing(dtScale = 1) {
   if (!three.swordSwing?.active) return;
-  three.swordSwing.progress += 0.055;
+  three.swordSwing.progress += 0.055 * dtScale;
   const t = three.swordSwing.progress;
   // ★修正: 以前はX軸のみの回転で、剣が体の横に固定されたまま上下にしか
   //         動かず「蹴り」のように見えていた。Z軸の回転（右肩→左下への
@@ -133,9 +133,9 @@ function startSpearThrust() {
   three.spearThrust.progress = 0;
 }
 
-function updateSpearThrust() {
+function updateSpearThrust(dtScale = 1) {
   if (!three.spearThrust?.active) return;
-  three.spearThrust.progress += 0.065;
+  three.spearThrust.progress += 0.065 * dtScale;
   const t = three.spearThrust.progress;
   let px = 0, pz = 0, py = 0, bodyTilt = 0, bodyScaleX = 1, bodyScaleY = 1;
 

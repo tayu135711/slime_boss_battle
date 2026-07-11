@@ -965,7 +965,7 @@ function buildDistantTrees() {
 }
 
 
-function updateHomePlazaLoop() {
+function updateHomePlazaLoop(dtScale = 1) {
   // 料理・花摘みUI、または釣り中はプレイヤー移動・インタラクションをスキップ
   const cookUI    = document.getElementById("cookingUI");
   const flUI      = document.getElementById("flowerUI");
@@ -983,7 +983,7 @@ function updateHomePlazaLoop() {
                   (typeof fishingActive !== "undefined" && fishingActive);
 
   if (!uiOpen) {
-    updatePlazaPlayer();
+    updatePlazaPlayer(dtScale);
     // ★ サブエリア（釣り場・花畑）内にいるときは建物入場チェックをスキップ
     // 　 （プレイヤーが建物近くにいても「入る」プロンプトを出さない）
     if (!currentSubArea) {
@@ -1034,7 +1034,7 @@ const WALK_HOP_SPEED   = 0.22;  // 位相の進み速さ（速いほど足が速
 const WALK_HOP_HEIGHT  = 0.28;  // ホップの最大高さ（単位:Three.jsユニット）
 const WALK_SQUASH_TIME = 120;   // 着地スクワッシュ持続（ms）
 
-function updatePlazaPlayer() {
+function updatePlazaPlayer(dtScale = 1) {
   let dx = 0, dz = 0;
 
   // アナログジョイスティック優先（広場モード時）
@@ -1060,7 +1060,8 @@ function updatePlazaPlayer() {
     if (plaza.playerMesh) plaza.playerMesh.rotation.y = Math.atan2(dx, dz);
 
     // ── ぽよんぽよんホップ位相を進める ──
-    plazaWalk.phase += WALK_HOP_SPEED;
+    // ★修正: battle.jsのbattleWalkと同じ理由でdtScaleを適用（高リフレッシュレート対策）
+    plazaWalk.phase += WALK_HOP_SPEED * dtScale;
   }
 
   // ── 着地検出：移動→停止の瞬間にスクワッシュ ──
@@ -1069,7 +1070,7 @@ function updatePlazaPlayer() {
   }
   plazaWalk.wasMoving = isMoving;
   plazaWalk.isMoving  = isMoving;
-  if (plazaWalk.landTimer > 0) plazaWalk.landTimer -= 16; // 約60fps想定
+  if (plazaWalk.landTimer > 0) plazaWalk.landTimer -= 16 * dtScale; // ★修正: dtScaleで実時間相当に補正
 
   // ── Y位置・スケールをアニメーション ──
   if (plaza.playerMesh) {
@@ -1236,6 +1237,13 @@ function checkPlazaEntrances() {
   plazaNearFountain = Math.hypot(plazaPlayer.x - plaza.fountainPos.x, plazaPlayer.z - plaza.fountainPos.z) < FOUNTAIN_INTERACT_RADIUS;
   plazaNearPond = Math.hypot(plazaPlayer.x - plaza.pondPos.x, plazaPlayer.z - plaza.pondPos.z) < POND_INTERACT_RADIUS;
   if (plaza.bench) plazaNearBench = Math.hypot(plazaPlayer.x - plaza.bench.position.x, plazaPlayer.z - plaza.bench.position.z) < BENCH_INTERACT_RADIUS;
+  // ★修正: ベンチから離れても_benchBentoReadyが4秒間(またはexitHomePlazaまで)残り続け、
+  //         その間に花や池などに移動してAを押すと、handlePlazaAction()の先頭判定で
+  //         意図せずお弁当を食べてしまうバグがあった。ベンチ近接が外れた時点でフラグを解除する。
+  if (!plazaNearBench && state._benchBentoReady) {
+    state._benchBentoReady = false;
+    if (dom.statusLine.textContent.includes("食べる？")) dom.statusLine.textContent = "";
+  }
   // ★修正: 以前は上でplazaNearFlowerをfalseにリセットした後、
   //         このスコープ内では一度も再計算しないまま下のif/else-ifで参照していたため、
   //         「else if (plazaNearFlower)」が常にfalseになり、広場に咲いている花に近づいても
@@ -1783,15 +1791,32 @@ let nearestFlower = null;
 const FLOWER_PICK_RADIUS = 1.8;
 function checkFlowerProximity() {
   nearestFlower = null;
+  // ★修正: 半径内で最後に見つかった花ではなく、実際に最も近い花を選ぶよう距離比較を追加
+  let minDist = FLOWER_PICK_RADIUS;
   // サブエリア（花畑シーン）内では flowerSceneField、広場では flowerField を参照
   const targetField = (currentSubArea === "flower") ? plaza.flowerSceneField : plaza.flowerField;
   targetField.forEach(flower => {
     if (flower.userData.picked) return;
     const dx = plazaPlayer.x - flower.position.x;
     const dz = plazaPlayer.z - flower.position.z;
-    if (Math.sqrt(dx*dx+dz*dz) < FLOWER_PICK_RADIUS) nearestFlower = flower;
+    const dist = Math.sqrt(dx*dx+dz*dz);
+    if (dist < minDist) {
+      minDist = dist;
+      nearestFlower = flower;
+    }
   });
   plazaNearFlower = nearestFlower !== null;
+
+  // ★修正: ベンチのバグと同根。花に近づいて「Ａ でそっと摘む」表示が出た後、
+  //         摘まずに離れてしまうと window._flowerWaiting が true のまま残り、
+  //         次に別の場所(ベンチ・池・建物など)でAを押した際に doPickFlower() が
+  //         横取りしてしまい、意図した操作が無効になってしまうバグがあった。
+  //         花から離れた時点でフラグを解除し、開きっぱなしのUIも閉じる。
+  if (!plazaNearFlower && window._flowerWaiting) {
+    window._flowerWaiting = false;
+    const flui = document.getElementById("flowerUI");
+    if (flui) flui.style.display = "none";
+  }
 }
 
 function updateFlowers() {
