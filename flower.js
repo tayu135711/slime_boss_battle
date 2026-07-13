@@ -24,6 +24,14 @@ function initFlowerUI() {
 function pickFlower() {
   if (!nearestFlower || nearestFlower.userData.picked) return;
 
+  // ★修正: 花を摘んだ直後の結果メッセージ表示中（flowerUIがまだ非表示になっていない間）に
+  //         近くの別の花へ移動してAを押すと、pickFlower()が再度呼び出され、表示中の
+  //         メッセージ・タイマーと競合して表示が壊れたり花摘みが正しく反映されなかったり
+  //         する不具合があった（fishing.jsの既知バグと同根）。結果表示中は新しい花摘みを
+  //         開始しないようにする。
+  const existingUI = document.getElementById("flowerUI");
+  if (existingUI && existingUI.style.display !== "none" && existingUI.style.display !== "") return;
+
   const today = new Date().toDateString();
   if (!state.lastFlowerDate || state.lastFlowerDate !== today) {
     state.dailyFlowerCount = 0;

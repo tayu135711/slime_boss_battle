@@ -504,7 +504,7 @@ function spawnThunderSkill(damage) {
 }
 
 // ── ボスAI ────────────────────────────────────────────────────
-function updateBossMovement() {
+function updateBossMovement(dtScale = 1) {
   if (!state.battleStarted || state.cleared || state.gameOver) return;
   const now = Date.now();
   const s   = getCurrentStage(state.stageIndex);
@@ -537,8 +537,10 @@ function updateBossMovement() {
     const dz   = state.bossAI.chargeTarget.z - state.boss.z;
     const dist = Math.hypot(dx, dz);
     if (dist > 0.15) {
-      state.boss.x += (dx / dist) * s.chargeSpeed;
-      state.boss.z += (dz / dist) * s.chargeSpeed;
+      // ★修正: プレイヤー移動と同根のバグ。ここもdtScaleを掛けないと
+      //         高リフレッシュレート端末でボスの突進が速くなりすぎてしまう。
+      state.boss.x += (dx / dist) * s.chargeSpeed * dtScale;
+      state.boss.z += (dz / dist) * s.chargeSpeed * dtScale;
       checkChargeHit();
     } else {
       state.bossAI.mode        = "wander";
@@ -550,8 +552,9 @@ function updateBossMovement() {
     const dz   = state.bossTarget.z - state.boss.z;
     const dist = Math.hypot(dx, dz);
     if (dist > 0.1) {
-      state.boss.x += (dx / dist) * s.moveSpeed;
-      state.boss.z += (dz / dist) * s.moveSpeed;
+      // ★修正: 徘徊移動もdtScaleを適用し、実時間ベースの速度にする。
+      state.boss.x += (dx / dist) * s.moveSpeed * dtScale;
+      state.boss.z += (dz / dist) * s.moveSpeed * dtScale;
     } else {
       pickNewBossTarget();
     }
@@ -593,10 +596,16 @@ function spawnShockwave() {
   ring.scale.set(0.01, 1, 0.01);
   three.scene.add(ring);
 
-  let frame = 0, hit = false;
-  (function tick() {
-    frame++;
-    const t = frame / 30;
+  // ★修正: animate()ループのdtScale化と同じ理由。ここは独立したrequestAnimationFrame
+  //         ループで「frame++」を1回ずつ数えて30フレームで完了とみなしていたため、
+  //         高リフレッシュレート端末では衝撃波の広がり（＝被弾判定が発生する時間）が
+  //         実時間の半分以下で終わってしまっていた。経過ミリ秒ベースに変更する。
+  const DURATION_MS = 500; // 60fps換算で30フレーム分
+  const startTime = performance.now();
+  let hit = false;
+  (function tick(now) {
+    const elapsed = (typeof now === "number" ? now : performance.now()) - startTime;
+    const t = Math.min(1, elapsed / DURATION_MS);
     const r = t * maxR;
     ring.scale.set(r / 1.35, 1, r / 1.35);
     ring.material.opacity = 0.9 * (1 - t);
@@ -607,7 +616,7 @@ function spawnShockwave() {
         applyPlayerDamage(getCurrentStage(state.stageIndex).shockwaveDamage);
       }
     }
-    if (frame < 30) requestAnimationFrame(tick);
+    if (t < 1) requestAnimationFrame(tick);
     else { three.scene.remove(ring); ring.geometry.dispose(); mat.dispose(); }
   })();
 }

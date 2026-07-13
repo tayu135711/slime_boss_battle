@@ -1015,9 +1015,9 @@ function updateHomePlazaLoop(dtScale = 1) {
     // ★ UI表示中はプロンプトを必ず消す
     dom.plazaActionPrompt.classList.remove("visible");
   }
-  updatePlazaNPCs();
+  updatePlazaNPCs(dtScale);
   updateFountain();
-  updateDragonflies();
+  updateDragonflies(dtScale);
   updateFlowers();
   updatePlazaCameraFollow();
   updateTimeOfDay();  // 時間帯チェック（変化時のみ描画更新）
@@ -1055,8 +1055,11 @@ function updatePlazaPlayer(dtScale = 1) {
   if (isMoving) {
     const len = Math.hypot(dx, dz);
     const speed = PLAZA_MOVE_SPEED * (jv && len > 0 ? Math.min(len, 1.0) : 1.0);
-    plazaPlayer.x = Math.max(-PLAZA_FIELD_LIMIT, Math.min(PLAZA_FIELD_LIMIT, plazaPlayer.x + (dx / len) * speed));
-    plazaPlayer.z = Math.max(-PLAZA_FIELD_LIMIT, Math.min(PLAZA_FIELD_LIMIT, plazaPlayer.z + (dz / len) * speed));
+    // ★修正: battle.js/game.jsと同根のバグ。ホップアニメの位相はdtScaleで補正済みだったが、
+    //         広場での実際の移動量にはdtScaleが掛かっておらず、高リフレッシュレート端末では
+    //         見た目のホップと移動速度がズレてしまっていた。ここにもdtScaleを適用する。
+    plazaPlayer.x = Math.max(-PLAZA_FIELD_LIMIT, Math.min(PLAZA_FIELD_LIMIT, plazaPlayer.x + (dx / len) * speed * dtScale));
+    plazaPlayer.z = Math.max(-PLAZA_FIELD_LIMIT, Math.min(PLAZA_FIELD_LIMIT, plazaPlayer.z + (dz / len) * speed * dtScale));
     if (plaza.playerMesh) plaza.playerMesh.rotation.y = Math.atan2(dx, dz);
 
     // ── ぽよんぽよんホップ位相を進める ──
@@ -1118,7 +1121,7 @@ function updatePlazaCameraFollow() {
   three.camera.lookAt(plazaPlayer.x, 0.5, plazaPlayer.z - 5.0);
 }
 
-function updatePlazaNPCs() {
+function updatePlazaNPCs(dtScale = 1) {
   const now = Date.now();
   let nearLine = null;
   npcState.forEach(npc => {
@@ -1138,15 +1141,17 @@ function updatePlazaNPCs() {
         npc.waitUntil = now + (npc.pauseTime || 2000);
       } else {
         const speed = npc.moveSpeed || 0.02;
-        npc.x += (npc.targetX - npc.x) / distToTarget * speed;
-        npc.z += (npc.targetZ - npc.z) / distToTarget * speed;
+        // ★修正: プレイヤー・ボスと同根のバグ。NPCの移動量にもdtScaleを適用し、
+        //         高リフレッシュレート端末でNPCが速く動きすぎないようにする。
+        npc.x += (npc.targetX - npc.x) / distToTarget * speed * dtScale;
+        npc.z += (npc.targetZ - npc.z) / distToTarget * speed * dtScale;
       }
     }
     npc.mesh.position.set(npc.x, 0, npc.z);
     // ── NPCもぽよんぽよん歩きアニメ ──
     if (!npc.mesh) return;
     if (npc.moveState === "moving") {
-      npc.walkPhase = (npc.walkPhase || 0) + 0.18;
+      npc.walkPhase = (npc.walkPhase || 0) + 0.18 * dtScale;
       const hop = Math.max(0, Math.sin(npc.walkPhase)) * 0.18;
       const sq  = 1.0 - Math.max(0, Math.sin(npc.walkPhase));
       npc.mesh.position.y = hop;
@@ -1193,12 +1198,13 @@ function updateFountain() {
   });
 }
 
-function updateDragonflies() {
+function updateDragonflies(dtScale = 1) {
   const t = Date.now() * 0.001;
   plaza.dragonflies.forEach(d => {
     const pos = d.geometry.attributes.position;
-    d.userData.baseX += d.userData.speedX;
-    d.userData.baseZ += d.userData.speedZ;
+    // ★修正: NPC/プレイヤーと同根のバグ。トンボの移動量にもdtScaleを適用する。
+    d.userData.baseX += d.userData.speedX * dtScale;
+    d.userData.baseZ += d.userData.speedZ * dtScale;
     const dx = d.userData.baseX - plaza.pondPos.x;
     const dz = d.userData.baseZ - plaza.pondPos.z;
     if (Math.sqrt(dx*dx+dz*dz) > 5.0) {

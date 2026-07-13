@@ -63,8 +63,16 @@ public class PlayerSave {
      *          このエンティティにフィールドが存在しなかったため、DBには一切保存されずに
      *          サーバー再起動やブラウザのlocalStorageクリア・別端末でのロード時に
      *          ガチャ石の所持数が毎回3個にリセットされてしまうバグがあった。
+     *
+     *  ★追加修正: プリミティブ型 int だと、この修正より前から存在する既存プレイヤーの行では
+     *          ddl-auto=update で追加されたカラムが NULL のままになる。JDBCの ResultSet.getInt()
+     *          は NULL を黙って 0 に丸めてしまうため、save.js 側の「値が無ければ3個プレゼント」
+     *          という救済ロジック（data.gachaTickets ?? 3）が、既存プレイヤーに対しては
+     *          「本物の0」と区別できず発動しない（常に0個になる）バグになっていた。
+     *          Integer（ボクシング型）にすることで DB の NULL を JSON の null としてそのまま
+     *          フロントへ伝え、救済ロジックを正しく機能させる。
      */
-    private int gachaTickets;
+    private Integer gachaTickets;
 
     private LocalDateTime updatedAt;
 }

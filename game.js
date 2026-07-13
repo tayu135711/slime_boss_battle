@@ -216,8 +216,13 @@ function updatePlayerMovement(dtScale) {
     state.player.vz = (state.player.vz || 0) * friction;
   }
 
-  state.player.x = clamp(state.player.x + (state.player.vx || 0), -half, half);
-  state.player.z = clamp(state.player.z + (state.player.vz || 0), -half, half);
+  // ★修正: アニメーション位相(battleWalk.phase等)はdtScaleで補正済みだったが、
+  //         実際のプレイヤー座標更新(vx/vz反映)にはdtScaleが掛かっておらず、
+  //         高リフレッシュレート端末では見た目の歩行モーションは正しい速さなのに
+  //         キャラクター自体はフレーム数に比例して速く/遅く移動してしまう
+  //         （足の動きと移動速度がズレる）バグが残っていたため、ここにもdtScaleを適用する。
+  state.player.x = clamp(state.player.x + (state.player.vx || 0) * dtScale, -half, half);
+  state.player.z = clamp(state.player.z + (state.player.vz || 0) * dtScale, -half, half);
 
   if (Math.abs(state.player.x) >= half) state.player.vx = 0;
   if (Math.abs(state.player.z) >= half) state.player.vz = 0;
@@ -310,7 +315,7 @@ function animate(timestamp) {
   }
   // ※ fishingActiveはhomePlazaScreen内でのみ発生するため、ここには到達しない
   updatePlayerMovement(dtScale);
-  updateBossMovement();
+  updateBossMovement(dtScale);
   updateCameraFollow();
   updateAttackButtonState();
   updateSwordSwing(dtScale);
