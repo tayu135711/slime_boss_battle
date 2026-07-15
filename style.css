@@ -1161,42 +1161,76 @@ html, body {
   box-shadow: 0 2px 0 #3A6830;
 }
 
-/* ===== 釣りミニゲーム ===== */
+/* ===== 釣りミニゲーム UI （Glassmorphism） ===== */
+@keyframes fishingUIIn {
+  from { opacity: 0; transform: scale(0.88) translateY(16px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
 #fishingUI {
   display: none;
   position: fixed; inset: 0;
   z-index: 100;
-  background: rgba(20,50,60,0.65);
+  background: radial-gradient(ellipse at 50% 60%, rgba(10, 40, 80, 0.72), rgba(5, 20, 50, 0.82));
   align-items: center; justify-content: center;
   pointer-events: auto;
-  backdrop-filter: blur(3px);
+  backdrop-filter: blur(8px) saturate(1.4);
 }
+#fishingUI[style*="flex"] { animation: fishingUIIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 #fishingBox {
-  background: linear-gradient(160deg, #EEF8FF, #DCF0F8);
-  border: 2.5px solid #7EC8E3;
-  border-radius: 24px;
-  padding: 24px 28px;
+  background: linear-gradient(145deg,
+    rgba(180, 230, 255, 0.22) 0%,
+    rgba(80, 160, 210, 0.16) 50%,
+    rgba(40, 100, 160, 0.24) 100%);
+  border: 1.5px solid rgba(150, 210, 255, 0.5);
+  border-radius: 28px;
+  padding: 30px 32px 28px;
   text-align: center;
-  box-shadow: 0 12px 36px rgba(40,120,160,0.2), inset 0 1px 0 rgba(255,255,255,0.9);
-  width: min(90vw, 320px);
+  box-shadow:
+    0 20px 60px rgba(20, 80, 140, 0.4),
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(100, 180, 240, 0.2);
+  width: min(90vw, 340px);
+  backdrop-filter: blur(16px) saturate(1.6);
+  position: relative;
+  overflow: hidden;
+}
+#fishingBox::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 50%;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.12), transparent);
+  border-radius: 28px 28px 0 0;
+  pointer-events: none;
 }
 #fishingPrompt {
-  font-size: 20px; font-weight: 900;
-  color: #2A5A6A;
-  margin-bottom: 20px;
+  font-size: 19px; font-weight: 800;
+  color: #d0eeff;
+  margin-bottom: 22px;
+  text-shadow: 0 1px 8px rgba(100, 180, 255, 0.6);
+  letter-spacing: 0.02em;
 }
 #fishingAction {
-  font-size: 18px; font-weight: 900;
+  font-size: 17px; font-weight: 900;
   color: #fff;
-  background: linear-gradient(135deg, #4A7EA0, #6AA8C8);
+  background: linear-gradient(135deg, #2d8acf 0%, #5ab8f0 50%, #1a6aaa 100%);
   border: none; border-radius: 50px;
   padding: 16px 40px;
   min-height: 56px;
   width: 100%;
   display: block;
   cursor: pointer;
-  box-shadow: 0 4px 0 #2A5070, 0 6px 14px rgba(40,100,160,0.3);
+  box-shadow:
+    0 4px 0 rgba(20, 70, 120, 0.8),
+    0 8px 20px rgba(40, 130, 200, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
   touch-action: manipulation;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  letter-spacing: 0.03em;
+}
+#fishingAction:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 rgba(20, 70, 120, 0.8), 0 4px 10px rgba(40, 130, 200, 0.3);
 }
 
 /* ===== 料理画面 ===== */
@@ -1293,41 +1327,75 @@ html, body {
   font-weight: 700;
 }
 
-/* ===== 花摘みUI ===== */
+/* ===== 花摘みUI （Glassmorphism） ===== */
+@keyframes flowerUIIn {
+  from { opacity: 0; transform: scale(0.85) translateY(20px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
 #flowerUI {
   display: none;
   position: fixed; inset: 0;
-  background: rgba(20,50,20,0.62);
+  background: radial-gradient(ellipse at 50% 55%, rgba(60, 10, 70, 0.7), rgba(30, 5, 45, 0.82));
   align-items: center; justify-content: center;
   z-index: 100;
-  backdrop-filter: blur(3px);
+  backdrop-filter: blur(8px) saturate(1.4);
 }
+#flowerUI[style*="flex"] { animation: flowerUIIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 #flowerBox {
-  background: linear-gradient(160deg, #F0FFF0, #E8F8E0);
-  border: 2.5px solid #A8C890;
-  border-radius: 24px;
-  padding: 24px 28px;
+  background: linear-gradient(145deg,
+    rgba(255, 200, 230, 0.24) 0%,
+    rgba(200, 140, 200, 0.16) 50%,
+    rgba(160, 80, 160, 0.22) 100%);
+  border: 1.5px solid rgba(230, 160, 220, 0.55);
+  border-radius: 28px;
+  padding: 30px 32px 28px;
   text-align: center;
-  box-shadow: 0 12px 36px rgba(60,100,40,0.18), inset 0 1px 0 rgba(255,255,255,0.9);
-  width: min(90vw, 320px);
+  box-shadow:
+    0 20px 60px rgba(140, 40, 140, 0.4),
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(200, 120, 200, 0.2);
+  width: min(90vw, 340px);
+  backdrop-filter: blur(16px) saturate(1.6);
+  position: relative;
+  overflow: hidden;
+}
+#flowerBox::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 50%;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.14), transparent);
+  border-radius: 28px 28px 0 0;
+  pointer-events: none;
 }
 #flowerPrompt {
-  font-size: 20px; font-weight: 900;
-  color: #3A6828;
-  margin-bottom: 20px;
+  font-size: 19px; font-weight: 800;
+  color: #ffd0ee;
+  margin-bottom: 22px;
+  text-shadow: 0 1px 8px rgba(220, 100, 180, 0.6);
+  letter-spacing: 0.02em;
 }
 #flowerAction {
-  font-size: 18px; font-weight: 900;
+  font-size: 17px; font-weight: 900;
   color: #fff;
-  background: linear-gradient(135deg, #5A9A46, #78BE5C);
+  background: linear-gradient(135deg, #b840a0 0%, #e070c0 50%, #9a2888 100%);
   border: none; border-radius: 50px;
   padding: 16px 40px;
   min-height: 56px;
   width: 100%;
   display: block;
   cursor: pointer;
-  box-shadow: 0 4px 0 #3A6830, 0 6px 14px rgba(60,130,40,0.25);
+  box-shadow:
+    0 4px 0 rgba(100, 20, 90, 0.8),
+    0 8px 20px rgba(180, 60, 160, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
   touch-action: manipulation;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  letter-spacing: 0.03em;
+}
+#flowerAction:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 rgba(100, 20, 90, 0.8), 0 4px 10px rgba(180, 60, 160, 0.3);
 }
 
 /* ── 広場表示中のHUD非表示制御 ── */

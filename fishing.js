@@ -71,12 +71,12 @@ function startFishing() {
     fishingHitZone.start = now;
     fishingHitZone.end = now + FISHING_HIT_DURATION;
     fishingTimer = setTimeout(() => {
-      if (fishingActive && fishingPhase === "strike") endFishing(false);
+      if (fishingActive && fishingPhase === "strike") endFishing(false, "miss");
     }, FISHING_HIT_DURATION);
   }, waitTime);
 }
 
-function endFishing(success) {
+function endFishing(success, reason = "miss") {
   clearTimeout(fishingTimer);
   fishingTimer = null;
   fishingActive = false;
@@ -91,6 +91,12 @@ function endFishing(success) {
 
     document.getElementById("fishingPrompt").textContent = `${fish.icon} ${fish.name} をそっと釣り上げた。`;
     document.getElementById("fishingAction").style.display = "none";
+
+    // ★ 釣り成功時に水しぶきパーティクルを発生（隔離座標 100, 100 に）
+    if (typeof spawnWaterSplash === "function") {
+      spawnWaterSplash(100, 100);
+    }
+
     setTimeout(() => {
       fishingUI.style.display = "none";
       document.getElementById("fishingAction").style.display = "";
@@ -105,7 +111,11 @@ function endFishing(success) {
     }, 1500);
   } else {
     SE.fishingMiss();
-    document.getElementById("fishingPrompt").textContent = "…そっと逃がしてしまった。";
+    if (reason === "too_early") {
+      document.getElementById("fishingPrompt").textContent = "…早すぎた！そっと逃がしてしまった。";
+    } else {
+      document.getElementById("fishingPrompt").textContent = "…遅すぎた！そっと逃がしてしまった。";
+    }
     document.getElementById("fishingAction").style.display = "none";
     setTimeout(() => {
       fishingUI.style.display = "none";
@@ -114,7 +124,7 @@ function endFishing(success) {
       if (typeof updatePlazaCameraFollow === "function") updatePlazaCameraFollow();
       // ★ 釣り場エリア内なら残り回数があれば次の一投を促す
       _afterFishingInArea();
-    }, 1000);
+    }, 1200);
   }
 }
 
@@ -142,11 +152,16 @@ function selectFish() {
 }
 
 function fishingAction() {
-  if (!fishingActive || fishingPhase !== "strike") return;
+  if (!fishingActive) return;
+  if (fishingPhase === "waiting") {
+    endFishing(false, "too_early");
+    return;
+  }
+  if (fishingPhase !== "strike") return;
   const now = Date.now();
   if (now >= fishingHitZone.start && now <= fishingHitZone.end) {
     endFishing(true);
   } else {
-    endFishing(false);
+    endFishing(false, "miss");
   }
 }

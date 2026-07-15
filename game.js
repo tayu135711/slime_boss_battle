@@ -314,6 +314,7 @@ function animate(timestamp) {
     return;
   }
   // ※ fishingActiveはhomePlazaScreen内でのみ発生するため、ここには到達しない
+  if (typeof updateWindAnimation === "function") updateWindAnimation(dtScale);
   updatePlayerMovement(dtScale);
   updateBossMovement(dtScale);
   updateCameraFollow();

@@ -147,27 +147,63 @@ function buildAttackRing() {
 // --- 森の装飾 ---
 function makeFirTree(x, z, height = 3.5, baseRadius = 0.25) {
   const group = new THREE.Group();
+  
+  // 幹
+  const trunkHeight = height * 0.4;
   const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(baseRadius * 0.5, baseRadius, height * 0.35, 7),
-    new THREE.MeshStandardMaterial({ color: 0x3d1f0a, roughness: 1.0 })
+    new THREE.CylinderGeometry(baseRadius * 0.6, baseRadius, trunkHeight, 8),
+    new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9 })
   );
-  trunk.position.y = height * 0.175;
+  trunk.position.y = trunkHeight / 2;
   trunk.castShadow = true;
+  trunk.receiveShadow = true;
   group.add(trunk);
-  const leafColor = new THREE.MeshStandardMaterial({ color: 0x2e8b2e, roughness: 0.85 });
-  const leafDark  = new THREE.MeshStandardMaterial({ color: 0x1e6b1e, roughness: 0.85 });
-  [
-    { r: height * 0.28, h: height * 0.45, y: height * 0.35, mat: leafColor },
-    { r: height * 0.22, h: height * 0.38, y: height * 0.58, mat: leafDark  },
-    { r: height * 0.14, h: height * 0.30, y: height * 0.78, mat: leafColor },
-  ].forEach(({ r, h, y, mat }) => {
-    const cone = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), mat);
-    cone.position.y = y * height * 0.1 + height * 0.3;
-    cone.castShadow = true;
-    group.add(cone);
+
+  // もこもこな葉（複数の球体を重ねて雲のようなモコモコ樹冠を作る）
+  const leafColor = 0x3d8c3a;
+  const leafDark  = 0x2e6b2a;
+  const leafLight = 0x5c9c48;
+  const materials = [
+    new THREE.MeshStandardMaterial({ color: leafColor, roughness: 0.85 }),
+    new THREE.MeshStandardMaterial({ color: leafDark, roughness: 0.85 }),
+    new THREE.MeshStandardMaterial({ color: leafLight, roughness: 0.85 })
+  ];
+
+  // 球体をずらしながら配置して、自然なモコモコ感を出す
+  const crownGroup = new THREE.Group();
+  crownGroup.position.y = trunkHeight;
+
+  const spherePlacements = [
+    { r: height * 0.25, x: 0, y: height * 0.1, z: 0, matIdx: 0 },
+    { r: height * 0.20, x: -height * 0.1, y: height * 0.25, z: height * 0.05, matIdx: 1 },
+    { r: height * 0.20, x: height * 0.1, y: height * 0.22, z: -height * 0.05, matIdx: 2 },
+    { r: height * 0.18, x: height * 0.05, y: height * 0.38, z: height * 0.08, matIdx: 0 },
+    { r: height * 0.15, x: -height * 0.08, y: height * 0.48, z: -height * 0.05, matIdx: 1 },
+    { r: height * 0.22, x: height * 0.12, y: height * 0.05, z: height * 0.12, matIdx: 1 },
+    { r: height * 0.22, x: -height * 0.12, y: height * 0.08, z: -height * 0.12, matIdx: 2 }
+  ];
+
+  spherePlacements.forEach(({ r, x, y, z, matIdx }) => {
+    const sphere = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 8), materials[matIdx]);
+    sphere.position.set(x, y, z);
+    sphere.castShadow = true;
+    sphere.receiveShadow = true;
+    crownGroup.add(sphere);
   });
+
+  group.add(crownGroup);
   group.position.set(x, 0, z);
   group.rotation.y = Math.random() * Math.PI * 2;
+  
+  // 風の揺れアニメーション用のプロパティをセット
+  group.userData = {
+    windPhase: Math.random() * Math.PI * 2,
+    windSpeed: 0.0012 + Math.random() * 0.0008,
+    windScale: 0.02 + Math.random() * 0.015,
+    crown: crownGroup, // 葉の部分だけをより大きく揺らす
+    isTree: true
+  };
+
   return group;
 }
 

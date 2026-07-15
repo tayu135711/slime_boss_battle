@@ -71,6 +71,11 @@ function doPickFlower() {
   nearestFlower.userData.respawnTime = Date.now() + 86400000;
   SE.flowerPick();
 
+  // ★ 花摘み成功時にキラキラのフラワーパーティクルを発生
+  if (typeof spawnFlowerParticles === "function") {
+    spawnFlowerParticles(nearestFlower.position.x, nearestFlower.position.z);
+  }
+
   if (!state.inventory.ingredients[flowerType.id]) state.inventory.ingredients[flowerType.id] = 0;
   state.inventory.ingredients[flowerType.id]++;
   state.dailyFlowerCount++;
@@ -80,8 +85,9 @@ function doPickFlower() {
   setTimeout(() => {
     flowerUI.style.display = "none";
     document.getElementById("flowerAction").style.display = "";
-    nearestFlower = null;
-    plazaNearFlower = false;
+    // ★修正: ここでの nearestFlower = null / plazaNearFlower = false の手動クリアを廃止。
+    //         これらは毎フレーム checkFlowerProximity() で自動的に正しく再計算されるため、
+    //         タイマー内でのクリアは「別の花に近づいても認識しなくなる」バグの原因になります。
     if (typeof updatePlazaCameraFollow === "function") updatePlazaCameraFollow();
   }, 1500);
 
