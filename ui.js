@@ -69,6 +69,14 @@ function dismissTitle() {
         setTimeout(() => dom.statusLine.textContent = "", 2500);
         // ロードでstateが変わったのでUIを再反映
         refreshUi();
+        // ★修正: ロード完了時、state.equippedCostumeはセーブデータ通りに
+        //         更新されるが、init()で最初に適用したデフォルトコスチュームの
+        //         見た目（色・帽子・武器）がそのまま3Dモデルに残っており、
+        //         applyCostume()が再度呼ばれていなかったため、実際に装備している
+        //         コスチュームとスライムの見た目が一致しないバグがあった。
+        if (typeof applyCostume === "function" && state.equippedCostume) {
+          applyCostume(state.equippedCostume);
+        }
       }
     } catch (e) {
       console.warn("ロード失敗（続行）:", e);

@@ -97,17 +97,14 @@ function initHomePlaza() {
     setBattleObjectsVisible(false);
     // ★ 再入場時に時間帯を即座に再適用（空・ライト・skyObjectsを確実に設定）
     applyTimeOfDay(getTimeOfDay(), false);
-    // ★ 再入場時にコスチューム色を広場プレイヤーに反映
-    if (plaza.playerMesh && state.equippedCostume) {
-      try {
-        plaza.playerMesh.traverse(child => {
-          if (child.isMesh && child.material?.color) {
-            child.material.color.set(state.equippedCostume.color);
-          }
-        });
-      } catch(e) {
-        console.warn("コスチューム色反映エラー:", e);
-      }
+    // ★修正: 以前はここで plaza.playerMesh を traverse() して「色を持つメッシュ全部」を
+    //         問答無用でボディ色に塗り替えていた。これはapplyCostume()側で既に修正済みの
+    //         バグと同根で、帽子やアクセサリーまでボディ色に塗り潰されてしまい、戦闘から
+    //         広場に戻るたびにコスチュームの見た目が潰れて単色っぽく（白っぽく）なる原因に
+    //         なっていた。bodyMat/stickMatだけを狙い撃ちで更新するapplyCostume()を
+    //         再利用するように統一する。
+    if (state.equippedCostume) {
+      applyCostume(state.equippedCostume);
     }
   }
 
@@ -1120,8 +1117,14 @@ function updateHomePlazaLoop(dtScale = 1) {
       } else if (currentSubArea === "pond") {
         // ★ 釣り場エリア内：桟橋先端付近のみ釣り可能プロンプトを表示
         if (!fishingActive) {
-          const nearDockTip = (plazaPlayer.x >= 97.5 && plazaPlayer.x <= 102.5 &&
-                               plazaPlayer.z >= 99.5 && plazaPlayer.z <= 107.0);
+          // ★修正: 以前はここだけ pondPos と無関係な絶対座標
+          //         (x:97.5〜102.5, z:99.5〜107.0) がハードコードされており、
+          //         桟橋(pondPos付近)にどれだけ近づいてもこの範囲に入ることが
+          //         絶対になく、釣りプロンプトが毎フレームfalseに上書きされて
+          //         永久に表示されないバグになっていた。checkPlazaEntrancesと
+          //         同じ pondPos 基準の距離判定に統一する。
+          const distToPond = Math.hypot(plazaPlayer.x - plaza.pondPos.x, plazaPlayer.z - plaza.pondPos.z);
+          const nearDockTip = distToPond < POND_INTERACT_RADIUS;
           if (nearDockTip) {
             dom.plazaActionPrompt.textContent = "Ａ で釣り糸を垂らす";
             dom.plazaActionPrompt.classList.add("visible");
@@ -1189,21 +1192,35 @@ function updatePlazaPlayer(dtScale = 1) {
     let targetZ = plazaPlayer.z + (dz / len) * speed * dtScale;
 
     // ★ 隔離座標系および移動境界制限（クランプ）
+    // ★修正: 以前は池が座標(100,100)・花畑が座標(-100,-100)にあった頃の
+    //         絶対座標がそのまま残っており、pondPos(18,6)・flowerAreaPos(-16,14)
+    //         へ実際のシーン配置を移行した後もここだけ更新されていなかった。
+    //         そのため池・花畑エリアに入って動いた瞬間、プレイヤーが
+    //         本来のシーンから遠く離れた無関係な座標範囲に強制クランプされ、
+    //         見えている景色（池・桟橋・花畑）から外れて何も操作できなくなる
+    //         バグになっていた。pondPos/flowerAreaPos基準に統一する。
     if (currentSubArea === "pond") {
-      // 池の中心 (100, 100)、半径 15。桟橋の上は水没しないので例外
-      const pondCX = 100, pondCZ = 100, pondR = 15;
+      // 池の中心 pondPos、半径 15。桟橋の上は水没しないので例外
+      const pondCX = plaza.pondPos.x, pondCZ = plaza.pondPos.z, pondR = 15;
       const distPond = Math.hypot(targetX - pondCX, targetZ - pondCZ);
-      const onDock = (targetX >= 97.5 && targetX <= 102.5 && targetZ >= 99.5 && targetZ <= 115.5);
+      // 桟橋の範囲（buildPondSceneのdock配置と一致させる）
+      const onDock = (targetX >= pondCX - 2 && targetX <= pondCX + 2 &&
+                       targetZ >= pondCZ + 3 && targetZ <= pondCZ + 9);
+      // ★修正: 中心からの角度で押し戻す方式だと、桟橋の中心付近から横に
+      //         水へ踏み出した際に中心と目標点がほぼ同じ座標になり、
+      //         計算された押し戻し角度が不安定になって池の反対岸まで
+      //         瞬間移動して見えることがあった。単純に「その場に留まる」
+      //         方式に変更し、テレポートの可能性を無くす。
       if (distPond < pondR && !onDock) {
-        const ang = Math.atan2(targetZ - pondCZ, targetX - pondCX);
-        targetX = pondCX + Math.cos(ang) * pondR;
-        targetZ = pondCZ + Math.sin(ang) * pondR;
+        targetX = plazaPlayer.x;
+        targetZ = plazaPlayer.z;
       }
-      targetX = Math.max(82, Math.min(118, targetX));
-      targetZ = Math.max(82, Math.min(118, targetZ));
+      targetX = Math.max(pondCX - 18, Math.min(pondCX + 18, targetX));
+      targetZ = Math.max(pondCZ - 18, Math.min(pondCZ + 18, targetZ));
     } else if (currentSubArea === "flower") {
-      targetX = Math.max(-120, Math.min(-80, targetX));
-      targetZ = Math.max(-120, Math.min(-80, targetZ));
+      const flCX = plaza.flowerAreaPos.x, flCZ = plaza.flowerAreaPos.z;
+      targetX = Math.max(flCX - 20, Math.min(flCX + 20, targetX));
+      targetZ = Math.max(flCZ - 20, Math.min(flCZ + 20, targetZ));
     } else {
       targetX = Math.max(-PLAZA_FIELD_LIMIT, Math.min(PLAZA_FIELD_LIMIT, targetX));
       targetZ = Math.max(-PLAZA_FIELD_LIMIT, Math.min(PLAZA_FIELD_LIMIT, targetZ));
@@ -1910,6 +1927,13 @@ function exitHomePlaza() {
   }
   setPlazaObjectsVisible(false);
   setBattleObjectsVisible(true);
+  // ★修正: setPlazaObjectsVisible(false)は釣り場・花畑サブエリアでも
+  //         プレイヤーが見えるよう plaza.playerMesh を常にvisible=trueのまま
+  //         残す仕様になっている。そのため戦闘へ移行してもこのスライムだけ
+  //         消えず、three.playerGroup（戦闘用スライム）と同じ場所に二重に
+  //         描画されてしまい、「スライムが重なって見える」「白っぽく透けて
+  //         見える」バグの原因になっていた。戦闘中は明示的に非表示にする。
+  if (plaza.playerMesh) plaza.playerMesh.visible = false;
   // バトル用の空・霧を復元
   three.scene.background = new THREE.Color(getCurrentStage(state.stageIndex).bgColor);
   three.scene.fog = new THREE.FogExp2(getCurrentStage(state.stageIndex).bgColor, getCurrentStage(state.stageIndex).fogDensity);
@@ -2350,7 +2374,12 @@ function buildPondScene() {
     new THREE.BoxGeometry(4, 0.6, 6),
     new THREE.MeshStandardMaterial({ color: 0x7a5030, roughness: 0.9 })
   );
-  dock.position.set(plaza.pondPos.x, 0.5, plaza.pondPos.z + 10);
+  // ★修正: 以前は pondPos.z + 10 (中心から距離7〜13) に配置されており、
+  //         POND_INTERACT_RADIUS(4.5)の範囲に桟橋のどこにいても絶対に入れず、
+  //         「桟橋の先端に行けば釣れる」という案内どおりに動いても永遠に釣りが
+  //         発動しないバグになっていた。桟橋を中心に近づけ、先端(中心側の端)が
+  //         判定範囲(距離3)に収まるようにする。
+  dock.position.set(plaza.pondPos.x, 0.5, plaza.pondPos.z + 6);
   dock.castShadow = true;
   dock.receiveShadow = true;
   plaza.pondSceneGroup.add(dock);
