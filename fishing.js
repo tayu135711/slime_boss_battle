@@ -92,9 +92,13 @@ function endFishing(success, reason = "miss") {
     document.getElementById("fishingPrompt").textContent = `${fish.icon} ${fish.name} をそっと釣り上げた。`;
     document.getElementById("fishingAction").style.display = "none";
 
-    // ★ 釣り成功時に水しぶきパーティクルを発生（隔離座標 100, 100 に）
-    if (typeof spawnWaterSplash === "function") {
-      spawnWaterSplash(100, 100);
+    // ★修正: 以前は spawnWaterSplash(100, 100) という、pondPosがpondPos(18,6)に
+    //         統一される前の旧座標系（隔離座標）がそのまま残っていた。
+    //         そのため水しぶきエフェクトは池から100ユニット近く離れた
+    //         見えない場所で発生しており、実質何も見えていなかった。
+    //         実際の池の座標（plaza.pondPos）を渡すよう修正する。
+    if (typeof spawnWaterSplash === "function" && typeof plaza !== "undefined") {
+      spawnWaterSplash(plaza.pondPos.x, plaza.pondPos.z);
     }
 
     setTimeout(() => {

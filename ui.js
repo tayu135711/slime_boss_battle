@@ -833,7 +833,7 @@ function applyCostume(costume) {
   if (three.slimeParts?.bodyMat) {
     three.slimeParts.bodyMat.color.set(costume.color);
     three.slimeParts.bodyMat.emissive.set(costume.color);
-    three.slimeParts.bodyMat.emissiveIntensity = 0.12;
+    three.slimeParts.bodyMat.emissiveIntensity = 0.25; // ★ buildCuteSlimeBodyの基準値と統一
   }
   if (three.slimeParts?.stickMat) three.slimeParts.stickMat.color.set(costume.color);
   // 武器の表示切替
@@ -848,7 +848,7 @@ function applyCostume(costume) {
   if (plaza?.slimeParts?.bodyMat) {
     plaza.slimeParts.bodyMat.color.set(costume.color);
     plaza.slimeParts.bodyMat.emissive?.set(costume.color);
-    if (plaza.slimeParts.bodyMat.emissive) plaza.slimeParts.bodyMat.emissiveIntensity = 0.12;
+    if (plaza.slimeParts.bodyMat.emissive) plaza.slimeParts.bodyMat.emissiveIntensity = 0.25; // ★ 統一
   }
   if (plaza?.slimeParts?.stickMat) plaza.slimeParts.stickMat.color.set(costume.color);
   // ★修正: 広場プレイヤーの武器表示もバトル側と同様に切り替える

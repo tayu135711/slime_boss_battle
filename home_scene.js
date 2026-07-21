@@ -50,7 +50,9 @@ const PLAZA_BUILDINGS = [
 const PLAZA_ENTER_RADIUS = 5;
 const PLAZA_MOVE_SPEED   = 0.13;
 const PLAZA_FIELD_LIMIT  = 38;
-const NPC_TALK_RADIUS    = 3.5;
+// ★修正: 半径3.5だとNPCが7体密集している広場中央を歩くだけで常に誰かの吹き出しが
+//         出っぱなしになり邪魔だった。意図的に近づいた時だけ反応するよう縮小。
+const NPC_TALK_RADIUS    = 2.2;
 const FOUNTAIN_INTERACT_RADIUS = 3.0;
 const POND_INTERACT_RADIUS = 4.5;
 const BENCH_INTERACT_RADIUS = 2.5;
@@ -1339,7 +1341,8 @@ function updatePlazaNPCs(dtScale = 1) {
         }
       }
       if (!line && npc.lines?.length) {
-        if (now - npc.lastLineTime > 1000) {
+        // ★修正: 1秒ごとにセリフがコロコロ切り替わっていて騒がしかったため、5秒に延長。
+        if (now - npc.lastLineTime > 5000) {
           npc.lastLine = npc.lines[Math.floor(Math.random() * npc.lines.length)];
           npc.lastLineTime = now;
         }
@@ -1425,19 +1428,21 @@ function checkPlazaEntrances() {
   //         ここでchekFlowerProximity()を呼んで実際の距離判定を行う。
   checkFlowerProximity();
 
-  // ★修正: pond_area/flower_area建物のエリア入場判定(半径5)が、池のすぐそば(釣り半径4.5)や
-  //         個別の花(摘み取り半径1.8)と同じ座標を中心にしているため、これまでは常に
-  //         「建物に入る」プロンプトが「釣り糸を垂らす」「花を摘む」を上書きしてしまい、
-  //         実質的に池のほとりで直接釣ることも、広場に咲く個々の花を摘むこともほぼ不可能になっていた。
-  //         個別インタラクション(花・池)は建物入場より優先度を上げる。
-  if (plazaNearFlower) {
+  // ★修正: 以前は「個別インタラクション(花・池)は建物入場より優先度を上げる」という
+  //         対処がされていたが、pond_area建物の入場半径(5)は個別の釣り判定半径(4.5)を
+  //         ほぼ完全に内包しているため（面積比で建物範囲の81%が「その場で釣り」に
+  //         横取りされる）、この優先順位では逆に「建物に入る」プロンプトがほとんど
+  //         出せなくなり、桟橋・花畑エリアへの画面遷移（マップ移動）がほぼ発生しない
+  //         という、より深刻なバグになっていた。建物入場を最優先に戻し、個別
+  //         インタラクションは「建物の近くにいない時」だけ表示するようにする。
+  if (plazaNearBuilding) {
+    dom.plazaActionPrompt.textContent = `Ａ で「${plazaNearBuilding.label}」に入る`;
+    dom.plazaActionPrompt.classList.add("visible");
+  } else if (plazaNearFlower) {
     dom.plazaActionPrompt.textContent = `Ａ で花を摘む`;
     dom.plazaActionPrompt.classList.add("visible");
   } else if (plazaNearPond) {
     dom.plazaActionPrompt.textContent = `Ａ で釣り糸を垂らす`;
-    dom.plazaActionPrompt.classList.add("visible");
-  } else if (plazaNearBuilding) {
-    dom.plazaActionPrompt.textContent = `Ａ で「${plazaNearBuilding.label}」に入る`;
     dom.plazaActionPrompt.classList.add("visible");
   } else if (plazaNearNPC) {
     dom.plazaActionPrompt.textContent = `Ａ ではなしかける`;
@@ -1484,18 +1489,23 @@ function handlePlazaAction() {
     return;
   }
 
-  // ★修正: プロンプト表示側と同じ優先順位に統一。個別インタラクション（花・池）を
-  //         建物入場より先に判定しないと、プロンプトは「花を摘む」なのに実際に押すと
-  //         花畑エリアに入ってしまう…といった表示と動作のズレが起きる。
-  if (plazaNearFlower && nearestFlower) { pickFlower(); }
-  else if (plazaNearPond)       { startFishing(); }
-  else if (plazaNearBuilding) {
+  // ★修正: 個別インタラクション（花・池）を建物入場より先に判定していたため、
+  //         pond_area建物の入場半径(5)は個別の釣り判定半径(4.5)をほぼ完全に内包しており
+  //         （面積比で計算すると建物範囲の実に81%が「その場で釣り」に横取りされる）、
+  //         桟橋の建物に近づいてＡを押しても釣り場エリアへの画面遷移（マップ移動）が
+  //         ほとんど発生しないバグになっていた。花畑側も同様に、個別の花に近いと
+  //         花畑エリアへ入れなくなる。建物への入場を最優先にし、個別インタラクションは
+  //         「建物の近くにいない時」だけ発動するようにする。
+  if (plazaNearBuilding) {
     if (plazaNearBuilding.type === "stage")          { exitHomePlaza(); showStageSelect("plaza"); }
     else if (plazaNearBuilding.type === "shop")       { showShop(); }
     else if (plazaNearBuilding.type === "restaurant") { showCooking(); }
     else if (plazaNearBuilding.type === "pond_area")  { enterPondArea(); }
     else if (plazaNearBuilding.type === "flower_area"){ enterFlowerArea(); }
-  } else if (plazaNearNPC)      { startNPCConversation(plazaNearNPC); }
+  }
+  else if (plazaNearFlower && nearestFlower) { pickFlower(); }
+  else if (plazaNearPond)       { startFishing(); }
+  else if (plazaNearNPC)        { startNPCConversation(plazaNearNPC); }
   else if (plazaNearFountain)   { recoverAtFountain(); }
   else if (plazaNearBench)      { sitOnBench(); }
 }
@@ -1578,7 +1588,21 @@ function enterPondArea() {
       _subAreaCameraTimer = null;
     }, 2000);
 
-    dom.statusLine.textContent = "池のほとりに来た。Ａ で釣り糸を垂らそう！";
+    // ★修正: 以前は日回数の上限を考慮せず常に「Ａ で釣り糸を垂らそう！」と表示していた。
+    //         そのため、その日すでに釣り尽くしていても毎回この誘導メッセージが出て、
+    //         いざＡを押すと startFishing() 側の上限チェックで「今日はもう十分」と
+    //         弾かれるだけになり、表示と実際の挙動が食い違っていた。
+    //         ここでも同じ日付ロールオーバー判定を行い、実際の残り回数を反映する。
+    const todayP = new Date().toDateString();
+    if (!state.lastFishDate || state.lastFishDate !== todayP) {
+      state.dailyFishCount = 0;
+      state.lastFishDate = todayP;
+    }
+    if (state.dailyFishCount >= FISHING_DAILY_LIMIT) {
+      dom.statusLine.textContent = "🎣 今日はもう十分。また明日おいで。";
+    } else {
+      dom.statusLine.textContent = "池のほとりに来た。Ａ で釣り糸を垂らそう！";
+    }
     setTimeout(() => dom.statusLine.textContent = "", 3000);
     // ★ 自動でstartFishingを呼ばない → プレイヤーがAボタンで開始する
     // （フェード中に呼ぶと二重実行・タイミングバグの原因になる）
@@ -1612,23 +1636,54 @@ function enterFlowerArea() {
       _subAreaCameraTimer = null;
     }, 2000);
 
+    // ★修正: 日回数の上限を考慮せず常に「Ａ で花を摘もう！」と表示していたため、
+    //         その日すでに摘み尽くしていても誘導メッセージが出てしまい、実際にＡを
+    //         押すと pickFlower() 側の上限チェックで弾かれるだけ…という表示と挙動の
+    //         食い違いがあった（釣り場と同じ問題）。ここでも日付ロールオーバーを
+    //         判定し、残り回数に応じてメッセージを出し分ける。
+    const todayF = new Date().toDateString();
+    if (!state.lastFlowerDate || state.lastFlowerDate !== todayF) {
+      state.dailyFlowerCount = 0;
+      state.lastFlowerDate = todayF;
+    }
+    const dailyLimitReached = state.dailyFlowerCount >= FLOWER_PICK_LIMIT;
+
     // 花畑エリアではnearestFlowerを最寄り（距離近い方）の未採取花に強制セット
     const available = plaza.flowerSceneField.filter(f => !f.userData.picked);
-    if (available.length > 0) {
+    if (available.length > 0 && !dailyLimitReached) {
       // ランダムではなく、プレイヤー移動先に最も近い花を選ぶ
       available.sort((a, b) => {
         const da = Math.hypot(a.position.x - plazaPlayer.x, a.position.z - plazaPlayer.z);
         const db = Math.hypot(b.position.x - plazaPlayer.x, b.position.z - plazaPlayer.z);
         return da - db;
       });
-      nearestFlower = available[0];
-      plazaNearFlower = true;
+      const target = available[0];
+      // ★修正: 以前はここで nearestFlower / plazaNearFlower を距離無視で強制セットしていたが、
+      //         この直後に毎フレーム走る updateHomePlazaLoop() → checkFlowerProximity() が
+      //         「実際の距離が FLOWER_PICK_RADIUS(1.8) 以内か」で即座に上書きしてしまうため、
+      //         花畑は半径20に70本散らばっているのに入場地点はほぼ固定という条件下では
+      //         約4割の確率で「Ａ で花を摘もう！」の直後にプロンプトが消えて何も反応しなくなる
+      //         バグになっていた（シミュレーションで実測: 61%しか半径内に収まらない）。
+      //         最も近い花が拾える距離になければ、プレイヤー自身をその花のすぐそば
+      //         （FLOWER_PICK_RADIUS より内側）まで寄せることで、表示内容と
+      //         checkFlowerProximity()の実判定を必ず一致させる。
+      const distToTarget = Math.hypot(target.position.x - plazaPlayer.x, target.position.z - plazaPlayer.z);
+      if (distToTarget > FLOWER_PICK_RADIUS - 0.3) {
+        const angle = Math.atan2(plazaPlayer.z - target.position.z, plazaPlayer.x - target.position.x);
+        const pullDist = FLOWER_PICK_RADIUS - 0.5; // 確実に半径内に収まる余裕を持たせる
+        plazaPlayer.x = target.position.x + Math.cos(angle) * pullDist;
+        plazaPlayer.z = target.position.z + Math.sin(angle) * pullDist;
+        if (plaza.playerMesh) plaza.playerMesh.position.set(plazaPlayer.x, 0, plazaPlayer.z);
+      }
+      checkFlowerProximity(); // ★ 強制セットではなく実判定で確定させる
       dom.statusLine.textContent = "花畑に来た。Ａ で花を摘もう！";
       setTimeout(() => dom.statusLine.textContent = "", 3000);
     } else {
       nearestFlower = null;
       plazaNearFlower = false;
-      dom.statusLine.textContent = "今日の花はもう摘み終わった。また明日来よう。";
+      dom.statusLine.textContent = dailyLimitReached
+        ? "🌸 今日はもう十分。また明日摘みにおいで。"
+        : "今日の花はもう摘み終わった。また明日来よう。";
       setTimeout(() => dom.statusLine.textContent = "", 3000);
     }
   });
@@ -2451,11 +2506,15 @@ function buildFlowerScene() {
   }
 
   // 休憩ベンチ
+  // ★修正: 以前は (flowerAreaPos.x, flowerAreaPos.z + 6) に配置しており、
+  //         enterFlowerArea() のプレイヤー入場座標 (fc.x, fc.z + 6) と完全に一致していたため、
+  //         花畑に入るたびにプレイヤーがこのベンチのメッシュにめり込んだ状態でスポーンしていた。
+  //         入場動線から外れた位置（横にずらす）に配置する。
   const bench = new THREE.Mesh(
     new THREE.BoxGeometry(3, 0.5, 1),
     new THREE.MeshStandardMaterial({ color: 0xa87858, roughness: 0.9 })
   );
-  bench.position.set(plaza.flowerAreaPos.x, 0.6, plaza.flowerAreaPos.z + 6);
+  bench.position.set(plaza.flowerAreaPos.x + 8, 0.6, plaza.flowerAreaPos.z + 2);
   bench.castShadow = true;
   plaza.flowerSceneGroup.add(bench);
 

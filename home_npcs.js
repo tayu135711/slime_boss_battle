@@ -1,6 +1,9 @@
+// ★修正: 以前は7体全員が広場中央(-9〜8の範囲)に密集して配置されており、
+//         プレイヤーがどこを歩いても誰かの吹き出しと被って邪魔だった。
+//         各建物の入場判定(半径5)とは十分離しつつ、テーマに合わせて分散配置する。
 const HOME_NPCS = [
   {
-    id: 1, name: "ナイトくん", startX: 5, startZ: -5, costumeId: "c12",
+    id: 1, name: "ナイトくん", startX: -6, startZ: -11, costumeId: "c12",
     lines: [
       "今日は剣の素振りをしてたんだ〜",
       "えへへ、実は昨日のごはんがおいしすぎてつい寝坊したよ",
@@ -13,7 +16,7 @@ const HOME_NPCS = [
     moveSpeed: 0.022, moveRadius: 2.5, pauseTime: 2200, questId: null
   },
   {
-    id: 2, name: "あかスライムちゃん", startX: -6, startZ: -3, costumeId: "c04",
+    id: 2, name: "あかスライムちゃん", startX: 12, startZ: -2, costumeId: "c04",
     lines: [
       "池のそばにいるの、好きなんだよね〜",
       "釣りって、ぼーっとできていいよね",
@@ -26,7 +29,7 @@ const HOME_NPCS = [
     moveSpeed: 0.018, moveRadius: 2.0, pauseTime: 3000, questId: "fish_delivery"
   },
   {
-    id: 3, name: "のんびりスライム", startX: 8, startZ: 4, costumeId: "c01",
+    id: 3, name: "のんびりスライム", startX: -2, startZ: 12, costumeId: "c01",
     lines: [
       "ふわ〜〜〜、いい天気だ〜",
       "芝生の上でごろごろするの、最高すぎる",
@@ -38,7 +41,7 @@ const HOME_NPCS = [
     moveSpeed: 0.012, moveRadius: 3.0, pauseTime: 3500, questId: null
   },
   {
-    id: 4, name: "まほうつかいちゃん", startX: -4, startZ: 7, costumeId: "c11",
+    id: 4, name: "まほうつかいちゃん", startX: -6, startZ: 10, costumeId: "c11",
     lines: [
       "お花って、見てるだけで元気もらえるよね",
       "白い花って清らかだよねえ",
@@ -51,7 +54,7 @@ const HOME_NPCS = [
     moveSpeed: 0.020, moveRadius: 2.5, pauseTime: 2000, questId: "flower_beginner"
   },
   {
-    id: 5, name: "きいろスライム", startX: 3, startZ: 8, costumeId: "c03",
+    id: 5, name: "きいろスライム", startX: 6, startZ: -11, costumeId: "c03",
     lines: [
       "食堂のマスターのスープ、絶品なんだよね〜",
       "今日のおすすめ料理、何かな〜♪",
@@ -63,7 +66,7 @@ const HOME_NPCS = [
     moveSpeed: 0.016, moveRadius: 2.8, pauseTime: 2500, questId: "seaweed_collect"
   },
   {
-    id: 6, name: "キングさま", startX: -9, startZ: 2, costumeId: "c21",
+    id: 6, name: "キングさま", startX: -12, startZ: 1, costumeId: "c21",
     lines: [
       "キング様だが……今日は気分がほのぼのじゃ",
       "のう、石ってじっと見てると愛着わかない？",
@@ -76,7 +79,7 @@ const HOME_NPCS = [
     moveSpeed: 0.018, moveRadius: 2.0, pauseTime: 3200, questId: "stone_collect"
   },
   {
-    id: 7, name: "もりのスライム", startX: 6, startZ: -9, costumeId: "c13",
+    id: 7, name: "もりのスライム", startX: 7, startZ: 10, costumeId: "c13",
     lines: [
       "葉っぱの冠、自分で作ったんだ〜どう？",
       "風がきもちいいね〜！最高の天気！",

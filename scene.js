@@ -667,19 +667,27 @@ function buildCuteSlimeBody(group, r, color) {
   geo.computeVertexNormals();
 
   // ── MeshPhysicalMaterialでゼリー質感 ──
+  // ★修正: 以前もtransmission/clearcoat/envMapIntensityを一度下げていたが、
+  //         それでも「白すぎる・のっぺりして可愛くない」という声があった。
+  //         transmission(半透明感)とclearcoat(環境光を白く反射するコーティング)が
+  //         組み合わさると、どの衣装色でも表面が白くぼやけて見えてしまい、
+  //         結果としてコスチュームごとの色の違いも埋もれて薄く感じられていた。
+  //         半透明を完全にオフにし、コーティングと環境反射をさらに抑え、
+  //         代わりにemissiveIntensityを上げて本体色そのものをはっきり主張させる。
+  //         roughnessも上げてマット寄りにし、鏡面ハイライトでの白飛びを抑える。
   const bodyMat = new THREE.MeshPhysicalMaterial({
     color,
-    roughness: 0.15,
+    roughness: 0.32,          // ★ 0.15→0.32：マットよりにして白い鏡面ハイライトを抑制
     metalness: 0.0,
-    transmission: 0.08,   // ★ 0.25→0.08に下げる（白くなりすぎる原因）
+    transmission: 0.0,        // ★ 0.08→0.0：半透明のミルキーさが白飛びの主因だったため撤廃
     thickness: r * 0.8,
-    clearcoat: 0.8,       // ★ コーティングを少し抑える
-    clearcoatRoughness: 0.10,
+    clearcoat: 0.30,          // ★ 0.8→0.30：白く反射するコーティングを大幅に抑制
+    clearcoatRoughness: 0.25, // ★ ハイライトをぼかして柔らかい質感に
     ior: 1.35,
-    envMapIntensity: 0.8, // ★ 環境マップ反射も少し抑制
-    // ★ emissiveで色を主張させる（白飛び対策）
+    envMapIntensity: 0.25,    // ★ 0.8→0.25：空・環境の白い映り込みをさらに抑制
+    // ★ emissiveで本体色をはっきり主張させる（白飛び・コスチューム差が薄い対策）
     emissive: color,
-    emissiveIntensity: 0.12,
+    emissiveIntensity: 0.25,  // ★ 0.12→0.25
   });
   const body = new THREE.Mesh(geo, bodyMat);
   body.scale.set(1.0, 1.0, 1.0);
