@@ -26,6 +26,16 @@ function initFishingUI() {
     </div>
   `;
   document.body.appendChild(fishingUI);
+  // ★修正: #fishingUI は画面全体を覆う(inset:0)モーダルで、z-index:100 が
+  //         コントローラー部分(#hud, z-index:10)より上にあるため、モーダル表示中は
+  //         画面下のＡボタン（タップ）がこのモーダルに覆われて一切押せなくなっていた。
+  //         PCのキーボード(Enter/Space)は window に直接ついているので反応するが、
+  //         スマホでは押せるボタンが画面上に存在しない状態になり、「釣れない」
+  //         「反応しない」の直接の原因になっていた。モーダル自体をタップしても
+  //         Ａボタンと同じ操作になるようにする。
+  fishingUI.addEventListener("click", () => {
+    if (typeof fishingActive !== "undefined" && fishingActive) fishingAction();
+  });
 }
 
 function startFishing() {
@@ -91,6 +101,9 @@ function endFishing(success, reason = "miss") {
 
     document.getElementById("fishingPrompt").textContent = `${fish.icon} ${fish.name} をそっと釣り上げた。`;
     document.getElementById("fishingAction").style.display = "none";
+
+    // ★ 釣った瞬間に直接クエスト進捗を加算（詳細はupdateFishQuestsのコメント参照）
+    updateFishQuests(fish.id);
 
     // ★修正: 以前は spawnWaterSplash(100, 100) という、pondPosがpondPos(18,6)に
     //         統一される前の旧座標系（隔離座標）がそのまま残っていた。
@@ -167,5 +180,23 @@ function fishingAction() {
     endFishing(true);
   } else {
     endFishing(false, "miss");
+  }
+}
+
+// ★修正: 以前はchekQuestProgress()内で「現在のインベントリ所持数」から
+//         クエスト進捗を推測していた（Math.maxで単調増加にする対策込み）。
+//         しかしこの方式では、クエスト達成前に該当素材を料理で使い切って
+//         しまうと、その後何匹釣ってもインベントリの所持数が一度に2匹以上に
+//         達しないまま(例: 1匹釣る→料理で消費→また1匹釣る…)、いつまで
+//         経ってもクエストが完了しないことがあった。flower.jsのupdateFlowerQuests()
+//         と同じく、釣った瞬間に直接カウントを加算する方式に統一する。
+function updateFishQuests(fishId) {
+  const map = { funa: "fish_delivery", weed: "seaweed_collect", stone: "stone_collect" };
+  const qid = map[fishId];
+  if (!qid) return;
+  const quest = state.quests[qid];
+  if (quest?.active) {
+    quest.collected++;
+    if (quest.collected >= quest.goal) completeQuest(qid);
   }
 }

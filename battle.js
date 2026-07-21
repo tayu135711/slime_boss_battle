@@ -651,8 +651,17 @@ function applyPlayerDamage(damage) {
 
   const bodyMat = three.slimeParts?.bodyMat;
   if (bodyMat) {
+    // ★修正: 短時間に連続被弾すると、前の被弾で仕込んだ「200ms後に色を戻す」
+    //         setTimeoutが複数同時に走ることがあった。後から発火した方が先に
+    //         元の色に戻してしまい、それより後で発火するはずだった最新の白化が
+    //         そのまま残って本体が白く固まって見える可能性があった。
+    //         直前のタイマーを確実にキャンセルしてから積み直す。
+    if (three._hitFlashTimer) clearTimeout(three._hitFlashTimer);
     bodyMat.color.set(0xffffff);
-    setTimeout(() => bodyMat.color.set(state.equippedCostume?.color ?? CONFIG.player.color), 200);
+    three._hitFlashTimer = setTimeout(() => {
+      bodyMat.color.set(state.equippedCostume?.color ?? CONFIG.player.color);
+      three._hitFlashTimer = null;
+    }, 200);
   }
   triggerCameraShake();
   refreshUi();

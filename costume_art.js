@@ -4,21 +4,31 @@
  */
 
 // ベーススライム描画ヘルパー
+// ★修正: グラデーション/フィルターのIDが costume.id（例: "body_c01"）だけで
+//         生成されており、呼び出しごとの一意性が無かった。10連ガチャで同じ
+//         コスチュームが複数回排出された場合など、同じidのSVGが同じ画面に
+//         複数枚並ぶと、DOM内でグラデーションIDが重複してしまう。HTML/SVG仕様上
+//         IDは文書全体で一意であるべきで、重複するとブラウザ（特にSafari）が
+//         どの定義を参照するか不定になり、本体の塗りが白飛びしたり黒く潰れたり
+//         する表示崩れの原因になっていた。呼び出しごとに必ずユニークな
+//         サフィックスを付与する。
+let _slimeSvgIdCounter = 0;
 function _slimeSVG({ id, body, shadow, eyes, mouth, extras = "", badge = "", size = 80 }) {
-  badge = badge.replace(/glow_tmp/g, `glow_${id}`);
+  const uid = `${id}_${(_slimeSvgIdCounter++).toString(36)}`;
+  badge = badge.replace(/glow_tmp/g, `glow_${uid}`);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}">
   <defs>
-    <radialGradient id="body_${id}" cx="38%" cy="32%" r="60%">
+    <radialGradient id="body_${uid}" cx="38%" cy="32%" r="60%">
       <stop offset="0%" stop-color="${body.light}"/>
       <stop offset="60%" stop-color="${body.mid}"/>
       <stop offset="100%" stop-color="${body.dark}"/>
     </radialGradient>
-    <radialGradient id="shine_${id}" cx="35%" cy="28%" r="40%">
+    <radialGradient id="shine_${uid}" cx="35%" cy="28%" r="40%">
       <stop offset="0%" stop-color="rgba(255,255,255,0.38)"/>
       <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
     </radialGradient>
-    <filter id="glow_${id}">
+    <filter id="glow_${uid}">
       <feGaussianBlur stdDeviation="2" result="blur"/>
       <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
@@ -28,11 +38,11 @@ function _slimeSVG({ id, body, shadow, eyes, mouth, extras = "", badge = "", siz
   <ellipse cx="50" cy="90" rx="28" ry="6" fill="${shadow}" opacity="0.35"/>
 
   <!-- ボディ -->
-  <ellipse cx="50" cy="58" rx="34" ry="30" fill="url(#body_${id})"/>
+  <ellipse cx="50" cy="58" rx="34" ry="30" fill="url(#body_${uid})"/>
   <!-- ぷるぷる感の上部 -->
-  <path d="M 28 50 Q 35 24 50 22 Q 65 24 72 50" fill="url(#body_${id})" opacity="0.8"/>
+  <path d="M 28 50 Q 35 24 50 22 Q 65 24 72 50" fill="url(#body_${uid})" opacity="0.8"/>
   <!-- ハイライト -->
-  <ellipse cx="50" cy="52" rx="34" ry="30" fill="url(#shine_${id})" opacity="0.5"/>
+  <ellipse cx="50" cy="52" rx="34" ry="30" fill="url(#shine_${uid})" opacity="0.5"/>
 
   ${extras}
 
@@ -48,23 +58,33 @@ function _slimeSVG({ id, body, shadow, eyes, mouth, extras = "", badge = "", siz
 }
 
 // 目パーツヘルパー
+// ★修正: グラデーションIDが座標(lx,ly,rx,ry)だけから生成されていたため、
+//         目の位置が同じコスチューム同士（多くのコスチュームで共通）を
+//         同じ画面に並べて表示すると（ステージ報酬の3択カード、図鑑の一覧、
+//         きせかえ画面の「現在→変更後」比較など）、SVGの<defs>内のグラデーション
+//         idがDOM内で重複してしまっていた。HTML/SVG仕様上IDは文書全体で一意で
+//         あるべきで、重複するとブラウザ（特にSafari）によってどのグラデーションが
+//         参照されるか不定になり、目の周りが白飛びして見えるなど表示が崩れる原因に
+//         なっていた。呼び出しごとに必ずユニークなIDが振られるようにする。
+let _eyesIdCounter = 0;
 function _eyes(lx, ly, rx, ry, r = 7, pupilColor = "#1a0a2e") {
   const pr  = r * 0.58;
   const hl1 = r * 0.22;
   const hl2 = r * 0.12;
+  const uid = `${Date.now().toString(36)}_${(_eyesIdCounter++).toString(36)}`;
   return `
   <defs>
-    <radialGradient id="eyeWhite_L_${lx}${ly}" cx="40%" cy="35%" r="65%">
+    <radialGradient id="eyeWhite_L_${uid}" cx="40%" cy="35%" r="65%">
       <stop offset="0%" stop-color="#ffffff"/>
       <stop offset="100%" stop-color="#dde8f0"/>
     </radialGradient>
-    <radialGradient id="eyeWhite_R_${rx}${ry}" cx="40%" cy="35%" r="65%">
+    <radialGradient id="eyeWhite_R_${uid}" cx="40%" cy="35%" r="65%">
       <stop offset="0%" stop-color="#ffffff"/>
       <stop offset="100%" stop-color="#dde8f0"/>
     </radialGradient>
   </defs>
-  <ellipse cx="${lx}" cy="${ly}" rx="${r}" ry="${r * 1.15}" fill="url(#eyeWhite_L_${lx}${ly})" stroke="rgba(0,0,0,0.08)" stroke-width="0.5"/>
-  <ellipse cx="${rx}" cy="${ry}" rx="${r}" ry="${r * 1.15}" fill="url(#eyeWhite_R_${rx}${ry})" stroke="rgba(0,0,0,0.08)" stroke-width="0.5"/>
+  <ellipse cx="${lx}" cy="${ly}" rx="${r}" ry="${r * 1.15}" fill="url(#eyeWhite_L_${uid})" stroke="rgba(0,0,0,0.08)" stroke-width="0.5"/>
+  <ellipse cx="${rx}" cy="${ry}" rx="${r}" ry="${r * 1.15}" fill="url(#eyeWhite_R_${uid})" stroke="rgba(0,0,0,0.08)" stroke-width="0.5"/>
   <circle cx="${lx}" cy="${ly + r * 0.08}" r="${pr}" fill="${pupilColor}"/>
   <circle cx="${rx}" cy="${ry + r * 0.08}" r="${pr}" fill="${pupilColor}"/>
   <circle cx="${lx - r * 0.28}" cy="${ly - r * 0.28}" r="${hl1}" fill="white" opacity="0.95"/>

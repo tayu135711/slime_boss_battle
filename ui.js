@@ -528,6 +528,13 @@ function handleBossDefeated() {
         <div>⚔️ 与ダメージ: <b>${state.totalDamage}</b></div>
         <div>🔢 攻撃回数: <b>${state.attackCount}</b>回</div>`;
 
+      // ★ 保険: 被弾フラッシュ等で本体色がずれていても、報酬画面を開く直前に必ず
+      //         装備中コスチュームの正しい色へ同期し直す（白いまま固まるのを防ぐ）
+      if (three._hitFlashTimer) { clearTimeout(three._hitFlashTimer); three._hitFlashTimer = null; }
+      if (three.slimeParts?.bodyMat) {
+        three.slimeParts.bodyMat.color.set(state.equippedCostume?.color ?? CONFIG.player.color);
+      }
+
       // ─ コスチューム3択報酬 ─
       renderRewardChoices(stg.stageNo);
 

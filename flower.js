@@ -19,6 +19,13 @@ function initFlowerUI() {
     </div>
   `;
   document.body.appendChild(flowerUI);
+  // ★修正: fishing.jsと同根のバグ。#flowerUI も画面全体を覆うモーダル(z-index:100)で、
+  //         コントローラーのＡボタン(#hud, z-index:10)を覆ってしまうため、スマホでは
+  //         花摘み確認モーダルが出た瞬間にタップで確定する手段がなくなっていた。
+  //         モーダル自体をタップしてもＡボタンと同じ操作になるようにする。
+  flowerUI.addEventListener("click", () => {
+    if (window._flowerWaiting) doPickFlower();
+  });
 }
 
 function pickFlower() {

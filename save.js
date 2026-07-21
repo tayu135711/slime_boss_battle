@@ -126,9 +126,17 @@ async function _saveToServerOnce() {
 // APIからstateを復元
 async function loadFromServer() {
   const playerId = getPlayerId();
+  // ★修正: 以前は fetchWithTimeout が例外を投げると（タイムアウト・オフライン等）
+  //         関数全体のcatchに飛んで即座に return false していたため、
+  //         ローカルバックアップ(localStorage)の復元処理(下のブロック)に
+  //         一切到達できなかった。Renderの無料プランはコールドスタートで
+  //         数十秒かかることがあり、タイムアウト(30秒)に達すると必ずこの経路に
+  //         入っていたため、セーブ自体はローカルに残っているのに「初回プレイ」
+  //         扱いになってしまい、実質的にデータが保存されていないように見える
+  //         バグになっていた。サーバー通信だけを個別のtry/catchで囲み、
+  //         失敗してもローカルバックアップの復元まで必ず到達するようにする。
+  let data = null;
   try {
-    // ★ ロードもタイムアウト付き（Renderのコールドスタートは最大30秒かかる）
-    let data = null;
     const res = await fetchWithTimeout(`${SAVE_API}/${playerId}`, {}, 30000);
     if (!res.ok) {
       console.log("[load] セーブデータなし（新規プレイまたは通信エラー）", res.status);
@@ -136,7 +144,11 @@ async function loadFromServer() {
       data = await res.json();
       console.log("[load] サーバーからロード成功:", data);
     }
+  } catch (e) {
+    console.warn("[load] サーバー通信失敗。ローカルバックアップを使用します:", e);
+  }
 
+  try {
     // ★ サーバーになくてもローカルにバックアップがあればマージする
     const localDataRaw = localStorage.getItem("slime_boss_save_fallback");
     if (localDataRaw) {

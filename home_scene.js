@@ -50,6 +50,13 @@ const PLAZA_BUILDINGS = [
 const PLAZA_ENTER_RADIUS = 5;
 const PLAZA_MOVE_SPEED   = 0.13;
 const PLAZA_FIELD_LIMIT  = 38;
+// ★修正: 建物・NPCなど地形オブジェクトへの当たり判定が一切実装されておらず、
+//         プレイヤーがどの建物もすり抜けて歩けてしまっていた（境界クランプは
+//         広場全体の外周と池・花畑エリアの内部のみで対応済み）。
+//         見た目の一番の違和感である「建物への埋没」だけは簡易的な壁として防ぐ。
+//         入場判定(PLAZA_ENTER_RADIUS=5)より小さい半径にして、
+//         「入る」プロンプトは出るが建物の中までは歩いて埋没しないようにする。
+const BUILDING_COLLISION_RADIUS = 2.6;
 // ★修正: 半径3.5だとNPCが7体密集している広場中央を歩くだけで常に誰かの吹き出しが
 //         出っぱなしになり邪魔だった。意図的に近づいた時だけ反応するよう縮小。
 const NPC_TALK_RADIUS    = 2.2;
@@ -1226,6 +1233,11 @@ function updatePlazaPlayer(dtScale = 1) {
     } else {
       targetX = Math.max(-PLAZA_FIELD_LIMIT, Math.min(PLAZA_FIELD_LIMIT, targetX));
       targetZ = Math.max(-PLAZA_FIELD_LIMIT, Math.min(PLAZA_FIELD_LIMIT, targetZ));
+      // ★ 建物への簡易当たり判定（軸ごとに独立して押し戻すことで、壁沿いに滑るように動ける）
+      for (const b of plaza.buildings) {
+        if (Math.hypot(targetX - b.x, plazaPlayer.z - b.z) < BUILDING_COLLISION_RADIUS) targetX = plazaPlayer.x;
+        if (Math.hypot(plazaPlayer.x - b.x, targetZ - b.z) < BUILDING_COLLISION_RADIUS) targetZ = plazaPlayer.z;
+      }
     }
     plazaPlayer.x = targetX;
     plazaPlayer.z = targetZ;

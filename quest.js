@@ -65,13 +65,13 @@ function checkQuestProgress() {
     const quest = state.quests[qid];
     // ★ クエストオブジェクトでない場合（例: king_slime_defeated）はスキップ
     if (!quest || typeof quest !== "object" || !quest.active) return;
-    // ★修正: 以前は所持数をそのまま代入していたため、達成前に料理で素材を
-    //         消費すると進捗が巻き戻ってしまうバグがあった。
-    //         「一度到達した進捗は減らさない」よう Math.max で単調増加にする。
-    if (qid === "fish_delivery")   quest.collected = Math.max(quest.collected, state.inventory.ingredients["funa"]  || 0);
-    if (qid === "seaweed_collect") quest.collected = Math.max(quest.collected, state.inventory.ingredients["weed"]  || 0);
-    if (qid === "stone_collect")   quest.collected = Math.max(quest.collected, state.inventory.ingredients["stone"] || 0);
-    // ★ flower_beginner の collected は flower.js の updateFlowerQuests() が直接インクリメントするためここでは上書きしない
+    // ★修正: fish_delivery/seaweed_collect/stone_collect の進捗は、以前はここで
+    //         「現在のインベントリ所持数」から逆算していた。達成前に料理で素材を
+    //         使い切ってしまうと、その後1匹ずつ釣っても所持数が一度にgoal数まで
+    //         達しないまま進捗が止まってしまうバグがあった（詳細はfishing.jsの
+    //         updateFishQuests()のコメント参照）。釣った瞬間に直接加算する方式に
+    //         統一したため、ここでは goal 到達チェックのみ行う。
+    // ★ flower_beginner の collected も flower.js の updateFlowerQuests() が直接インクリメントする
     if (quest.collected >= quest.goal) completeQuest(qid);
   });
 }
