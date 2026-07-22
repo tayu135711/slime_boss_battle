@@ -275,7 +275,7 @@ function updatePlayerMovement(dtScale) {
   if (Math.abs(state.player.z) >= half) state.player.vz = 0;
 
   // ── ぽよんぽよんホップ（攻撃アニメ中は上書きしない） ──
-  const attackBusy = three.dashAttack?.active || three.swordSwing?.active || three.spearThrust?.active;
+  const attackBusy = three.dashAttack?.active || three.swordSwing?.active || three.spearThrust?.active || three.specialCast?.active;
 
   // 着地検出
   if (battleWalk.wasMoving && !isMoving) battleWalk.landTimer = 120;
@@ -386,6 +386,7 @@ function animate(timestamp) {
   updateSwordSwing(dtScale);
   updateDashAttack(dtScale);
   updateSpearThrust(dtScale);
+  updateSpecialCast(dtScale);
   three.renderer.render(three.scene, three.camera);
   requestAnimationFrame(animate);
 }

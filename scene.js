@@ -641,6 +641,7 @@ function buildPlayer() {
   three.swordSwing  = { active: false, progress: 0 };  // ナイトスライム用
   three.dashAttack  = { active: false, progress: 0 };  // デフォルト体当たり用
   three.spearThrust = { active: false, progress: 0 };  // スピア用
+  three.specialCast = { active: false, progress: 0, baseRotY: 0 }; // ★追加: 必殺技用
 
   three.playerGroup.position.set(state.player.x, 0, state.player.z);
   three.scene.add(three.playerGroup);
