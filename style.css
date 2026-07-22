@@ -338,6 +338,17 @@ html, body {
   box-shadow: 0 4px 0 #8B6010, 0 5px 10px rgba(180,130,0,0.3);
   text-shadow: 0 1px 0 rgba(255,255,255,0.3);
 }
+.btn-dodge {
+  bottom: 8px; left: 8px;
+  background: radial-gradient(circle at 38% 32%, #75D8F5, #3186B5);
+  color: #062B45;
+  box-shadow: 0 4px 0 #1D5878, 0 5px 10px rgba(20,100,150,0.35);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.35);
+}
+.btn-dodge.pressed {
+  filter: brightness(1.25);
+  box-shadow: 0 2px 0 #1D5878, 0 3px 8px rgba(20,100,150,0.35);
+}
 .btn-y.visible {
   display: flex;
   animation: specialPulse 1s ease-in-out infinite alternate;

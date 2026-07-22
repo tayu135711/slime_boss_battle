@@ -8,6 +8,7 @@ const dom = {
   hpText:              document.getElementById("hpText"),
   statusLine:          document.getElementById("statusLine"),
   attackBtn:           document.getElementById("attackBtn"),
+  dodgeBtn:            document.getElementById("dodgeBtn"),
   specialBtn:          document.getElementById("specialBtn"),
   gaugeInner:          document.getElementById("gaugeInner"),
   gaugeLabel:          document.getElementById("gaugeLabel"),
@@ -70,6 +71,8 @@ const dom = {
 // ── ゲーム状態 ────────────────────────────────────────────────
 const state = {
   currentHp:      STAGES[0].maxHp,
+  bossBreakGauge: CONFIG.battle.bossBreakMax,
+  bossStaggered: false,
   totalDamage:    0,
   attackCount:    0,
   cleared:        false,
@@ -81,6 +84,14 @@ const state = {
   gameOver:       false,
   lastAttackAt:   0,
   specialGauge:   0,
+  dodge: {
+    active: false,
+    startedAt: 0,
+    lastUsedAt: -Infinity,
+    dirX: 0,
+    dirZ: 0,
+    perfectRewarded: false,
+  },
   keys: { up: false, down: false, left: false, right: false, action: false },
   joystickVec: { x: 0, y: 0 },
   player: {
@@ -95,6 +106,8 @@ const state = {
     nextAttackAt: Infinity,
     mode: "wander",
     chargeTarget: null,
+    telegraphStartedAt: 0,
+    guarding: false,
   },
   equippedCostume: COSTUMES[0],
   ownedCostumes:   [COSTUMES[0]],
@@ -113,6 +126,7 @@ const state = {
   // 実績
   bestTimes: {},
   totalClears: 0,
+  buildSkills: [],
 };
 
 // Three.jsオブジェクト群

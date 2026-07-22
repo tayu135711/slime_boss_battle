@@ -10,6 +10,33 @@
 
 
 // 入力（キーボード・タッチ）
+function startDodge() {
+  if (!state.battleStarted || state.cleared || state.gameOver || state.dodge.active) return;
+  const now = Date.now();
+  if (now - state.dodge.lastUsedAt < CONFIG.player.dodgeCooldownMs * (state._buildDodgeCooldownMult || 1)) return;
+  let dx = 0, dz = 0;
+  const jv = state.joystickVec;
+  if (jv && (Math.abs(jv.x) > 0.05 || Math.abs(jv.y) > 0.05)) {
+    dx = jv.x; dz = jv.y;
+  } else {
+    if (state.keys.left) dx -= 1;
+    if (state.keys.right) dx += 1;
+    if (state.keys.up) dz -= 1;
+    if (state.keys.down) dz += 1;
+  }
+  if (dx === 0 && dz === 0) { dx = state.boss.x - state.player.x; dz = state.boss.z - state.player.z; }
+  const len = Math.hypot(dx, dz) || 1;
+  state.dodge.active = true;
+  state.dodge.startedAt = now;
+  state.dodge.lastUsedAt = now;
+  state.dodge.dirX = dx / len;
+  state.dodge.dirZ = dz / len;
+  state.dodge.perfectRewarded = false;
+  state.player.invincibleUntil = now + CONFIG.player.dodgeInvincibleMs;
+  dom.dodgeBtn?.classList.add("pressed");
+  SE.button();
+}
+
 function setupInput() {
   document.querySelectorAll(".dpad-btn[data-dir]").forEach((btn) => {
     const dir = btn.dataset.dir;
@@ -104,6 +131,10 @@ function setupInput() {
   window.addEventListener("keydown", (e) => {
     const k = e.key.toLowerCase();
     if (keyMap[k]) state.keys[keyMap[k]] = true;
+    if (k === "shift" || k === "e") {
+      startDodge();
+      return;
+    }
     if (k === " " || k === "enter") {
       e.preventDefault();
       if (state.titleShown) return; // タイトル表示中は何もしない
@@ -124,6 +155,7 @@ function setupInput() {
     else attackBoss();
   });
   dom.specialBtn.addEventListener("click", useSpecialMove);
+  dom.dodgeBtn?.addEventListener("click", startDodge);
   dom.resetBtn.addEventListener("click", () => {
     if (dom.homePlazaScreen.classList.contains("visible")) return;
     resetBattle();
@@ -176,6 +208,21 @@ const battleWalk = {
 
 function updatePlayerMovement(dtScale) {
   if (state.gameOver || !state.battleStarted) return;
+
+  if (state.dodge.active) {
+    const elapsed = Date.now() - state.dodge.startedAt;
+    state.player.x = clamp(state.player.x + state.dodge.dirX * CONFIG.player.dodgeSpeed * dtScale, -CONFIG.field.halfSize, CONFIG.field.halfSize);
+    state.player.z = clamp(state.player.z + state.dodge.dirZ * CONFIG.player.dodgeSpeed * dtScale, -CONFIG.field.halfSize, CONFIG.field.halfSize);
+    three.playerGroup.position.set(state.player.x, 0, state.player.z);
+    three.playerGroup.scale.set(1.25, 0.72, 1.25);
+    if (elapsed >= CONFIG.player.dodgeDurationMs) {
+      state.dodge.active = false;
+      dom.dodgeBtn?.classList.remove("pressed");
+      three.playerGroup.scale.set(1, 1, 1);
+    }
+    three.rangeRing.position.set(state.player.x, 0.03, state.player.z);
+    return;
+  }
   let dx = 0, dz = 0;
 
   // アナログジョイスティック優先
@@ -333,6 +380,7 @@ function animate(timestamp) {
   if (typeof updateWindAnimation === "function") updateWindAnimation(dtScale);
   updatePlayerMovement(dtScale);
   updateBossMovement(dtScale);
+  updateBossProjectiles(dtScale);
   updateCameraFollow();
   updateAttackButtonState();
   updateSwordSwing(dtScale);

@@ -309,21 +309,23 @@ function attackBoss() {
 
   const { minDamage, maxDamage, criticalThreshold, specialGaugePerHit } = CONFIG.battle;
   // ★ お弁当バフ（攻撃力・クリティカル率）を反映
-  const atkMult  = state._buffAttackMult  || 1;
-  const critMult = state._buffCritMult    || 1;
+  const atkMult  = (state._buffAttackMult  || 1) * (state._buildAttackMult || 1);
+  const critMult = (state._buffCritMult    || 1) * (state._buildCritMult || 1);
   const baseMin  = Math.floor(minDamage * atkMult);
   const baseMax  = Math.floor(maxDamage * atkMult);
   const threshold = Math.floor(criticalThreshold / critMult); // 閾値を下げる→クリット増加
-  const damage = Math.floor(Math.random() * (baseMax - baseMin + 1)) + baseMin;
+  let damage = Math.floor(Math.random() * (baseMax - baseMin + 1)) + baseMin;
+  if (state.bossAI.guarding) damage = Math.max(1, Math.floor(damage * 0.25));
   const isCrit = damage >= threshold;
 
   state.currentHp    = Math.max(0, state.currentHp - damage);
+  applyBossBreak(damage);
   state.totalDamage += damage;
   state.attackCount += 1;
   // ★ イカズチスライム装備時はゲージが追加上昇（gaugeReductionを流用）
   const _thunderBonus = state.equippedCostume?.skillId === "thunder"
     ? (SKILL_INFO["thunder"]?.gaugeReduction ?? 0) : 0;
-  state.specialGauge = Math.min(100, state.specialGauge + specialGaugePerHit + _thunderBonus);
+  state.specialGauge = Math.min(100, state.specialGauge + specialGaugePerHit + _thunderBonus + (state._buildGaugeBonus || 0));
 
   startAttackMotion();
   // SE: 攻撃
@@ -412,6 +414,7 @@ function useSpecialMove() {
   const skillName = skillId && SKILL_INFO[skillId] ? SKILL_INFO[skillId].name : "必殺技";
 
   state.currentHp    = Math.max(0, state.currentHp - damage);
+  applyBossBreak(damage);
   state.totalDamage += damage;
   state.attackCount += 1;
   state.specialGauge = 0;
@@ -578,6 +581,10 @@ function spawnThunderSkill(damage) {
 // ── ボスAI ────────────────────────────────────────────────────
 function updateBossMovement(dtScale = 1) {
   if (!state.battleStarted || state.cleared || state.gameOver) return;
+  if (state.bossStaggered) {
+    three.bossGroup.position.set(state.boss.x, getCurrentStage(state.stageIndex).radius, state.boss.z);
+    return;
+  }
   const now = Date.now();
   const s   = getCurrentStage(state.stageIndex);
   const hpR = state.currentHp / s.maxHp;
@@ -592,13 +599,14 @@ function updateBossMovement(dtScale = 1) {
   if (now >= state.bossAI.nextAttackAt && state.bossAI.mode === "wander") {
     const roll = Math.random();
     if (state.bossAI.phase === 1) {
-      startBossCharge();
+      queueBossAttack("charge");
     } else if (state.bossAI.phase === 2) {
-      (roll < 0.5 || !s.hasShockwave) ? startBossCharge() : startBossShockwave();
+      (roll < 0.35) ? queueBossAttack("guard") : (roll < 0.65 || !s.hasShockwave) ? queueBossAttack("charge") : queueBossAttack("shockwave");
     } else {
-      startBossCharge();
+      const lateRoll = Math.random();
+      queueBossAttack(lateRoll < 0.22 ? "guard" : lateRoll < 0.47 ? "mine" : lateRoll < 0.72 ? "projectile" : "charge");
       if (s.hasShockwave) setTimeout(() => {
-        if (!state.cleared && !state.gameOver) startBossShockwave();
+        if (!state.cleared && !state.gameOver && state.bossAI.mode === "wander") queueBossAttack("shockwave");
       }, 800);
     }
     state.bossAI.nextAttackAt = now + interval;
@@ -611,22 +619,25 @@ function updateBossMovement(dtScale = 1) {
     if (dist > 0.15) {
       // ★修正: プレイヤー移動と同根のバグ。ここもdtScaleを掛けないと
       //         高リフレッシュレート端末でボスの突進が速くなりすぎてしまう。
-      state.boss.x += (dx / dist) * s.chargeSpeed * dtScale;
-      state.boss.z += (dz / dist) * s.chargeSpeed * dtScale;
+      const rageSpeed = state.bossAI.phase === 3 ? 1.18 : 1;
+      state.boss.x += (dx / dist) * s.chargeSpeed * rageSpeed * dtScale;
+      state.boss.z += (dz / dist) * s.chargeSpeed * rageSpeed * dtScale;
       checkChargeHit();
     } else {
       state.bossAI.mode        = "wander";
       state.bossAI.chargeTarget = null;
+      removeBossAttackIndicator();
       three.bossMat.color.set(s.color);
     }
-  } else if (state.bossAI.mode !== "shockwave") {
+  } else if (state.bossAI.mode === "wander") {
     const dx   = state.bossTarget.x - state.boss.x;
     const dz   = state.bossTarget.z - state.boss.z;
     const dist = Math.hypot(dx, dz);
     if (dist > 0.1) {
       // ★修正: 徘徊移動もdtScaleを適用し、実時間ベースの速度にする。
-      state.boss.x += (dx / dist) * s.moveSpeed * dtScale;
-      state.boss.z += (dz / dist) * s.moveSpeed * dtScale;
+      const rageSpeed = state.bossAI.phase === 3 ? 1.22 : 1;
+      state.boss.x += (dx / dist) * s.moveSpeed * rageSpeed * dtScale;
+      state.boss.z += (dz / dist) * s.moveSpeed * rageSpeed * dtScale;
     } else {
       pickNewBossTarget();
     }
@@ -641,7 +652,172 @@ function startBossCharge() {
   state.bossAI.mode         = "charge";
   state.bossAI.chargeTarget = { x: state.player.x, z: state.player.z };
   three.bossMat.color.set(0xff3300);
+  removeBossAttackIndicator();
+  const points = [new THREE.Vector3(state.boss.x, 0.12, state.boss.z), new THREE.Vector3(state.bossAI.chargeTarget.x, 0.12, state.bossAI.chargeTarget.z)];
+  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), new THREE.LineBasicMaterial({ color: 0xff2233, transparent: true, opacity: 0.8 }));
+  three.scene.add(line);
+  three.bossAttackIndicator = line;
   SE.bossCharge();
+}
+
+function removeBossAttackIndicator() {
+  const indicator = three.bossAttackIndicator;
+  if (!indicator) return;
+  three.scene.remove(indicator);
+  indicator.geometry.dispose();
+  indicator.material.dispose();
+  three.bossAttackIndicator = null;
+}
+
+function queueBossAttack(type) {
+  if (state.cleared || state.gameOver || state.bossAI.mode !== "wander") return;
+  state.bossAI.mode = "telegraph";
+  dom.statusLine.textContent = type === "shockwave"
+    ? "⚠ ボスが広範囲攻撃を準備中！離れてください"
+    : type === "guard" ? "⚠ ボスが防御態勢に入ります！攻撃の隙を待ちましょう"
+    : type === "mine" ? "⚠ 足元に危険エリアが出現します！移動し続けてください"
+    : type === "projectile" ? "⚠ ボスが追尾弾を準備中！横へ回避してください"
+    : "⚠ ボスが突進を準備中！横へ回避してください";
+  three.bossMat.color.set(0xffcc33);
+  const startedAt = Date.now();
+  state.bossAI.telegraphStartedAt = startedAt;
+  setTimeout(() => {
+    if (state.cleared || state.gameOver || state.bossAI.mode !== "telegraph" || state.bossAI.telegraphStartedAt !== startedAt) return;
+    if (type === "shockwave") startBossShockwave();
+    else if (type === "guard") startBossGuard();
+    else if (type === "mine") startBossMines();
+    else if (type === "projectile") startBossProjectileBarrage();
+    else startBossCharge();
+  }, CONFIG.battle.bossTelegraphMs);
+}
+
+function startBossGuard() {
+  if (state.cleared || state.gameOver) return;
+  state.bossAI.mode = "guard";
+  state.bossAI.guarding = true;
+  three.bossMat.color.set(0x66ccff);
+  removeBossAttackIndicator();
+  const shield = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.25, 40), new THREE.MeshBasicMaterial({ color: 0x66ccff, transparent: true, opacity: 0.75, side: THREE.DoubleSide }));
+  shield.rotation.x = -Math.PI / 2;
+  shield.position.set(state.boss.x, 0.08, state.boss.z);
+  three.scene.add(shield);
+  three.bossAttackIndicator = shield;
+  dom.statusLine.textContent = "🛡 ボスは防御中！ダメージ大幅軽減";
+  setTimeout(() => {
+    state.bossAI.guarding = false;
+    if (!state.cleared && !state.gameOver) {
+      state.bossAI.mode = "wander";
+      removeBossAttackIndicator();
+      three.bossMat.color.set(getCurrentStage(state.stageIndex).color);
+      dom.statusLine.textContent = "防御が解除されました！";
+    }
+  }, 1300);
+}
+
+function startBossMines() {
+  if (state.cleared || state.gameOver) return;
+  state.bossAI.mode = "mine";
+  const baseX = state.player.x;
+  const baseZ = state.player.z;
+  const damage = Math.max(1, Math.floor(getCurrentStage(state.stageIndex).shockwaveDamage * 1.15));
+  const spots = [
+    { x: baseX, z: baseZ },
+    { x: baseX + 1.6, z: baseZ - 0.8 },
+    { x: baseX - 1.6, z: baseZ + 0.8 },
+  ];
+  spots.forEach((spot, index) => {
+    const mat = new THREE.MeshBasicMaterial({ color: 0xff3355, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+    const marker = new THREE.Mesh(new THREE.CircleGeometry(0.9, 32), mat);
+    marker.rotation.x = -Math.PI / 2;
+    marker.position.set(spot.x, 0.06, spot.z);
+    three.scene.add(marker);
+    three.bossHazards.push(marker);
+    let elapsed = 0;
+    (function pulse() {
+      if (state.cleared || state.gameOver || !marker.parent) {
+        if (marker.parent) marker.parent.remove(marker);
+        marker.geometry.dispose();
+        mat.dispose();
+        const hazardIndex = three.bossHazards.indexOf(marker);
+        if (hazardIndex !== -1) three.bossHazards.splice(hazardIndex, 1);
+        return;
+      }
+      elapsed += 16;
+      marker.scale.setScalar(0.8 + Math.min(elapsed / 900, 1) * 0.2);
+      mat.opacity = 0.25 + Math.sin(elapsed * 0.02) * 0.12;
+      if (elapsed < 900) requestAnimationFrame(pulse);
+      else {
+        const dist = Math.hypot(state.player.x - spot.x, state.player.z - spot.z);
+        if (dist < 0.95) applyPlayerDamage(damage);
+        three.scene.remove(marker);
+        marker.geometry.dispose();
+        mat.dispose();
+      }
+    })();
+  });
+  dom.statusLine.textContent = "💥 危険エリアがまもなく爆発します！";
+  setTimeout(() => { if (!state.cleared && !state.gameOver && state.bossAI.mode === "mine") state.bossAI.mode = "wander"; }, 950);
+}
+
+function startBossProjectileBarrage() {
+  if (state.cleared || state.gameOver) return;
+  state.bossAI.mode = "projectile";
+  const angle = Math.atan2(state.player.z - state.boss.z, state.player.x - state.boss.x);
+  const damage = Math.max(1, Math.floor(getCurrentStage(state.stageIndex).chargeDamage * 0.6));
+  const lateStage = state.stageIndex >= 5;
+  const angles = lateStage
+    ? Array.from({ length: 8 }, (_, i) => i * Math.PI / 4).concat([angle - 0.14, angle + 0.14])
+    : [-1, 0, 1].map(i => angle + i * 0.18);
+  angles.forEach(a => {
+    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 8), new THREE.MeshBasicMaterial({ color: 0xff8844 }));
+    orb.position.set(state.boss.x, 0.9, state.boss.z);
+    orb.userData = { vx: Math.cos(a) * 0.16, vz: Math.sin(a) * 0.16, damage, life: 0 };
+    three.scene.add(orb);
+    three.bossProjectiles.push(orb);
+  });
+  SE.bossCharge();
+  setTimeout(() => { if (!state.cleared && !state.gameOver && state.bossAI.mode === "projectile") state.bossAI.mode = "wander"; }, 650);
+}
+
+function updateBossProjectiles(dtScale = 1) {
+  if (!three.bossProjectiles) return;
+  for (let i = three.bossProjectiles.length - 1; i >= 0; i--) {
+    const orb = three.bossProjectiles[i];
+    orb.position.x += orb.userData.vx * dtScale;
+    orb.position.z += orb.userData.vz * dtScale;
+    orb.userData.life += dtScale;
+    const hit = Math.hypot(state.player.x - orb.position.x, state.player.z - orb.position.z) < 0.55;
+    if (hit) applyPlayerDamage(orb.userData.damage);
+    if (hit || orb.userData.life > 100 || state.cleared || state.gameOver) {
+      three.scene.remove(orb);
+      orb.geometry.dispose();
+      orb.material.dispose();
+      three.bossProjectiles.splice(i, 1);
+    }
+  }
+}
+
+function applyBossBreak(damage) {
+  if (state.bossStaggered || state.cleared) return;
+  state.bossBreakGauge = Math.max(0, state.bossBreakGauge - damage * CONFIG.battle.bossBreakPerDamage);
+  if (state.bossBreakGauge > 0) return;
+  state.bossStaggered = true;
+  state.bossAI.mode = "staggered";
+  state.bossAI.guarding = false;
+  removeBossAttackIndicator();
+  three.bossMat.color.set(0xffffff);
+  three.bossGroup.scale.set(1.25, 0.65, 1.25);
+  dom.statusLine.textContent = "💥 ブレイク！ ボスが崩れた！ 大ダメージチャンス！";
+  triggerCameraShake();
+  setTimeout(() => {
+    if (state.cleared || state.gameOver) return;
+    state.bossStaggered = false;
+    state.bossBreakGauge = CONFIG.battle.bossBreakMax;
+    state.bossAI.mode = "wander";
+    three.bossGroup.scale.set(1, 1, 1);
+    three.bossMat.color.set(getCurrentStage(state.stageIndex).color);
+    dom.statusLine.textContent = "ボスが立ち上がった！";
+  }, CONFIG.battle.bossStaggerMs);
 }
 
 function checkChargeHit() {
@@ -655,7 +831,11 @@ function startBossShockwave() {
   state.bossAI.mode = "shockwave";
   SE.bossShockwave();
   spawnShockwave();
-  setTimeout(() => { if (!state.gameOver && !state.cleared) state.bossAI.mode = "wander"; }, 600);
+  setTimeout(() => {
+    if (state.gameOver || state.cleared) return;
+    state.bossAI.mode = "wander";
+    if (state.bossAI.phase === 3 && Math.random() < 0.65) queueBossAttack("projectile");
+  }, 600);
 }
 
 function spawnShockwave() {
@@ -708,12 +888,20 @@ function onPhaseChange(phase) {
 // ── プレイヤー被弾・ゲームオーバー ────────────────────────────
 function applyPlayerDamage(damage) {
   const now = Date.now();
-  if (now < state.player.invincibleUntil) return;
+  if (now < state.player.invincibleUntil) {
+    if (state.dodge.active && !state.dodge.perfectRewarded) {
+      state.dodge.perfectRewarded = true;
+      state.specialGauge = Math.min(100, state.specialGauge + 12);
+      dom.statusLine.textContent = "✨ ジャスト回避！ 必殺ゲージ上昇";
+      refreshUi();
+    }
+    return;
+  }
   if (state.cleared || state.gameOver) return;
 
   // ★ お弁当バフ（防御力）を反映してダメージ軽減
   const defMult = state._buffDefenseMult || 1;
-  const actualDamage = Math.max(1, Math.floor(damage / defMult));
+  const actualDamage = Math.max(1, Math.floor(damage / defMult / (state._buildDefenseMult || 1)));
   state.player.hp             = Math.max(0, state.player.hp - actualDamage);
   state.player.invincibleUntil = now + CONFIG.player.invincibleMs;
 

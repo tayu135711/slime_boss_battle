@@ -128,6 +128,10 @@ const CONFIG = {
     startX: 0, startZ: 2.5,
     maxHp: 500,
     invincibleMs: 1000,
+    dodgeCooldownMs: 900,
+    dodgeDurationMs: 260,
+    dodgeSpeed: 0.32,
+    dodgeInvincibleMs: 260,
   },
   battle: {
     attackRange: 3.2,
@@ -137,6 +141,10 @@ const CONFIG = {
     specialGaugePerHit: 18,
     specialMultiplier: 1.8,
     specialMinDamage: 400, specialMaxDamage: 600,
+    bossTelegraphMs: 850,
+    bossBreakMax: 100,
+    bossBreakPerDamage: 0.045,
+    bossStaggerMs: 2200,
   },
   field: { halfSize: 14 },
   camera: {
@@ -144,6 +152,15 @@ const CONFIG = {
     lookAtY: 0.0, lookAtZAhead: -4.0, shakeMs: 180,
   },
 };
+
+const BUILD_SKILLS = [
+  { id: "power", name: "強撃", desc: "通常攻撃のダメージ +20%", attackMult: 1.20 },
+  { id: "swift", name: "疾風", desc: "回避クールダウン -30%", dodgeCooldownMult: 0.70 },
+  { id: "focus", name: "集中", desc: "攻撃1回ごとの必殺ゲージ +8", gaugeBonus: 8 },
+  { id: "guard", name: "守護", desc: "被ダメージ -20%", defenseMult: 1.25 },
+  { id: "critical", name: "会心", desc: "クリティカル判定を緩和", critMult: 1.18 },
+  { id: "secondWind", name: "再起", desc: "戦闘開始時にHPを25%回復", startHealRate: 0.25 },
+];
 
 function getCurrentStage(stageIndex) {
   return STAGES[stageIndex] || STAGES[STAGES.length - 1];

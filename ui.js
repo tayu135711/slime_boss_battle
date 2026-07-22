@@ -5,6 +5,19 @@
 // ── HUD ──────────────────────────────────────────────────────
 function refreshUi() {
   const cs = getCurrentStage(state.stageIndex);
+  let breakBar = document.getElementById("bossBreakBar");
+  if (!breakBar && dom.hpText?.parentElement) {
+    breakBar = document.createElement("div");
+    breakBar.id = "bossBreakBar";
+    breakBar.style.cssText = "height:5px;margin-top:4px;border-radius:4px;background:rgba(255,255,255,.18);overflow:hidden";
+    const fill = document.createElement("div");
+    fill.id = "bossBreakBarInner";
+    fill.style.cssText = "height:100%;width:100%;background:linear-gradient(90deg,#66ccff,#ffffff);transition:width .15s";
+    breakBar.appendChild(fill);
+    dom.hpText.parentElement.appendChild(breakBar);
+  }
+  const breakFill = document.getElementById("bossBreakBarInner");
+  if (breakFill) breakFill.style.width = `${Math.max(0, state.bossBreakGauge ?? CONFIG.battle.bossBreakMax)}%`;
   // ボスHP
   const hpPct = Math.max(0, (state.currentHp / cs.maxHp) * 100);
   dom.hpBarInner.style.width = hpPct + "%";
@@ -429,6 +442,36 @@ function buildStageList() {
 }
 
 // ── ステージ管理 ──────────────────────────────────────────────
+function renderBuildChoices() {
+  let box = document.getElementById("buildChoices");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "buildChoices";
+    dom.stageStartBtn.parentElement.insertBefore(box, dom.stageStartBtn);
+  }
+  box.innerHTML = "";
+  const title = document.createElement("div");
+  title.textContent = "今回のビルドを1つ選択";
+  title.style.cssText = "margin:12px 0 6px;font-weight:800;color:#ffe9a3";
+  box.appendChild(title);
+  const choices = [...BUILD_SKILLS].sort(() => Math.random() - 0.5).slice(0, 3);
+  choices.forEach(skill => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "build-choice";
+    card.dataset.skillId = skill.id;
+    card.innerHTML = `<b>${skill.name}</b><small>${skill.desc}</small>`;
+    card.style.cssText = "display:flex;flex-direction:column;gap:3px;width:100%;padding:9px;margin:5px 0;border:1px solid rgba(255,255,255,.35);border-radius:10px;background:rgba(30,40,70,.75);color:white;text-align:left;cursor:pointer";
+    card.addEventListener("click", () => {
+      box.querySelectorAll(".build-choice").forEach(el => el.style.outline = "none");
+      card.style.outline = "3px solid #ffd166";
+      state.buildSkills = [skill];
+    });
+    box.appendChild(card);
+  });
+  state.buildSkills = [];
+}
+
 function showStageStart() {
   // ★ 広場が表示中の場合は非表示にする（直接呼ばれるケース対策）
   if (dom.homePlazaScreen.classList.contains("visible")) {
@@ -438,6 +481,7 @@ function showStageStart() {
   dom.stageChapter.textContent  = `Chapter ${stg.chapter}`;
   dom.stageNo.textContent       = `Stage ${stg.stageNo}`;
   dom.stageBossName.textContent = stg.name;
+  renderBuildChoices();
   dom.stageStartScreen.classList.add("visible");
 }
 
@@ -454,6 +498,13 @@ function startStage() {
 
   state.stageStartAt  = Date.now();
   state.battleStarted = true;
+  const build = state.buildSkills[0];
+  state._buildAttackMult = build?.attackMult || 1;
+  state._buildDefenseMult = build?.defenseMult || 1;
+  state._buildCritMult = build?.critMult || 1;
+  state._buildGaugeBonus = build?.gaugeBonus || 0;
+  state._buildDodgeCooldownMult = build?.dodgeCooldownMult || 1;
+  if (build?.startHealRate) state.player.hp = Math.min(CONFIG.player.maxHp, state.player.hp + Math.floor(CONFIG.player.maxHp * build.startHealRate));
   SE.resume();
   SE.battleStart();
 
@@ -616,6 +667,8 @@ function renderRewardChoices(stageNo) {
 // ── リセット ──────────────────────────────────────────────────
 function resetBattle() {
   state.currentHp     = getCurrentStage(state.stageIndex).maxHp;
+  state.bossBreakGauge = CONFIG.battle.bossBreakMax;
+  state.bossStaggered = false;
   state.totalDamage   = 0;
   state.attackCount   = 0;
   state.cleared       = false;
@@ -623,6 +676,8 @@ function resetBattle() {
   state.battleStarted = false;
   state.lastAttackAt  = 0;
   state.specialGauge  = 0;
+  state.dodge.active  = false;
+  state.dodge.lastUsedAt = -Infinity;
 
   // ★ Dパッドの押下状態をリセット（キーが押しっぱなしにならないように）
   state.keys = { up: false, down: false, left: false, right: false, action: false };
@@ -648,6 +703,23 @@ function resetBattle() {
   // 魔法陣をすべてキャンセル
   three.magicCircles.forEach(g => { g.userData.cancelled = true; three.scene.remove(g); });
   three.magicCircles = [];
+  if (three.bossProjectiles) {
+    three.bossProjectiles.forEach(orb => {
+      three.scene.remove(orb);
+      orb.geometry.dispose();
+      orb.material.dispose();
+    });
+    three.bossProjectiles = [];
+  }
+  if (three.bossHazards) {
+    three.bossHazards.forEach(marker => {
+      three.scene.remove(marker);
+      marker.geometry.dispose();
+      marker.material.dispose();
+    });
+    three.bossHazards = [];
+  }
+  if (typeof removeBossAttackIndicator === "function") removeBossAttackIndicator();
 
   state.player.hp              = CONFIG.player.maxHp;
   state.player.invincibleUntil = 0;
@@ -662,7 +734,7 @@ function resetBattle() {
   //         （handleBossDefeated / handleGameOver）で行うようにする。
 
   // ★ nextAttackAt を Infinity に戻す（startStage() で正式に設定する）
-  state.bossAI = { phase: 1, nextAttackAt: Infinity, mode: "wander", chargeTarget: null };
+  state.bossAI = { phase: 1, nextAttackAt: Infinity, mode: "wander", chargeTarget: null, telegraphStartedAt: 0, guarding: false };
 
   // UI
   dom.gameOverScreen.classList.remove("visible");
@@ -977,4 +1049,3 @@ function confirmDressing() {
 function updateBentoBtn() {
   // 将来の拡張用（現在は広場UIで管理）
 }
-

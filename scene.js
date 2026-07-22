@@ -12,6 +12,9 @@ function initScene() {
   const { w, h } = getSize();
   three.scene = new THREE.Scene();
   three.magicCircles = [];
+  three.bossProjectiles = [];
+  three.bossHazards = [];
+  three.bossAttackIndicator = null;
   const s0 = getCurrentStage(state.stageIndex);
   three.scene.fog = new THREE.FogExp2(s0.bgColor, s0.fogDensity);
   three.scene.background = new THREE.Color(s0.bgColor);
