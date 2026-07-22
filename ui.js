@@ -695,6 +695,11 @@ function resetBattle() {
     three.spearThrust = { active: false, progress: 0 };
     if (three.spearPivot) { three.spearPivot.position.set(0, 0, 0); }
   }
+  // ★追加: 必殺技モーションもリセット（ダッシュ/剣/槍と同様、リセット時に位置・拡縮が
+  //         中途半端な状態のまま固まらないようにする）
+  if (three.specialCast) {
+    three.specialCast = { active: false, progress: 0, baseRotY: three.playerGroup?.rotation.y || 0 };
+  }
   if (three.playerGroup) {
     three.playerGroup.rotation.x = 0;
     three.playerGroup.rotation.z = 0;

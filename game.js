@@ -241,8 +241,19 @@ function updatePlayerMovement(dtScale) {
   // ★ お弁当バフ（速度アップ）を反映
   const speedMult = state._buffSpeedMult || 1;
   const topSpeed = CONFIG.player.moveSpeed * 1.8 * speedMult;
-  const accel    = 0.12;
-  const friction = 0.82;
+  // ★修正: accel/frictionは「1フレームあたりの固定割合」で、dtScaleが掛かって
+  //         いなかったため、高リフレッシュレート端末では実時間あたりの補正回数が
+  //         増えてしまい、動き出し・止まりの感触が機種によってバラバラになる
+  //         （他の箇所で修正済みの「1フレーム=16ms固定」バグと同根）問題があった。
+  //         さらに元の friction=0.82 自体が緩すぎて、キーを離してもスライムが
+  //         しばらく「ぬるっ」と滑り続けてしまい、操作感が悪かった。
+  //         frictionを強めた上で、dtScaleを考慮した指数減衰式に変換し、
+  //         フレームレートに依らずキーを離したらしっかり止まるようにする。
+  const ACCEL_RATE    = 0.12; // 60fps基準・1フレームあたりの目標速度への追従率
+  const FRICTION_RATE = 0.55; // 60fps基準・1フレームあたりの残存速度率（元は0.82で緩すぎた）
+  const accel    = 1 - Math.pow(1 - ACCEL_RATE, dtScale);
+  const friction = Math.pow(FRICTION_RATE, dtScale);
+  const STOP_EPSILON = 0.0006; // これ未満の速度は「実質停止」とみなして0に丸める
 
   const isMoving = (dx !== 0 || dz !== 0);
 
@@ -261,6 +272,10 @@ function updatePlayerMovement(dtScale) {
   } else {
     state.player.vx = (state.player.vx || 0) * friction;
     state.player.vz = (state.player.vz || 0) * friction;
+    // ★ 指数減衰は理論上いつまでも0にならず微妙な「にじり」が残るため、
+    //   十分小さくなったらきっぱり0にしてしっかり止まった感触にする。
+    if (Math.abs(state.player.vx) < STOP_EPSILON) state.player.vx = 0;
+    if (Math.abs(state.player.vz) < STOP_EPSILON) state.player.vz = 0;
   }
 
   // ★修正: アニメーション位相(battleWalk.phase等)はdtScaleで補正済みだったが、
@@ -275,7 +290,7 @@ function updatePlayerMovement(dtScale) {
   if (Math.abs(state.player.z) >= half) state.player.vz = 0;
 
   // ── ぽよんぽよんホップ（攻撃アニメ中は上書きしない） ──
-  const attackBusy = three.dashAttack?.active || three.swordSwing?.active || three.spearThrust?.active;
+  const attackBusy = three.dashAttack?.active || three.swordSwing?.active || three.spearThrust?.active || three.specialCast?.active;
 
   // 着地検出
   if (battleWalk.wasMoving && !isMoving) battleWalk.landTimer = 120;
@@ -386,6 +401,7 @@ function animate(timestamp) {
   updateSwordSwing(dtScale);
   updateDashAttack(dtScale);
   updateSpearThrust(dtScale);
+  updateSpecialCast(dtScale);
   three.renderer.render(three.scene, three.camera);
   requestAnimationFrame(animate);
 }

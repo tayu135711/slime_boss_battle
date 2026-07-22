@@ -198,6 +198,76 @@ function updateSpearThrust(dtScale = 1) {
   }
 }
 
+// ★追加: 必殺技モーション（力を溜める→回転しながら飛び上がる→頂点でキメポーズ→着地）
+// 以前は useSpecialMove() 実行中プレイヤーの体が完全に静止したままで、ボス側の
+// エフェクト（魔法陣・波・氷柱・雷）だけが動く見た目になっており、通常攻撃には
+// 武器ごとの専用モーション（ダッシュ・剣・槍）があるのに必殺技だけ手を抜いたような
+// 印象になっていた。ここに専用のジャンプ＆スピンモーションを追加する。
+function startSpecialCast() {
+  if (!three.playerGroup) return;
+  three.specialCast.active   = true;
+  three.specialCast.progress = 0;
+  // ボスの方を向いた状態を基準に回転させる（通常移動時のrotation.y計算と同じ式）
+  const dx = state.boss.x - state.player.x;
+  const dz = state.boss.z - state.player.z;
+  three.specialCast.baseRotY = Math.atan2(dx, dz);
+}
+
+function updateSpecialCast(dtScale = 1) {
+  if (!three.specialCast?.active) return;
+  three.specialCast.progress += 0.045 * dtScale;
+  const t = three.specialCast.progress;
+
+  let posY, scaleX, scaleY, scaleZ, spin = 0;
+
+  if (t < 0.22) {
+    // ① 力を溜める：ぐっとしゃがみ込む
+    const s = t / 0.22;
+    posY    = -s * 0.16;
+    scaleX  = 1 + s * 0.28;
+    scaleY  = 1 - s * 0.34;
+    scaleZ  = 1 + s * 0.28;
+  } else if (t < 0.55) {
+    // ② 一気に飛び上がりながら1回転して力を解放
+    const s = (t - 0.22) / 0.33;
+    const ease = s < 0.5 ? 4*s*s*s : 1 - Math.pow(-2*s + 2, 3) / 2;
+    posY   = -0.16 + ease * 1.05;
+    scaleX = 1.28 - ease * 0.55;
+    scaleY = 0.66 + ease * 0.7;
+    scaleZ = 1.28 - ease * 0.55;
+    spin   = ease * Math.PI * 2;
+  } else if (t < 0.78) {
+    // ③ 頂点でキメポーズ（ふわっと伸び上がりながらキラっと静止）
+    const s = (t - 0.55) / 0.23;
+    posY   = 0.89 + Math.sin(s * Math.PI) * 0.10;
+    scaleX = 0.73 + s * 0.12;
+    scaleY = 1.36 - s * 0.10;
+    scaleZ = 0.73 + s * 0.12;
+    spin   = Math.PI * 2;
+  } else {
+    // ④ 着地（ぷにっと弾む）
+    const s = (t - 0.78) / 0.22;
+    const ease = 1 - (1 - s) * (1 - s);
+    posY   = 0.89 * (1 - ease);
+    const land = Math.sin(Math.min(1, s * 1.4) * Math.PI);
+    scaleX = 1 + land * 0.18;
+    scaleY = 1 - land * 0.16;
+    scaleZ = 1 + land * 0.18;
+    spin   = Math.PI * 2;
+  }
+
+  three.playerGroup.position.set(state.player.x, posY, state.player.z);
+  three.playerGroup.scale.set(scaleX, scaleY, scaleZ);
+  three.playerGroup.rotation.y = three.specialCast.baseRotY + spin;
+
+  if (t >= 1.0) {
+    three.specialCast.active = false;
+    three.playerGroup.position.set(state.player.x, 0, state.player.z);
+    three.playerGroup.scale.set(1, 1, 1);
+    three.playerGroup.rotation.y = three.specialCast.baseRotY;
+  }
+}
+
 // ── 魔法陣エフェクト ──────────────────────────────────────────
 function spawnMagicCircle() {
   const group = new THREE.Group();
@@ -409,7 +479,14 @@ function useSpecialMove() {
   if (!state.battleStarted || state.cleared || state.gameOver || state.specialGauge < 100) return;
   const { specialMinDamage, specialMaxDamage, specialMultiplier } = CONFIG.battle;
   const base   = Math.floor(Math.random() * (specialMaxDamage - specialMinDamage + 1)) + specialMinDamage;
-  const damage = Math.floor(base * specialMultiplier);
+  // ★修正: attackBoss()の通常攻撃はボスの防御中(state.bossAI.guarding)にダメージを
+  //         25%へ軽減しているが、必殺技だけはこの判定が抜けていたため、ガード中でも
+  //         必殺技だけは無条件にフルダメージ（ブレイクゲージ減少も含む）が通ってしまい、
+  //         「🛡 ボスは防御中！ダメージ大幅軽減」という演出・UI表示と矛盾していた上、
+  //         必殺技ゲージさえ溜めておけば防御ギミックを丸ごと無視できてしまっていた。
+  //         通常攻撃と同じガード減衰をここにも適用する。
+  let damage = Math.floor(base * specialMultiplier);
+  if (state.bossAI.guarding) damage = Math.max(1, Math.floor(damage * 0.25));
   const skillId = state.equippedCostume?.skillId || null;
   const skillName = skillId && SKILL_INFO[skillId] ? SKILL_INFO[skillId].name : "必殺技";
 
@@ -422,6 +499,9 @@ function useSpecialMove() {
 
   // ★ 全画面演出を挟んでからスキルエフェクト発動
   showSkillCinematic(skillId, skillName, () => {
+    // ★追加: 画面演出が明けてボス側エフェクトが始まるのに合わせてプレイヤーの
+    //         必殺技モーション（力溜め→回転ジャンプ→キメポーズ→着地）も再生する。
+    startSpecialCast();
     if (skillId === "wave") {
       SE.specialWave();
       spawnWaveSkill(damage);
@@ -733,7 +813,16 @@ function startBossMines() {
     three.scene.add(marker);
     three.bossHazards.push(marker);
     let elapsed = 0;
-    (function pulse() {
+    // ★修正: この地雷（mine）演出だけ、animate()のdtScale化や衝撃波(spawnShockwave)の
+    //         修正と同じ根本原因のバグが残っていた。「elapsed += 16」は
+    //         「1フレーム=16ms(60fps)」を前提にした固定加算値で、高リフレッシュレート
+    //         端末（120Hz/144Hzなど）ではrequestAnimationFrameが短い間隔で連続して
+    //         呼ばれるため、実時間よりずっと速く elapsed が900に到達し、爆発（判定）が
+    //         想定より早く発生してしまう（プレイヤーが避ける猶予が実質的に短くなる）。
+    //         spawnShockwave()と同様、performance.now()による経過ミリ秒ベースに変更する。
+    const DURATION_MS = 900;
+    const startTime = performance.now();
+    (function pulse(now) {
       if (state.cleared || state.gameOver || !marker.parent) {
         if (marker.parent) marker.parent.remove(marker);
         marker.geometry.dispose();
@@ -742,10 +831,10 @@ function startBossMines() {
         if (hazardIndex !== -1) three.bossHazards.splice(hazardIndex, 1);
         return;
       }
-      elapsed += 16;
-      marker.scale.setScalar(0.8 + Math.min(elapsed / 900, 1) * 0.2);
+      elapsed = (typeof now === "number" ? now : performance.now()) - startTime;
+      marker.scale.setScalar(0.8 + Math.min(elapsed / DURATION_MS, 1) * 0.2);
       mat.opacity = 0.25 + Math.sin(elapsed * 0.02) * 0.12;
-      if (elapsed < 900) requestAnimationFrame(pulse);
+      if (elapsed < DURATION_MS) requestAnimationFrame(pulse);
       else {
         const dist = Math.hypot(state.player.x - spot.x, state.player.z - spot.z);
         if (dist < 0.95) applyPlayerDamage(damage);
