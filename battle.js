@@ -320,7 +320,10 @@ function attackBoss() {
   state.currentHp    = Math.max(0, state.currentHp - damage);
   state.totalDamage += damage;
   state.attackCount += 1;
-  state.specialGauge = Math.min(100, state.specialGauge + specialGaugePerHit);
+  // ★ イカズチスライム装備時はゲージが追加上昇（gaugeReductionを流用）
+  const _thunderBonus = state.equippedCostume?.skillId === "thunder"
+    ? (SKILL_INFO["thunder"]?.gaugeReduction ?? 0) : 0;
+  state.specialGauge = Math.min(100, state.specialGauge + specialGaugePerHit + _thunderBonus);
 
   startAttackMotion();
   // SE: 攻撃
@@ -339,45 +342,107 @@ function attackBoss() {
   if (state.currentHp === 0) handleBossDefeated();
 }
 
+// ── 全画面スキル演出 ──────────────────────────────────────────
+const SKILL_CINEMATIC = {
+  wave:    { bg: "linear-gradient(135deg,#0ea5e9,#38bdf8,#7dd3fc)", icon: "🌊", color: "#38bdf8" },
+  ice:     { bg: "linear-gradient(135deg,#a5f3fc,#6ee7f7,#bae6fd)", icon: "🧊", color: "#a5f3fc" },
+  thunder: { bg: "linear-gradient(135deg,#fde047,#facc15,#fbbf24)", icon: "⚡", color: "#fde047" },
+  default: { bg: "linear-gradient(135deg,#a78bfa,#c4b5fd,#ede9fe)", icon: "✨", color: "#e9d5ff" },
+};
+
+function showSkillCinematic(skillId, skillName, onDone) {
+  const cfg = SKILL_CINEMATIC[skillId] || SKILL_CINEMATIC.default;
+  const el = document.createElement("div");
+  el.id = "skillCinematic";
+  el.style.cssText = `
+    position:fixed;inset:0;z-index:9999;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:${cfg.bg};
+    opacity:0;transition:opacity 0.18s ease;
+    pointer-events:none;
+  `;
+  el.innerHTML = `
+    <div style="font-size:72px;animation:skillIconPop 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.1s both">${cfg.icon}</div>
+    <div style="font-size:28px;font-weight:900;color:${cfg.color};
+      text-shadow:0 0 20px rgba(255,255,255,0.8),0 2px 4px rgba(0,0,0,0.3);
+      letter-spacing:0.08em;margin-top:12px;
+      animation:skillNameSlide 0.35s cubic-bezier(0.34,1.56,0.64,1) 0.2s both">
+      ${skillName}
+    </div>
+    <div style="font-size:14px;color:rgba(255,255,255,0.85);margin-top:8px;letter-spacing:0.12em;
+      animation:skillNameSlide 0.35s ease 0.3s both">
+      SKILL ACTIVATED
+    </div>
+  `;
+  // アニメ定義（一度だけ追加）
+  if (!document.getElementById("skillCinematicStyle")) {
+    const st = document.createElement("style");
+    st.id = "skillCinematicStyle";
+    st.textContent = `
+      @keyframes skillIconPop {
+        from { opacity:0; transform:scale(0.3) rotate(-20deg); }
+        to   { opacity:1; transform:scale(1)   rotate(0deg);   }
+      }
+      @keyframes skillNameSlide {
+        from { opacity:0; transform:translateY(20px); }
+        to   { opacity:1; transform:translateY(0);    }
+      }
+    `;
+    document.head.appendChild(st);
+  }
+  document.body.appendChild(el);
+  requestAnimationFrame(() => { el.style.opacity = "1"; });
+
+  // 0.7秒表示してフェードアウト後にスキル発動
+  setTimeout(() => {
+    el.style.opacity = "0";
+    setTimeout(() => {
+      el.remove();
+      if (onDone) onDone();
+    }, 180);
+  }, 700);
+}
+
 function useSpecialMove() {
   if (!state.battleStarted || state.cleared || state.gameOver || state.specialGauge < 100) return;
   const { specialMinDamage, specialMaxDamage, specialMultiplier } = CONFIG.battle;
   const base   = Math.floor(Math.random() * (specialMaxDamage - specialMinDamage + 1)) + specialMinDamage;
   const damage = Math.floor(base * specialMultiplier);
+  const skillId = state.equippedCostume?.skillId || null;
+  const skillName = skillId && SKILL_INFO[skillId] ? SKILL_INFO[skillId].name : "必殺技";
 
   state.currentHp    = Math.max(0, state.currentHp - damage);
   state.totalDamage += damage;
   state.attackCount += 1;
   state.specialGauge = 0;
-
-  // ── コスチュームスキル分岐 ──────────────────────────────────
-  const skillId = state.equippedCostume?.skillId || null;
-
-  if (skillId === "wave") {
-    SE.specialWave();
-    spawnWaveSkill(damage);
-  } else if (skillId === "ice") {
-    SE.specialIce();
-    spawnIceSkill(damage);
-  } else if (skillId === "thunder") {
-    SE.specialThunder();
-    spawnThunderSkill(damage);
-  } else {
-    // デフォルト（スキルなしコスチューム）
-    SE.specialDefault();
-    spawnMagicCircle();
-    spawnDamageNumber(damage, true);
-    triggerCameraShake();
-    three.bossMat.color.set(0xffffff);
-    const idx = state.stageIndex;
-    setTimeout(() => { if (!state.cleared) three.bossMat.color.set(getCurrentStage(idx).color); }, 350);
-    three.bossGroup.scale.set(0.6, 0.6, 0.6);
-    setTimeout(() => { if (!state.cleared) three.bossGroup.scale.set(1, 1, 1); }, 200);
-    dom.statusLine.textContent = `✨ 光の必殺技！ 弱点ヒット！ ${damage} ダメージ！！`;
-  }
-
   refreshUi();
-  if (state.currentHp === 0) handleBossDefeated();
+
+  // ★ 全画面演出を挟んでからスキルエフェクト発動
+  showSkillCinematic(skillId, skillName, () => {
+    if (skillId === "wave") {
+      SE.specialWave();
+      spawnWaveSkill(damage);
+    } else if (skillId === "ice") {
+      SE.specialIce();
+      spawnIceSkill(damage);
+    } else if (skillId === "thunder") {
+      SE.specialThunder();
+      spawnThunderSkill(damage);
+    } else {
+      SE.specialDefault();
+      spawnMagicCircle();
+      spawnDamageNumber(damage, true);
+      triggerCameraShake();
+      three.bossMat.color.set(0xffffff);
+      const idx = state.stageIndex;
+      setTimeout(() => { if (!state.cleared) three.bossMat.color.set(getCurrentStage(idx).color); }, 350);
+      three.bossGroup.scale.set(0.6, 0.6, 0.6);
+      setTimeout(() => { if (!state.cleared) three.bossGroup.scale.set(1, 1, 1); }, 200);
+      dom.statusLine.textContent = `✨ 光の必殺技！ 弱点ヒット！ ${damage} ダメージ！！`;
+    }
+
+    if (state.currentHp === 0) handleBossDefeated();
+  });
 }
 
 // ── wave スキル（キングスライム）: 衝撃波リング ───────────────
@@ -420,7 +485,14 @@ function spawnWaveSkill(damage) {
 }
 
 // ── ice スキル（ライリン）: 氷柱乱立 ──────────────────────────
-function spawnIceSkill(damage) {
+function spawnIceSkill(baseDamage) {
+  // ★ アイスは1.1倍ダメージボーナス
+  const iceBonus = SKILL_INFO["ice"]?.bonusDamageRate ?? 1.0;
+  let damage = iceBonus !== 1.0 ? Math.floor(baseDamage * iceBonus) : baseDamage;
+  if (damage !== baseDamage) {
+    state.currentHp   = Math.max(0, state.currentHp - (damage - baseDamage));
+    state.totalDamage += (damage - baseDamage);
+  }
   triggerCameraShake();
   spawnDamageNumber(damage, true);
 

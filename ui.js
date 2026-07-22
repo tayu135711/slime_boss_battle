@@ -15,7 +15,17 @@ function refreshUi() {
   document.getElementById("bossHpBar")?.setAttribute("aria-valuenow", Math.round(hpPct));
   // 必殺技ゲージ
   dom.gaugeInner.style.width = state.specialGauge + "%";
-  dom.gaugeLabel.textContent = `必殺技ゲージ: ${state.specialGauge}%`;
+  // ★ スキル持ちコスチュームはスキル名を表示、なければ「必殺技」
+  const _skillId = state.equippedCostume?.skillId;
+  const _skillInfo = _skillId ? SKILL_INFO[_skillId] : null;
+  const _skillLabel = _skillInfo ? _skillInfo.name : "必殺技";
+  dom.gaugeLabel.textContent = `${_skillLabel}ゲージ: ${state.specialGauge}%`;
+  // ★ ボタンテキストもスキル名に変更
+  const _btnText = document.getElementById("specialBtnText");
+  if (_btnText) {
+    const _icon = _skillInfo?.icon ?? "✨";
+    _btnText.textContent = `${_icon}${_skillLabel.length > 5 ? _skillLabel.slice(0,5) : _skillLabel}`;
+  }
   const wasNotFull = !dom.specialBtn.classList.contains("visible");
   dom.specialBtn.classList.toggle("visible", state.specialGauge >= 100);
   if (wasNotFull && state.specialGauge >= 100) SE.gaugeFull();

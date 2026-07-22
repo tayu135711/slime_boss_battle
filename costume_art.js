@@ -105,7 +105,7 @@ function _stars(count, color = "#ffd700") {
   ];
   const positions = starPositions[count - 1] || starPositions[0];
   return positions.map(([x, y]) =>
-    `<text x="${x}" y="${y + 5}" text-anchor="middle" font-size="10" fill="${color}" filter="url(#glow_tmp)">${"★"}</text>`
+    `<text x="${x}" y="${y + 5}" text-anchor="middle" font-size="10" fill="${color}">${"★"}</text>`
   ).join("");
 }
 

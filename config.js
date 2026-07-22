@@ -165,9 +165,30 @@ const COSTUMES = [
 
 // skillId → 表示用の名前・説明（着替え画面で使用）
 const SKILL_INFO = {
-  wave:    { name: "キングウェーブ",   desc: "青い衝撃波リングで大海嘯！" },
-  ice:     { name: "アイスニードル",   desc: "氷柱を乱立させ極寒乱撃！" },
-  thunder: { name: "サンダーボルト",   desc: "天からの雷撃で天罰一撃！" },
+  wave:    {
+    name: "キングウェーブ",
+    desc: "青い衝撃波リングで大海嘯！",
+    detail: "海の王者の力で衝撃波を3重に放つ。広範囲を一掃する支配者の技。",
+    icon: "🌊", color: "#38bdf8",
+    bonusDamageRate: 1.0,   // ダメージ倍率ボーナス（通常比）
+    gaugeReduction: 0,       // ゲージ上昇量ボーナス
+  },
+  ice:     {
+    name: "アイスニードル",
+    desc: "氷柱を乱立させ極寒乱撃！",
+    detail: "敵の周囲に氷柱を6本叩き込む連続ヒット技。クリティカル率が上昇！",
+    icon: "🧊", color: "#a5f3fc",
+    bonusDamageRate: 1.1,   // ★ 氷は連続ヒットでダメージ1.1倍
+    gaugeReduction: 0,
+  },
+  thunder: {
+    name: "サンダーボルト",
+    desc: "天からの雷撃で天罰一撃！",
+    detail: "天空から超高圧の雷を叩き落とす。ゲージが素早く溜まる雷の加護あり。",
+    icon: "⚡", color: "#fde047",
+    bonusDamageRate: 0.95,  // ★ 雷はゲージ効率型なので単発はやや控えめ
+    gaugeReduction: 5,       // ★ 攻撃ごとにゲージが追加で+5される
+  },
 };
 
 function getGachaPool() {

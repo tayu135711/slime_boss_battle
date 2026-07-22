@@ -14,12 +14,17 @@ const SAVE_API = "https://slime-boss-battle.onrender.com/api/save";
 
 // プレイヤーIDをlocalStorageで管理（端末ごとに固定）
 function getPlayerId() {
-  let id = localStorage.getItem("slime_player_id");
-  if (!id) {
-    id = "player_" + Math.random().toString(36).slice(2, 10);
-    localStorage.setItem("slime_player_id", id);
+  try {
+    let id = localStorage.getItem("slime_player_id");
+    if (!id) {
+      id = "player_" + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem("slime_player_id", id);
+    }
+    return id;
+  } catch (e) {
+    // ★修正: プライベートブラウズ等でlocalStorageが使えない場合のクラッシュ対策
+    return "player_guest_" + Math.random().toString(36).slice(2, 10);
   }
-  return id;
 }
 
 // ★ fetchをタイムアウト付きで実行するラッパー

@@ -294,6 +294,22 @@ function clamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
 let _lastFrameTime = null;
 const REF_FRAME_MS = 1000 / 60;
 
+
+// ★修正: scene.jsで木にisTree:true/windPhase等のuserDataをセットしていたが、
+//         実際に揺らす関数が存在しなかったため木が常に静止していた。
+//         animate()からすでに呼ばれているのでここに実装を追加する。
+function updateWindAnimation(dtScale) {
+  if (!three.battleDecors) return;
+  const now = performance.now() * 0.001;
+  three.battleDecors.forEach(obj => {
+    if (!obj.userData?.isTree) return;
+    const { windPhase, windSpeed, windScale, crown } = obj.userData;
+    const sway = Math.sin(now * windSpeed * 60 + windPhase) * windScale;
+    obj.rotation.z = sway * 0.6;
+    if (crown) crown.rotation.z = sway;
+  });
+}
+
 function animate(timestamp) {
   let dtScale = 1;
   if (typeof timestamp === "number") {

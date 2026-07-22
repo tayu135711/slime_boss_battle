@@ -111,13 +111,34 @@ function addSimpleSlimeFace(group, r, eyeOpts = {}) {
   group.add(mouth);
 }
 
-// Stage1: シンプルかわいいスライム
+// ほっぺを追加するヘルパー
+function addCheeks(group, r, color = 0xff9999) {
+  const cheekMat = new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.45, roughness: 1 });
+  [-1, 1].forEach(side => {
+    const cheek = new THREE.Mesh(new THREE.SphereGeometry(r * 0.14, 8, 6), cheekMat);
+    cheek.scale.set(1.4, 0.55, 0.5);
+    cheek.position.set(side * r * 0.6, r * 0.25, r * 0.74);
+    group.add(cheek);
+  });
+}
+
+// ぷるっとした底の膨らみを追加するヘルパー
+function addBelly(group, r, mat) {
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(r * 0.52, 14, 10), mat);
+  belly.scale.set(1.12, 0.42, 1.12);
+  belly.position.y = -r * 0.56;
+  group.add(belly);
+}
+
+// Stage1: シンプルかわいいスライム（ほっぺ＋ぷるぷる追加）
 function buildSlimeStage1(group, s, mat) {
   const r = s.radius;
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 24), mat);
   mesh.castShadow = true;
   group.add(mesh);
-  addSimpleSlimeFace(group, r, { eyeScale: 1.0, mouthCurve: -1 });
+  addSimpleSlimeFace(group, r, { eyeScale: 1.1, mouthCurve: -1, eyeY: 0.1 });
+  addCheeks(group, r, 0xffb3b3);
+  addBelly(group, r, mat);
   return { mesh };
 }
 
@@ -145,13 +166,15 @@ function buildSlimeStage2(group, s, mat) {
   return { mesh };
 }
 
-// Stage3: くさスライム（触角2本＋太眉）
+// Stage3: くさスライム（触角2本＋太眉＋ほっぺ）
 function buildSlimeStage3(group, s, mat) {
   const r = s.radius;
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 24), mat);
   mesh.castShadow = true;
   group.add(mesh);
-  addSimpleSlimeFace(group, r, { eyeScale: 1.0, mouthCurve: -0.5, eyeY: 0.1 });
+  addSimpleSlimeFace(group, r, { eyeScale: 1.05, mouthCurve: -0.8, eyeY: 0.1 });
+  addCheeks(group, r, 0xb3ffb3);
+  addBelly(group, r, mat);
 
   // 触角（2本）
   [-1, 1].forEach(side => {
@@ -182,9 +205,10 @@ function buildSlimeStage4(group, s, mat) {
   mesh.castShadow = true;
   group.add(mesh);
   addSimpleSlimeFace(group, r, {
-    eyeScale: 1.1, eyeTilt: -0.22, mouthCurve: 0.6,
+    eyeScale: 1.15, eyeTilt: -0.22, mouthCurve: 0.6,
     eyeColor: 0xff3300, eyeY: 0.18,
   });
+  addBelly(group, r, mat);
 
   // 表面のコブ（岩っぽい）
   const knobMat = new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.95 });
@@ -214,9 +238,11 @@ function buildSlimeStage5(group, s, mat) {
   mesh.castShadow = true;
   group.add(mesh);
   addSimpleSlimeFace(group, r, {
-    eyeScale: 1.05, mouthCurve: -0.8, eyeY: 0.08,
+    eyeScale: 1.1, mouthCurve: -0.9, eyeY: 0.08,
     eyeColor: 0x440066,
   });
+  addCheeks(group, r, 0xffb3e0);
+  addBelly(group, r, mat);
 
   // 頭の中心にきのこ（大）
   const stemBig = mkCyl(r*0.1, r*0.12, r*0.38, 0xddbbcc, { rough: 0.7 });
@@ -257,9 +283,11 @@ function buildSlimeStage6(group, s, mat) {
   mesh.castShadow = true;
   group.add(mesh);
   addSimpleSlimeFace(group, r, {
-    eyeScale: 1.2, eyeTilt: -0.12, mouthCurve: 0.3,
+    eyeScale: 1.25, eyeTilt: -0.12, mouthCurve: 0.3,
     eyeColor: 0x331100, whiteColor: 0xffeecc, eyeY: 0.2,
   });
+  addCheeks(group, r, 0xffd700);
+  addBelly(group, r, mat);
 
   // 王冠（5つの突起）
   const crownBase = mkCyl(r*0.55, r*0.58, r*0.18, 0xffd700, { rough: 0.2, metal: 0.9, emissive: 0xaa8800, emissiveInt: 0.3 });

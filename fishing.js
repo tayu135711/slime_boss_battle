@@ -22,6 +22,12 @@ function initFishingUI() {
   fishingUI.innerHTML = `
     <div id="fishingBox">
       <div id="fishingPrompt">静かな水面を見つめる…</div>
+      <div id="fishingTimingWrap" style="display:none">
+        <div id="fishingTimingLabel">⏱ 今だ！</div>
+        <div id="fishingTimingTrack">
+          <div id="fishingTimingBar"></div>
+        </div>
+      </div>
       <div id="fishingAction" style="opacity:0">Ａ でそっと合わせる</div>
     </div>
   `;
@@ -80,6 +86,21 @@ function startFishing() {
     const now = Date.now();
     fishingHitZone.start = now;
     fishingHitZone.end = now + FISHING_HIT_DURATION;
+
+    // ★ タイミングバーを表示してアニメーション開始
+    const wrap = document.getElementById("fishingTimingWrap");
+    const bar  = document.getElementById("fishingTimingBar");
+    if (wrap && bar) {
+      wrap.style.display = "block";
+      bar.style.transition = "none";
+      bar.style.width = "100%";
+      // 1フレーム置いてからアニメーション開始（即0%にならないように）
+      requestAnimationFrame(() => {
+        bar.style.transition = `width ${FISHING_HIT_DURATION}ms linear`;
+        bar.style.width = "0%";
+      });
+    }
+
     fishingTimer = setTimeout(() => {
       if (fishingActive && fishingPhase === "strike") endFishing(false, "miss");
     }, FISHING_HIT_DURATION);
@@ -91,6 +112,10 @@ function endFishing(success, reason = "miss") {
   fishingTimer = null;
   fishingActive = false;
   fishingPhase = "idle";
+
+  // ★ タイミングバーを隠す
+  const wrap = document.getElementById("fishingTimingWrap");
+  if (wrap) wrap.style.display = "none";
 
   if (success) {
     const fish = selectFish();
