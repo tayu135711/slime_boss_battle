@@ -10,6 +10,7 @@ const dom = {
   attackBtn:           document.getElementById("attackBtn"),
   dodgeBtn:            document.getElementById("dodgeBtn"),
   specialBtn:          document.getElementById("specialBtn"),
+  ultimateBtn:         document.getElementById("ultimateBtn"),
   gaugeInner:          document.getElementById("gaugeInner"),
   gaugeLabel:          document.getElementById("gaugeLabel"),
   totalDamageEl:       document.getElementById("totalDamage"),
@@ -37,7 +38,8 @@ const dom = {
   resultScreen:        document.getElementById("resultScreen"),
   resultTitle:         document.getElementById("resultTitle"),
   resultStats:         document.getElementById("resultStats"),
-  rewardCards:         document.getElementById("rewardCards"),
+  // ★削除: コスチューム3択報酬UI(rewardCards)は廃止。コスチュームは完全にガチャ入手のみに変更。
+  rewardTitle:         document.getElementById("rewardTitle"),
   nextStageBtn:        document.getElementById("nextStageBtn"),
   backToPlazaBtn:      document.getElementById("backToPlazaBtn"),
   endingScreen:        document.getElementById("endingScreen"),
@@ -83,7 +85,11 @@ const state = {
   unlockedStages: 1,
   gameOver:       false,
   lastAttackAt:   0,
-  specialGauge:   0,
+  // ★変更: ゲージ制(specialGauge)から、スキル(5秒)・必殺技(30秒)それぞれ独立した
+  //         クールダウンタイマー制に変更。-Infinityにしておくことで戦闘開始直後は
+  //         両方とも「使用可能」な状態になる。
+  lastSkillAt:    -Infinity,
+  lastUltimateAt: -Infinity,
   dodge: {
     active: false,
     startedAt: 0,

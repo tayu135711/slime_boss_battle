@@ -124,22 +124,34 @@ const CONFIG = {
   player: {
     color: 0x6ee7b7,
     radius: 0.55,
-    moveSpeed: 0.12,
+    // ★変更: 「移動速度を少し下げてほしい」との要望で 0.12 → 0.10 に調整
+    moveSpeed: 0.10,
     startX: 0, startZ: 2.5,
     maxHp: 500,
     invincibleMs: 1000,
-    dodgeCooldownMs: 900,
+    // ★変更: 「回避に5秒のクールタイムを設けてほしい」との要望で 900ms → 5000ms に変更
+    dodgeCooldownMs: 5000,
     dodgeDurationMs: 260,
     dodgeSpeed: 0.32,
     dodgeInvincibleMs: 260,
   },
   battle: {
     attackRange: 3.2,
-    attackCooldownMs: 300,
+    // ★変更: 「攻撃を連打できないようにしてほしい」との要望で 300ms → 550ms に変更。
+    //         キーリピート対策(game.jsのe.repeat無視)と合わせて、単純な連打では
+    //         ダメージが伸びにくいようにする。
+    attackCooldownMs: 550,
     minDamage: 80, maxDamage: 150,
     criticalThreshold: 135,
-    specialGaugePerHit: 18,
-    specialMultiplier: 1.8,
+    // ★変更: 「攻撃を重ねてゲージを貯めたら必殺技」というゲージ制から、
+    //         ご要望の「通常攻撃=何回でも／スキル=5秒に1回／必殺技=30秒に1回」
+    //         という時間クールダウン制に変更。
+    //         スキル(wave/ice/thunder)は★3コスチューム専用の5秒クールダウン技、
+    //         必殺技(光の一撃)は全コスチューム共通の30秒クールダウン技として分離する。
+    skillCooldownMs: 5000,
+    ultimateCooldownMs: 30000,
+    skillMultiplier: 1.0,     // スキル(5秒)のダメージ倍率
+    specialMultiplier: 1.8,   // 必殺技(30秒)のダメージ倍率
     specialMinDamage: 400, specialMaxDamage: 600,
     bossTelegraphMs: 850,
     bossBreakMax: 100,
@@ -156,7 +168,7 @@ const CONFIG = {
 const BUILD_SKILLS = [
   { id: "power", name: "強撃", desc: "通常攻撃のダメージ +20%", attackMult: 1.20 },
   { id: "swift", name: "疾風", desc: "回避クールダウン -30%", dodgeCooldownMult: 0.70 },
-  { id: "focus", name: "集中", desc: "攻撃1回ごとの必殺ゲージ +8", gaugeBonus: 8 },
+  { id: "focus", name: "集中", desc: "攻撃1回ごとにスキル・必殺技のクールダウン-250ms", cooldownReduceMs: 250 },
   { id: "guard", name: "守護", desc: "被ダメージ -20%", defenseMult: 1.25 },
   { id: "critical", name: "会心", desc: "クリティカル判定を緩和", critMult: 1.18 },
   { id: "secondWind", name: "再起", desc: "戦闘開始時にHPを25%回復", startHealRate: 0.25 },
@@ -174,10 +186,13 @@ const COSTUMES = [
   { id:"c11", no:"No.11", name:"まほうつかいスライム", stars:2, color:0xc084fc, weapon:"none",  hat:"witch",   skillId:null,      rarity:0.08 },
   { id:"c12", no:"No.12", name:"ナイトスライム",       stars:2, color:0x94a3b8, weapon:"sword", hat:"knight",  skillId:null,      rarity:0.08 },
   { id:"c13", no:"No.13", name:"もりのスライム",       stars:2, color:0x4ade80, weapon:"none",  hat:"leaf",    skillId:null,      rarity:0.08 },
-  { id:"c21", no:"No.21", name:"キングスライム",       stars:3, color:0x38bdf8, weapon:"none",  hat:"crown",   skillId:"wave",    rarity:0.03 },
-  { id:"c22", no:"No.22", name:"ライリンスライム",     stars:3, color:0xa5f3fc, weapon:"none",  hat:"ice",     skillId:"ice",     rarity:0.03 },
-  { id:"c23", no:"No.23", name:"イカズチスライム",     stars:3, color:0xfde047, weapon:"none",  hat:"thunder", skillId:"thunder", rarity:0.03 },
-  { id:"c24", no:"No.24", name:"スライムスピア",       stars:3, color:0x818cf8, weapon:"spear", hat:null,      skillId:null,      rarity:0.03 },
+  // ★変更: 以前はステージクリア報酬(3択)が★3コスチュームの「ガチャ運が悪くても
+  //         確実に入手できる保険」だったが、コスチューム入手を完全にガチャのみに
+  //         変更したため、その保険がなくなる分ガチャの★3排出率を0.03→0.05に引き上げる。
+  { id:"c21", no:"No.21", name:"キングスライム",       stars:3, color:0x38bdf8, weapon:"none",  hat:"crown",   skillId:"wave",    rarity:0.05 },
+  { id:"c22", no:"No.22", name:"ライリンスライム",     stars:3, color:0xa5f3fc, weapon:"none",  hat:"ice",     skillId:"ice",     rarity:0.05 },
+  { id:"c23", no:"No.23", name:"イカズチスライム",     stars:3, color:0xfde047, weapon:"none",  hat:"thunder", skillId:"thunder", rarity:0.05 },
+  { id:"c24", no:"No.24", name:"スライムスピア",       stars:3, color:0x818cf8, weapon:"spear", hat:null,      skillId:null,      rarity:0.05 },
 ];
 
 // skillId → 表示用の名前・説明（着替え画面で使用）
@@ -188,7 +203,6 @@ const SKILL_INFO = {
     detail: "海の王者の力で衝撃波を3重に放つ。広範囲を一掃する支配者の技。",
     icon: "🌊", color: "#38bdf8",
     bonusDamageRate: 1.0,   // ダメージ倍率ボーナス（通常比）
-    gaugeReduction: 0,       // ゲージ上昇量ボーナス
   },
   ice:     {
     name: "アイスニードル",
@@ -196,49 +210,32 @@ const SKILL_INFO = {
     detail: "敵の周囲に氷柱を6本叩き込む連続ヒット技。クリティカル率が上昇！",
     icon: "🧊", color: "#a5f3fc",
     bonusDamageRate: 1.1,   // ★ 氷は連続ヒットでダメージ1.1倍
-    gaugeReduction: 0,
   },
   thunder: {
     name: "サンダーボルト",
     desc: "天からの雷撃で天罰一撃！",
-    detail: "天空から超高圧の雷を叩き落とす。ゲージが素早く溜まる雷の加護あり。",
+    detail: "天空から超高圧の雷を叩き落とす。再使用が早い雷の加護あり。",
     icon: "⚡", color: "#fde047",
-    bonusDamageRate: 0.95,  // ★ 雷はゲージ効率型なので単発はやや控えめ
-    gaugeReduction: 5,       // ★ 攻撃ごとにゲージが追加で+5される
+    bonusDamageRate: 0.95,     // ★ 雷は連射型なので単発はやや控えめ
+    skillCooldownMult: 0.8,    // ★ 雷スキルはクールダウンが20%短い(5秒→4秒)
   },
 };
+
+// ★追加: スキル(Yボタン)のクールダウン時間を返す。thunderはskillCooldownMultで
+//         短縮されるため、ここで一元的に計算する（useSkill()とUI表示の両方から使う）。
+function getSkillCooldownMs() {
+  const skillId = state.equippedCostume?.skillId;
+  const mult = skillId ? (SKILL_INFO[skillId]?.skillCooldownMult ?? 1) : 1;
+  return CONFIG.battle.skillCooldownMs * mult;
+}
 
 function getGachaPool() {
   const total = COSTUMES.reduce((s, c) => s + c.rarity, 0);
   return COSTUMES.map(c => ({ ...c, weight: c.rarity / total }));
 }
 
-const STAGE_REWARD_POOLS = {
-  1: ["c01", "c02", "c03"],
-  2: ["c01", "c02", "c11"],
-  3: ["c03", "c04", "c12"],
-  4: ["c11", "c12", "c13"],
-  5: ["c12", "c13", "c21"],
-  6: ["c21", "c22", "c23"],
-  // ★修正: ★3スキル持ちコスチューム（wave/ice/thunder）はrarity 0.03と非常に低く、
-  //         ガチャ運が悪いとスキルが一切解放されないまま詰みかねなかった。
-  //         Chapter2の各ステージ報酬にも繰り返し★3を混ぜることで、
-  //         周回すればいずれ全スキルを確実に入手できるようにする。
-  7:  ["c21", "c22", "c23"],
-  8:  ["c21", "c22", "c24"],
-  9:  ["c21", "c23", "c24"],
-  10: ["c22", "c23", "c24"],
-  11: ["c21", "c22", "c23"],
-};
-
-function getStageRewardPool(stageNo) {
-  const ids = STAGE_REWARD_POOLS[stageNo];
-  if (!ids) {
-    const star1 = COSTUMES.filter(c => c.stars === 1);
-    return star1.sort(() => Math.random() - 0.5).slice(0, 3);
-  }
-  return ids.map(id => COSTUMES.find(c => c.id === id)).filter(Boolean);
-}
+// ★削除: ステージクリア時のコスチューム3択報酬(STAGE_REWARD_POOLS/getStageRewardPool)は
+//         廃止した。コスチュームは完全にガチャ入手のみに変更。
 
 // 釣りテーブル
 const FISH_TABLE = [
@@ -270,7 +267,7 @@ const RECIPES = [
   },
   {
     id: "fluffy_omelette", name: "ふわふわオムレツ", icon: "🍳",
-    effectDesc: "元気が出る。必殺技ゲージが始めから少し溜まる。",
+    effectDesc: "元気が出る。スキル・必殺技のクールダウンが始めから少し進んでいる。",
     ingredients: { funa: 1, weed: 1 },
     buff: { specialStart: 20 }
   },

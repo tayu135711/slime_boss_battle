@@ -179,12 +179,12 @@
     <div id="resultBox" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
       <div id="resultTitle">✨ STAGE CLEAR! ✨</div>
       <div id="resultStats"></div>
-      <!-- クリア報酬：コスチューム3択 -->
+      <!-- ★変更: コスチュームは完全にガチャ入手のみにするため、クリア報酬の3択UIを廃止し、
+           ガチャ石を獲得した旨のシンプルな表示に置き換え -->
       <div id="rewardArea">
-        <div id="rewardTitle">🎁 クリア報酬 ─ コスチュームを1つ選択！</div>
-        <div id="rewardCards"></div>
+        <div id="rewardTitle">🎟️ ガチャ石を獲得！広場のガチャでコスチュームを手に入れよう</div>
       </div>
-      <button id="nextStageBtn" style="display:none">次のステージへ ▶</button>
+      <button id="nextStageBtn">次のステージへ ▶</button>
       <button id="backToPlazaBtn">🏡 広場へもどる</button>
     </div>
   </div>
@@ -287,9 +287,13 @@
         <span class="btn-label">Y</span>
         <span class="btn-text" id="specialBtnText">✨スキル</span>
       </button>
+      <button class="action-btn btn-x" id="ultimateBtn" aria-label="必殺技">
+        <span class="btn-label">X</span>
+        <span class="btn-text" id="ultimateBtnText">💥必殺技</span>
+      </button>
       <button class="action-btn btn-dodge" id="dodgeBtn" aria-label="回避">
         <span class="btn-label">B</span>
-        <span class="btn-text">回避</span>
+        <span class="btn-text" id="dodgeBtnText">回避</span>
       </button>
       <button class="action-btn btn-a" id="attackBtn" aria-label="攻撃">
         <span class="btn-label">A</span>
@@ -303,6 +307,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="config.js"></script>
 <script src="se.js"></script>
+<script src="bgm.js"></script>
+<script src="timing_ring.js"></script>
 <script src="costume_art.js"></script>
 <script src="boss_models.js"></script>
 <script src="main.js"></script>

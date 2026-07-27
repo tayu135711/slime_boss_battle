@@ -303,23 +303,33 @@ function buildForestDecor() {
   const half = CONFIG.field.halfSize;
   const rng = (min, max) => Math.random() * (max - min) + min;
 
+  // ★修正: カメラは常に (player.x, offsetY, player.z + offsetZ) に固定オフセットで
+  //         追従する（プレイヤーの向きには回転しない）ため、プレイヤーが
+  //         フィールド端(半径half)まで移動すると、カメラは原点から最大
+  //         sqrt(half² + (half+offsetZ)²) ≈ 27程度の位置まで届いてしまう。
+  //         以前の木の配置(near ringがhalf+1.5〜half+4.5 ≒ 15.5〜18.5)は
+  //         この範囲に完全に収まっており、プレイヤーが端に寄ったときにカメラが
+  //         木の位置と重なって戦闘中の視界を遮ってしまうバグになっていた。
+  //         カメラが絶対に届かない安全マージンを取った半径から木を配置し直す。
+  const CAM_SAFE_R = half + CONFIG.camera.offsetZ + 8; // カメラ最大到達距離+安全マージン
+
   // アリーナ周辺の木（近い輪）
   for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
-    const r = rng(half + 1.5, half + 4.5);
+    const r = rng(CAM_SAFE_R, CAM_SAFE_R + 4);
     const obj = makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(2.8, 5.2));
     three.scene.add(obj); three.battleDecors.push(obj);
   }
 
   // ★ 中距離の木（広い輪 1）
   for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 12) {
-    const r = rng(half + 6, half + 14);
+    const r = rng(CAM_SAFE_R + 6, CAM_SAFE_R + 16);
     const obj = makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(4, 8));
     three.scene.add(obj); three.battleDecors.push(obj);
   }
 
   // ★ 遠距離の木（広い輪 2）
   for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 18) {
-    const r = rng(half + 16, half + 30);
+    const r = rng(CAM_SAFE_R + 18, CAM_SAFE_R + 32);
     const obj = makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(6, 12));
     three.scene.add(obj); three.battleDecors.push(obj);
   }
@@ -327,7 +337,7 @@ function buildForestDecor() {
   // ★ ランダム散在木（オープンワールド感）
   for (let i = 0; i < 40; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const r = rng(half + 5, half + 35);
+    const r = rng(CAM_SAFE_R + 2, CAM_SAFE_R + 36);
     const obj = makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(3, 10));
     three.scene.add(obj); three.battleDecors.push(obj);
   }
@@ -641,6 +651,7 @@ function buildPlayer() {
   three.swordSwing  = { active: false, progress: 0 };  // ナイトスライム用
   three.dashAttack  = { active: false, progress: 0 };  // デフォルト体当たり用
   three.spearThrust = { active: false, progress: 0 };  // スピア用
+  three.specialCast = { active: false, progress: 0, baseRotY: 0 }; // ★追加: 必殺技用
 
   three.playerGroup.position.set(state.player.x, 0, state.player.z);
   three.scene.add(three.playerGroup);

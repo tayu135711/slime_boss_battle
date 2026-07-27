@@ -11,7 +11,7 @@ const QUESTS = {
   fish_delivery: {
     id: "fish_delivery",
     name: "釣り人の頼み",
-    giver: "釣り人スライム（池のほとり）",
+    giver: "釣り人スライム（浜辺）",
     description: "小魚を2匹釣ってきてほしい。",
     goal: 2,
     reward: { type: "accessory", accessoryId: "fishing_rod" },

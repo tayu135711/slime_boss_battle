@@ -6,12 +6,14 @@
 let fishingActive = false;
 let fishingPhase = "idle";
 let fishingTimer = null;
-let fishingHitZone = { start: 0, end: 0 };
+let fishingRingCtrl = null; // ★追加: 円形タイミングゲージの制御オブジェクト
 
 const FISHING_DAILY_LIMIT = 3;
 const FISHING_WAIT_MIN = 3000;
 const FISHING_WAIT_MAX = 7000;
-const FISHING_HIT_DURATION = 800;
+const FISHING_HIT_DURATION = 2400; // ★変更: 円形ゲージの制限時間（約1.3周分、少し余裕を持たせた）
+const FISHING_RING_SPIN_MS = 1800; // ★変更: ポインターが1周するのにかかる時間（速すぎたので少し落ち着かせた）
+const FISHING_RING_ZONE_DEG = 100; // 成功ゾーンの角度幅
 
 let fishingUI = null;
 
@@ -19,14 +21,15 @@ function initFishingUI() {
   if (document.getElementById("fishingUI")) return;
   fishingUI = document.createElement("div");
   fishingUI.id = "fishingUI";
+  // ★変更: 画面全体を覆う暗転ポップアップだと3Dの世界（釣っている自分のスライム）が
+  //         見えなくなってしまうため、小さなパネル＋円形タイミングゲージに変更。
+  //         直線のタイミングバーは廃止し、回転する針が狙いゾーンに重なった瞬間に
+  //         ボタンを押す円形ゲージ(timing_ring.js)に置き換える。
   fishingUI.innerHTML = `
     <div id="fishingBox">
       <div id="fishingPrompt">静かな水面を見つめる…</div>
-      <div id="fishingTimingWrap" style="display:none">
-        <div id="fishingTimingLabel">⏱ 今だ！</div>
-        <div id="fishingTimingTrack">
-          <div id="fishingTimingBar"></div>
-        </div>
+      <div id="fishingRingWrap" style="display:none">
+        <div id="fishingRing"></div>
       </div>
       <div id="fishingAction" style="opacity:0">Ａ でそっと合わせる</div>
     </div>
@@ -80,29 +83,26 @@ function startFishing() {
   fishingTimer = setTimeout(() => {
     if (!fishingActive) return;
     fishingPhase = "strike";
-    document.getElementById("fishingPrompt").textContent = "…きた。";
+    document.getElementById("fishingPrompt").textContent = "…きた。今だ！";
     document.getElementById("fishingAction").style.opacity = "1";
     SE.fishingBite();
-    const now = Date.now();
-    fishingHitZone.start = now;
-    fishingHitZone.end = now + FISHING_HIT_DURATION;
 
-    // ★ タイミングバーを表示してアニメーション開始
-    const wrap = document.getElementById("fishingTimingWrap");
-    const bar  = document.getElementById("fishingTimingBar");
-    if (wrap && bar) {
-      wrap.style.display = "block";
-      bar.style.transition = "none";
-      bar.style.width = "100%";
-      // 1フレーム置いてからアニメーション開始（即0%にならないように）
-      requestAnimationFrame(() => {
-        bar.style.transition = `width ${FISHING_HIT_DURATION}ms linear`;
-        bar.style.width = "0%";
+    // ★変更: 直線タイミングバー→円形タイミングゲージに置き換え。
+    //         回転する針が黄色いゾーンに重なった瞬間にＡボタンで合わせる。
+    const wrap = document.getElementById("fishingRingWrap");
+    const ringEl = document.getElementById("fishingRing");
+    if (wrap && ringEl) {
+      wrap.style.display = "flex";
+      fishingRingCtrl = createTimingRing(ringEl, {
+        durationMs: FISHING_RING_SPIN_MS,
+        zoneSizeDeg: FISHING_RING_ZONE_DEG,
+        ringColor: "#ffe066",
+        onResult: (success) => endFishing(success, success ? undefined : "miss"),
       });
     }
 
     fishingTimer = setTimeout(() => {
-      if (fishingActive && fishingPhase === "strike") endFishing(false, "miss");
+      if (fishingActive && fishingPhase === "strike" && fishingRingCtrl) fishingRingCtrl.timeout();
     }, FISHING_HIT_DURATION);
   }, waitTime);
 }
@@ -113,9 +113,10 @@ function endFishing(success, reason = "miss") {
   fishingActive = false;
   fishingPhase = "idle";
 
-  // ★ タイミングバーを隠す
-  const wrap = document.getElementById("fishingTimingWrap");
+  // ★変更: 円形タイミングゲージの後片付け（直線バーの非表示処理から置き換え）
+  const wrap = document.getElementById("fishingRingWrap");
   if (wrap) wrap.style.display = "none";
+  if (fishingRingCtrl) { fishingRingCtrl.destroy(); fishingRingCtrl = null; }
 
   if (success) {
     const fish = selectFish();
@@ -200,12 +201,9 @@ function fishingAction() {
     return;
   }
   if (fishingPhase !== "strike") return;
-  const now = Date.now();
-  if (now >= fishingHitZone.start && now <= fishingHitZone.end) {
-    endFishing(true);
-  } else {
-    endFishing(false, "miss");
-  }
+  // ★変更: 直線バーの時間窓判定(Date.now())から、円形ゲージの針の角度判定に変更。
+  //         成否はcreateTimingRing()のonResultコールバック(endFishing呼び出し)で処理される。
+  if (fishingRingCtrl) fishingRingCtrl.press();
 }
 
 // ★修正: 以前はchekQuestProgress()内で「現在のインベントリ所持数」から

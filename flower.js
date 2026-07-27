@@ -7,14 +7,27 @@ const FLOWER_TYPES = [
 ];
 
 let flowerUI = null;
+let flowerRingCtrl = null; // ★追加: 円形タイミングゲージの制御オブジェクト
+const FLOWER_RING_SPIN_MS  = 2000; // ★変更: 速すぎたので少し落ち着かせた
+const FLOWER_RING_ZONE_DEG = 130;  // 成功ゾーンの角度幅（釣りより広め＝易しめ）
+const FLOWER_RING_TIMEOUT_MS = 2800;
+let flowerRingTimer = null;
 
 function initFlowerUI() {
   if (document.getElementById("flowerUI")) return;
   flowerUI = document.createElement("div");
   flowerUI.id = "flowerUI";
+  // ★変更: 画面全体を覆う暗転ポップアップだと3Dの世界（花を摘んでいる自分の
+  //         スライム）が見えなくなってしまうため、小さなパネルに変更。
+  //         また、以前はＡボタンを押すだけで確実に摘めていたが、釣りと同じ
+  //         円形タイミングゲージ(timing_ring.js)を追加し、タイミングを合わせて
+  //         摘む楽しさを持たせる。
   flowerUI.innerHTML = `
     <div id="flowerBox">
       <div id="flowerPrompt"></div>
+      <div id="flowerRingWrap" style="display:none">
+        <div id="flowerRing"></div>
+      </div>
       <div id="flowerAction" style="opacity:0">Ａ でそっと摘む</div>
     </div>
   `;
@@ -54,8 +67,25 @@ function pickFlower() {
   initFlowerUI();
   flowerUI.style.display = "flex";
   const flowerType = nearestFlower.userData.flowerType;
-  document.getElementById("flowerPrompt").textContent = `${flowerType.icon} ${flowerType.name} が咲いている…`;
+  document.getElementById("flowerPrompt").textContent = `${flowerType.icon} ${flowerType.name} が咲いている… タイミングを合わせて摘もう！`;
   document.getElementById("flowerAction").style.opacity = "1";
+
+  // ★変更: 円形タイミングゲージを表示する。以前はAボタンを押すだけで確実に
+  //         摘めていたが、釣りと同じ仕組みでタイミングを合わせる楽しさを持たせる。
+  const wrap = document.getElementById("flowerRingWrap");
+  const ringEl = document.getElementById("flowerRing");
+  if (wrap && ringEl) {
+    wrap.style.display = "flex";
+    flowerRingCtrl = createTimingRing(ringEl, {
+      durationMs: FLOWER_RING_SPIN_MS,
+      zoneSizeDeg: FLOWER_RING_ZONE_DEG,
+      ringColor: "#ffb6d9",
+      onResult: (success) => resolvePickFlower(success),
+    });
+  }
+  flowerRingTimer = setTimeout(() => {
+    if (window._flowerWaiting && flowerRingCtrl) flowerRingCtrl.timeout();
+  }, FLOWER_RING_TIMEOUT_MS);
 
   // ★ 自動摘みから「Aボタン待ち」に変更：flowerPhaseフラグで管理
   window._flowerWaiting = true;
@@ -63,16 +93,41 @@ function pickFlower() {
 
 function doPickFlower() {
   if (!window._flowerWaiting) return;
-  // ★修正: 以前は nearestFlower が null/picked済みの場合に早期returnして
-  //         _flowerWaiting が false に戻らず、以降ずっとAボタンが「花摘み待機」に
-  //         乗っ取られたまま固まる可能性があった。必ずここで解除する。
+  // ★変更: 即座に成功させず、円形ゲージのpress()で判定する。
+  //         成否の実処理はresolvePickFlower()（ゲージのonResultコールバック）で行う。
+  if (flowerRingCtrl) flowerRingCtrl.press();
+}
+
+/** 円形ゲージの判定結果を受けて、花摘みの成功/失敗を処理する */
+function resolvePickFlower(success) {
   window._flowerWaiting = false;
+  clearTimeout(flowerRingTimer);
+  flowerRingTimer = null;
+  const wrap = document.getElementById("flowerRingWrap");
+  if (wrap) wrap.style.display = "none";
+  if (flowerRingCtrl) { flowerRingCtrl.destroy(); flowerRingCtrl = null; }
+
   if (!nearestFlower || nearestFlower.userData.picked) {
     if (flowerUI) flowerUI.style.display = "none";
     return;
   }
 
   const flowerType = nearestFlower.userData.flowerType;
+
+  if (!success) {
+    // ★変更: 花は逃げないので、タイミングを外しても日課回数は消費せず、
+    //         花もそのまま咲いた状態を保つ（気軽にもう一度挑戦できるように）。
+    SE.fishingMiss();
+    document.getElementById("flowerPrompt").textContent = "…ちょっとタイミングがずれた。もう一度！";
+    document.getElementById("flowerAction").style.display = "none";
+    setTimeout(() => {
+      flowerUI.style.display = "none";
+      document.getElementById("flowerAction").style.display = "";
+      if (typeof updatePlazaCameraFollow === "function") updatePlazaCameraFollow();
+    }, 1100);
+    return;
+  }
+
   nearestFlower.visible = false;
   nearestFlower.userData.picked = true;
   nearestFlower.userData.respawnTime = Date.now() + 86400000;

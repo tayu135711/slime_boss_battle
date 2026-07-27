@@ -350,9 +350,12 @@
       showToast('💀 ボスHP→1');
     });
     document.getElementById('adminMaxGaugeBtn').addEventListener('click', () => {
-      state.specialGauge = 100;
+      // ★変更: ゲージ制の廃止に伴い、スキル・必殺技のクールダウンを両方即座に
+      //         解除するデバッグ機能に変更。
+      state.lastSkillAt    = -Infinity;
+      state.lastUltimateAt = -Infinity;
       refreshUi();
-      showToast('✨ ゲージMAX！');
+      showToast('✨ クールダウン解除！');
     });
     document.getElementById('adminUnlockAllBtn').addEventListener('click', () => {
       state.unlockedStages = STAGES.length;

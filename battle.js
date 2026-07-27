@@ -198,6 +198,76 @@ function updateSpearThrust(dtScale = 1) {
   }
 }
 
+// ★追加: 必殺技モーション（力を溜める→回転しながら飛び上がる→頂点でキメポーズ→着地）
+// 以前は useSpecialMove() 実行中プレイヤーの体が完全に静止したままで、ボス側の
+// エフェクト（魔法陣・波・氷柱・雷）だけが動く見た目になっており、通常攻撃には
+// 武器ごとの専用モーション（ダッシュ・剣・槍）があるのに必殺技だけ手を抜いたような
+// 印象になっていた。ここに専用のジャンプ＆スピンモーションを追加する。
+function startSpecialCast() {
+  if (!three.playerGroup) return;
+  three.specialCast.active   = true;
+  three.specialCast.progress = 0;
+  // ボスの方を向いた状態を基準に回転させる（通常移動時のrotation.y計算と同じ式）
+  const dx = state.boss.x - state.player.x;
+  const dz = state.boss.z - state.player.z;
+  three.specialCast.baseRotY = Math.atan2(dx, dz);
+}
+
+function updateSpecialCast(dtScale = 1) {
+  if (!three.specialCast?.active) return;
+  three.specialCast.progress += 0.045 * dtScale;
+  const t = three.specialCast.progress;
+
+  let posY, scaleX, scaleY, scaleZ, spin = 0;
+
+  if (t < 0.22) {
+    // ① 力を溜める：ぐっとしゃがみ込む
+    const s = t / 0.22;
+    posY    = -s * 0.16;
+    scaleX  = 1 + s * 0.28;
+    scaleY  = 1 - s * 0.34;
+    scaleZ  = 1 + s * 0.28;
+  } else if (t < 0.55) {
+    // ② 一気に飛び上がりながら1回転して力を解放
+    const s = (t - 0.22) / 0.33;
+    const ease = s < 0.5 ? 4*s*s*s : 1 - Math.pow(-2*s + 2, 3) / 2;
+    posY   = -0.16 + ease * 1.05;
+    scaleX = 1.28 - ease * 0.55;
+    scaleY = 0.66 + ease * 0.7;
+    scaleZ = 1.28 - ease * 0.55;
+    spin   = ease * Math.PI * 2;
+  } else if (t < 0.78) {
+    // ③ 頂点でキメポーズ（ふわっと伸び上がりながらキラっと静止）
+    const s = (t - 0.55) / 0.23;
+    posY   = 0.89 + Math.sin(s * Math.PI) * 0.10;
+    scaleX = 0.73 + s * 0.12;
+    scaleY = 1.36 - s * 0.10;
+    scaleZ = 0.73 + s * 0.12;
+    spin   = Math.PI * 2;
+  } else {
+    // ④ 着地（ぷにっと弾む）
+    const s = (t - 0.78) / 0.22;
+    const ease = 1 - (1 - s) * (1 - s);
+    posY   = 0.89 * (1 - ease);
+    const land = Math.sin(Math.min(1, s * 1.4) * Math.PI);
+    scaleX = 1 + land * 0.18;
+    scaleY = 1 - land * 0.16;
+    scaleZ = 1 + land * 0.18;
+    spin   = Math.PI * 2;
+  }
+
+  three.playerGroup.position.set(state.player.x, posY, state.player.z);
+  three.playerGroup.scale.set(scaleX, scaleY, scaleZ);
+  three.playerGroup.rotation.y = three.specialCast.baseRotY + spin;
+
+  if (t >= 1.0) {
+    three.specialCast.active = false;
+    three.playerGroup.position.set(state.player.x, 0, state.player.z);
+    three.playerGroup.scale.set(1, 1, 1);
+    three.playerGroup.rotation.y = three.specialCast.baseRotY;
+  }
+}
+
 // ── 魔法陣エフェクト ──────────────────────────────────────────
 function spawnMagicCircle() {
   const group = new THREE.Group();
@@ -307,7 +377,7 @@ function attackBoss() {
   if (now - state.lastAttackAt < CONFIG.battle.attackCooldownMs) return;
   state.lastAttackAt = now;
 
-  const { minDamage, maxDamage, criticalThreshold, specialGaugePerHit } = CONFIG.battle;
+  const { minDamage, maxDamage, criticalThreshold } = CONFIG.battle;
   // ★ お弁当バフ（攻撃力・クリティカル率）を反映
   const atkMult  = (state._buffAttackMult  || 1) * (state._buildAttackMult || 1);
   const critMult = (state._buffCritMult    || 1) * (state._buildCritMult || 1);
@@ -322,10 +392,13 @@ function attackBoss() {
   applyBossBreak(damage);
   state.totalDamage += damage;
   state.attackCount += 1;
-  // ★ イカズチスライム装備時はゲージが追加上昇（gaugeReductionを流用）
-  const _thunderBonus = state.equippedCostume?.skillId === "thunder"
-    ? (SKILL_INFO["thunder"]?.gaugeReduction ?? 0) : 0;
-  state.specialGauge = Math.min(100, state.specialGauge + specialGaugePerHit + _thunderBonus + (state._buildGaugeBonus || 0));
+  // ★変更: ゲージ制の廃止に伴い、「攻撃のたびにゲージ上昇」ではなく
+  //         「集中」ビルドスキル所持時に攻撃1回ごとスキル・必殺技の
+  //         クールダウンを少し縮める、という形に変更。
+  if (state._buildCooldownReduceMs) {
+    state.lastSkillAt    -= state._buildCooldownReduceMs;
+    state.lastUltimateAt -= state._buildCooldownReduceMs;
+  }
 
   startAttackMotion();
   // SE: 攻撃
@@ -345,107 +418,88 @@ function attackBoss() {
 }
 
 // ── 全画面スキル演出 ──────────────────────────────────────────
-const SKILL_CINEMATIC = {
-  wave:    { bg: "linear-gradient(135deg,#0ea5e9,#38bdf8,#7dd3fc)", icon: "🌊", color: "#38bdf8" },
-  ice:     { bg: "linear-gradient(135deg,#a5f3fc,#6ee7f7,#bae6fd)", icon: "🧊", color: "#a5f3fc" },
-  thunder: { bg: "linear-gradient(135deg,#fde047,#facc15,#fbbf24)", icon: "⚡", color: "#fde047" },
-  default: { bg: "linear-gradient(135deg,#a78bfa,#c4b5fd,#ede9fe)", icon: "✨", color: "#e9d5ff" },
-};
+// ★削除: 必殺技のたびに画面全体を覆うカットイン演出(showSkillCinematic)は
+//         テンポを損なうとの要望で撤去した。SKILL_CINEMATICの色情報はもう
+//         使わないため、この演出関連コード一式を削除。
 
-function showSkillCinematic(skillId, skillName, onDone) {
-  const cfg = SKILL_CINEMATIC[skillId] || SKILL_CINEMATIC.default;
-  const el = document.createElement("div");
-  el.id = "skillCinematic";
-  el.style.cssText = `
-    position:fixed;inset:0;z-index:9999;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    background:${cfg.bg};
-    opacity:0;transition:opacity 0.18s ease;
-    pointer-events:none;
-  `;
-  el.innerHTML = `
-    <div style="font-size:72px;animation:skillIconPop 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.1s both">${cfg.icon}</div>
-    <div style="font-size:28px;font-weight:900;color:${cfg.color};
-      text-shadow:0 0 20px rgba(255,255,255,0.8),0 2px 4px rgba(0,0,0,0.3);
-      letter-spacing:0.08em;margin-top:12px;
-      animation:skillNameSlide 0.35s cubic-bezier(0.34,1.56,0.64,1) 0.2s both">
-      ${skillName}
-    </div>
-    <div style="font-size:14px;color:rgba(255,255,255,0.85);margin-top:8px;letter-spacing:0.12em;
-      animation:skillNameSlide 0.35s ease 0.3s both">
-      SKILL ACTIVATED
-    </div>
-  `;
-  // アニメ定義（一度だけ追加）
-  if (!document.getElementById("skillCinematicStyle")) {
-    const st = document.createElement("style");
-    st.id = "skillCinematicStyle";
-    st.textContent = `
-      @keyframes skillIconPop {
-        from { opacity:0; transform:scale(0.3) rotate(-20deg); }
-        to   { opacity:1; transform:scale(1)   rotate(0deg);   }
-      }
-      @keyframes skillNameSlide {
-        from { opacity:0; transform:translateY(20px); }
-        to   { opacity:1; transform:translateY(0);    }
-      }
-    `;
-    document.head.appendChild(st);
-  }
-  document.body.appendChild(el);
-  requestAnimationFrame(() => { el.style.opacity = "1"; });
-
-  // 0.7秒表示してフェードアウト後にスキル発動
-  setTimeout(() => {
-    el.style.opacity = "0";
-    setTimeout(() => {
-      el.remove();
-      if (onDone) onDone();
-    }, 180);
-  }, 700);
-}
-
-function useSpecialMove() {
-  if (!state.battleStarted || state.cleared || state.gameOver || state.specialGauge < 100) return;
-  const { specialMinDamage, specialMaxDamage, specialMultiplier } = CONFIG.battle;
-  const base   = Math.floor(Math.random() * (specialMaxDamage - specialMinDamage + 1)) + specialMinDamage;
-  const damage = Math.floor(base * specialMultiplier);
+// ── スキル（★3コスチューム専用・5秒クールダウン） ─────────────
+// wave/ice/thunderは元々「必殺技」枠だったが、ご要望の
+// 「通常攻撃=無制限／スキル=5秒に1回／必殺技=30秒に1回」という設計に合わせ、
+// ★3コスチューム固有の"スキル"としてこちらに分離した。
+function useSkill() {
   const skillId = state.equippedCostume?.skillId || null;
-  const skillName = skillId && SKILL_INFO[skillId] ? SKILL_INFO[skillId].name : "必殺技";
+  if (!state.battleStarted || state.cleared || state.gameOver || !skillId) return;
+  const now = Date.now();
+  if (now - state.lastSkillAt < getSkillCooldownMs()) return;
+  state.lastSkillAt = now;
+
+  const { specialMinDamage, specialMaxDamage, skillMultiplier } = CONFIG.battle;
+  const base = Math.floor(Math.random() * (specialMaxDamage - specialMinDamage + 1)) + specialMinDamage;
+  // ★ attackBoss()と同じくボスの防御中はダメージを軽減する（必殺技と同じ扱いに揃える）
+  let damage = Math.floor(base * skillMultiplier);
+  if (state.bossAI.guarding) damage = Math.max(1, Math.floor(damage * 0.25));
 
   state.currentHp    = Math.max(0, state.currentHp - damage);
   applyBossBreak(damage);
   state.totalDamage += damage;
   state.attackCount += 1;
-  state.specialGauge = 0;
   refreshUi();
 
-  // ★ 全画面演出を挟んでからスキルエフェクト発動
-  showSkillCinematic(skillId, skillName, () => {
-    if (skillId === "wave") {
-      SE.specialWave();
-      spawnWaveSkill(damage);
-    } else if (skillId === "ice") {
-      SE.specialIce();
-      spawnIceSkill(damage);
-    } else if (skillId === "thunder") {
-      SE.specialThunder();
-      spawnThunderSkill(damage);
-    } else {
-      SE.specialDefault();
-      spawnMagicCircle();
-      spawnDamageNumber(damage, true);
-      triggerCameraShake();
-      three.bossMat.color.set(0xffffff);
-      const idx = state.stageIndex;
-      setTimeout(() => { if (!state.cleared) three.bossMat.color.set(getCurrentStage(idx).color); }, 350);
-      three.bossGroup.scale.set(0.6, 0.6, 0.6);
-      setTimeout(() => { if (!state.cleared) three.bossGroup.scale.set(1, 1, 1); }, 200);
-      dom.statusLine.textContent = `✨ 光の必殺技！ 弱点ヒット！ ${damage} ダメージ！！`;
-    }
+  startSpecialCast();
+  if (skillId === "wave") {
+    SE.specialWave();
+    spawnWaveSkill(damage);
+  } else if (skillId === "ice") {
+    SE.specialIce();
+    spawnIceSkill(damage);
+  } else if (skillId === "thunder") {
+    SE.specialThunder();
+    spawnThunderSkill(damage);
+  }
 
-    if (state.currentHp === 0) handleBossDefeated();
-  });
+  if (state.currentHp === 0) handleBossDefeated();
+}
+
+// ── 必殺技（全コスチューム共通・30秒クールダウン） ─────────────
+function useUltimate() {
+  if (!state.battleStarted || state.cleared || state.gameOver) return;
+  const now = Date.now();
+  if (now - state.lastUltimateAt < CONFIG.battle.ultimateCooldownMs) return;
+  state.lastUltimateAt = now;
+
+  const { specialMinDamage, specialMaxDamage, specialMultiplier } = CONFIG.battle;
+  const base = Math.floor(Math.random() * (specialMaxDamage - specialMinDamage + 1)) + specialMinDamage;
+  // ★修正: attackBoss()の通常攻撃はボスの防御中(state.bossAI.guarding)にダメージを
+  //         25%へ軽減しているが、必殺技だけはこの判定が抜けていたため、ガード中でも
+  //         必殺技だけは無条件にフルダメージ（ブレイクゲージ減少も含む）が通ってしまい、
+  //         「🛡 ボスは防御中！ダメージ大幅軽減」という演出・UI表示と矛盾していた上、
+  //         必殺技さえ使えば防御ギミックを丸ごと無視できてしまっていた。
+  //         通常攻撃と同じガード減衰をここにも適用する。
+  let damage = Math.floor(base * specialMultiplier);
+  if (state.bossAI.guarding) damage = Math.max(1, Math.floor(damage * 0.25));
+
+  state.currentHp    = Math.max(0, state.currentHp - damage);
+  applyBossBreak(damage);
+  state.totalDamage += damage;
+  state.attackCount += 1;
+  refreshUi();
+
+  // ★変更: 以前はここで全画面を覆うカットイン演出(showSkillCinematic)を挟んでから
+  //         スキルエフェクトを発動していたが、「演出が邪魔でテンポが悪い」との
+  //         要望があったため撤去。演出を待たず、即座にエフェクトを発動する。
+  startSpecialCast();
+  SE.specialDefault();
+  spawnMagicCircle();
+  spawnDamageNumber(damage, true);
+  triggerCameraShake();
+  three.bossMat.color.set(0xffffff);
+  const idx = state.stageIndex;
+  setTimeout(() => { if (!state.cleared) three.bossMat.color.set(getCurrentStage(idx).color); }, 350);
+  three.bossGroup.scale.set(0.6, 0.6, 0.6);
+  setTimeout(() => { if (!state.cleared) three.bossGroup.scale.set(1, 1, 1); }, 200);
+  dom.statusLine.textContent = `✨ 光の必殺技！ 弱点ヒット！ ${damage} ダメージ！！`;
+
+  if (state.currentHp === 0) handleBossDefeated();
 }
 
 // ── wave スキル（キングスライム）: 衝撃波リング ───────────────
@@ -733,7 +787,16 @@ function startBossMines() {
     three.scene.add(marker);
     three.bossHazards.push(marker);
     let elapsed = 0;
-    (function pulse() {
+    // ★修正: この地雷（mine）演出だけ、animate()のdtScale化や衝撃波(spawnShockwave)の
+    //         修正と同じ根本原因のバグが残っていた。「elapsed += 16」は
+    //         「1フレーム=16ms(60fps)」を前提にした固定加算値で、高リフレッシュレート
+    //         端末（120Hz/144Hzなど）ではrequestAnimationFrameが短い間隔で連続して
+    //         呼ばれるため、実時間よりずっと速く elapsed が900に到達し、爆発（判定）が
+    //         想定より早く発生してしまう（プレイヤーが避ける猶予が実質的に短くなる）。
+    //         spawnShockwave()と同様、performance.now()による経過ミリ秒ベースに変更する。
+    const DURATION_MS = 900;
+    const startTime = performance.now();
+    (function pulse(now) {
       if (state.cleared || state.gameOver || !marker.parent) {
         if (marker.parent) marker.parent.remove(marker);
         marker.geometry.dispose();
@@ -742,10 +805,10 @@ function startBossMines() {
         if (hazardIndex !== -1) three.bossHazards.splice(hazardIndex, 1);
         return;
       }
-      elapsed += 16;
-      marker.scale.setScalar(0.8 + Math.min(elapsed / 900, 1) * 0.2);
+      elapsed = (typeof now === "number" ? now : performance.now()) - startTime;
+      marker.scale.setScalar(0.8 + Math.min(elapsed / DURATION_MS, 1) * 0.2);
       mat.opacity = 0.25 + Math.sin(elapsed * 0.02) * 0.12;
-      if (elapsed < 900) requestAnimationFrame(pulse);
+      if (elapsed < DURATION_MS) requestAnimationFrame(pulse);
       else {
         const dist = Math.hypot(state.player.x - spot.x, state.player.z - spot.z);
         if (dist < 0.95) applyPlayerDamage(damage);
@@ -891,8 +954,11 @@ function applyPlayerDamage(damage) {
   if (now < state.player.invincibleUntil) {
     if (state.dodge.active && !state.dodge.perfectRewarded) {
       state.dodge.perfectRewarded = true;
-      state.specialGauge = Math.min(100, state.specialGauge + 12);
-      dom.statusLine.textContent = "✨ ジャスト回避！ 必殺ゲージ上昇";
+      // ★変更: ゲージ制の廃止に伴い、ジャスト回避の報酬を
+      //         「スキル・必殺技のクールダウンを一部短縮する」形に変更。
+      state.lastSkillAt    -= CONFIG.battle.skillCooldownMs    * 0.12;
+      state.lastUltimateAt -= CONFIG.battle.ultimateCooldownMs * 0.12;
+      dom.statusLine.textContent = "✨ ジャスト回避！ クールダウン短縮！";
       refreshUi();
     }
     return;
@@ -931,6 +997,7 @@ function applyPlayerDamage(damage) {
 function handleGameOver() {
   state.gameOver = true;
   SE.gameOver();
+  BGM.stop(); // ★追加: 戦闘BGMを止める
   dom.gameOverScreen.classList.add("visible");
   dom.statusLine.textContent = "";
   clearBentoBuffs(); // ★修正: このバトルで使い切ったお弁当バフをここでクリアする

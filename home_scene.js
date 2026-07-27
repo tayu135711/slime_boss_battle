@@ -45,6 +45,11 @@ const PLAZA_BUILDINGS = [
   { type: "restaurant",  label: "🍜 食　堂",     x:  15, z: -10, color: 0xc84040 },
   { type: "pond_area",   label: "🎣 釣り場",     x:  18, z:   6, color: 0x2a7a96 },
   { type: "flower_area", label: "🌸 花　畑",     x: -16, z:  14, color: 0xd45090 },
+  // ★追加: 以前はガチャ画面(#gachaScreen)への入り口が menuScreen 上の
+  //         ボタンにしか存在せず、その menuScreen 自体はエンディング後の
+  //         「タイトルへ」経由でしかほぼ表示されなかったため、通常プレイでは
+  //         ガチャに辿り着く手段が実質なかった。広場に専用の建物を追加する。
+  { type: "gacha",       label: "🎰 ガチャ処",   x:   0, z:  18, color: 0xD4A84B },
 ];
 
 const PLAZA_ENTER_RADIUS = 5;
@@ -735,6 +740,56 @@ function buildPlazaBuildings() {
       const win = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.1),
         new THREE.MeshStandardMaterial({ color: 0xffccee, roughness: 0.1, transparent: true, opacity: 0.8 }));
       win.position.set(-1.2, 2.0, 1.77); group.add(win);
+
+    } else if (def.type === "gacha") {
+      // 🎰 ガチャ処：ガシャポン風の丸いドームにカラフルなカプセルが詰まった屋台
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.3, 2.6, 10),
+        new THREE.MeshStandardMaterial({ color: 0xB8862E, roughness: 0.6 }));
+      body.position.y = 1.3; body.castShadow = true; body.receiveShadow = true; group.add(body);
+
+      // 金の帯（アクセントライン）
+      [0.5, 1.3, 2.1].forEach(py => {
+        const band = new THREE.Mesh(new THREE.CylinderGeometry(2.05, 2.05, 0.16, 10),
+          new THREE.MeshStandardMaterial({ color: 0xEAC868, roughness: 0.5, metalness: 0.3 }));
+        band.position.y = py; group.add(band);
+      });
+
+      // 大きな透明ドーム（ガシャポンの球体部分）
+      const dome = new THREE.Mesh(
+        new THREE.SphereGeometry(1.9, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.MeshStandardMaterial({ color: 0xdff3ff, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.55 })
+      );
+      dome.position.y = 2.6; dome.castShadow = true; group.add(dome);
+
+      // ドームの中に詰まったカラフルなカプセル
+      const capsuleColors = [0xff6b6b, 0xffe066, 0x7fe0ff, 0xa78bfa, 0x7fff6b, 0xff9ecf];
+      for (let i = 0; i < 14; i++) {
+        const a  = Math.random() * Math.PI * 2;
+        const rr = Math.random() * 1.35;
+        const capsule = new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 6),
+          new THREE.MeshStandardMaterial({ color: capsuleColors[i % capsuleColors.length], roughness: 0.4 }));
+        capsule.position.set(Math.cos(a) * rr, 1.75 + Math.random() * 0.7, Math.sin(a) * rr * 0.9);
+        group.add(capsule);
+      }
+
+      // 頂点の星飾り
+      const topStar = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.5, 5),
+        new THREE.MeshStandardMaterial({ color: 0xffe066, emissive: 0xffcc00, emissiveIntensity: 0.4 }));
+      topStar.position.y = 4.5; group.add(topStar);
+
+      // ハンドル（レバー）
+      const leverArm = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.7, 6),
+        new THREE.MeshStandardMaterial({ color: 0xd8203a, roughness: 0.5 }));
+      leverArm.position.set(2.05, 1.1, 0); leverArm.rotation.z = Math.PI / 5; group.add(leverArm);
+      const leverKnob = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6),
+        new THREE.MeshStandardMaterial({ color: 0xffe066, roughness: 0.4 }));
+      leverKnob.position.set(2.35, 1.45, 0); group.add(leverKnob);
+
+      // 取り出し口
+      const slot = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.45, 0.15),
+        new THREE.MeshStandardMaterial({ color: 0x2a1a08, roughness: 0.9 }));
+      slot.position.set(0, 0.45, 2.05); group.add(slot);
+
     }
 
     group.position.set(def.x, 0, def.z);
@@ -1041,14 +1096,11 @@ function buildFlowerField() {
 function buildDistantTrees() {
   const WALL = PLAZA_FIELD_LIMIT;
 
-  // ★ 建物の座標（木と被らないようにスキップ）
-  const BUILDING_EXCLUSIONS = [
-    { x:  0, z: -18, r: 6 },
-    { x: -15, z: -10, r: 6 },
-    { x:  15, z: -10, r: 6 },
-    { x:  18, z:   6, r: 7 },
-    { x: -16, z:  14, r: 7 },
-  ];
+  // ★修正: 以前は建物座標をここに手打ちで複製しており、PLAZA_BUILDINGSに
+  //         建物を追加してもここを更新し忘れると新しい建物の周りに木が
+  //         生えてしまう(またはその逆)不整合の原因になっていた。
+  //         PLAZA_BUILDINGSから動的に生成し、二重管理をなくす。
+  const BUILDING_EXCLUSIONS = PLAZA_BUILDINGS.map(b => ({ x: b.x, z: b.z, r: 7 }));
   function isTooClose(x, z) {
     return BUILDING_EXCLUSIONS.some(b => Math.hypot(x - b.x, z - b.z) < b.r);
   }
@@ -1423,7 +1475,8 @@ function checkPlazaEntrances() {
       break;
     }
   }
-  plazaNearFountain = Math.hypot(plazaPlayer.x - plaza.fountainPos.x, plazaPlayer.z - plaza.fountainPos.z) < FOUNTAIN_INTERACT_RADIUS;
+  // ★変更: 噴水での全回復機能は撤去したため、近接判定自体もう行わない
+  //         （plazaNearFountainは常にfalseのまま。以降のプロンプト/アクション分岐からも削除済み）
   plazaNearPond = Math.hypot(plazaPlayer.x - plaza.pondPos.x, plazaPlayer.z - plaza.pondPos.z) < POND_INTERACT_RADIUS;
   if (plaza.bench) plazaNearBench = Math.hypot(plazaPlayer.x - plaza.bench.position.x, plazaPlayer.z - plaza.bench.position.z) < BENCH_INTERACT_RADIUS;
   // ★修正: ベンチから離れても_benchBentoReadyが4秒間(またはexitHomePlazaまで)残り続け、
@@ -1458,9 +1511,6 @@ function checkPlazaEntrances() {
     dom.plazaActionPrompt.classList.add("visible");
   } else if (plazaNearNPC) {
     dom.plazaActionPrompt.textContent = `Ａ ではなしかける`;
-    dom.plazaActionPrompt.classList.add("visible");
-  } else if (plazaNearFountain) {
-    dom.plazaActionPrompt.textContent = `Ａ で回復する`;
     dom.plazaActionPrompt.classList.add("visible");
   } else if (plazaNearBench) {
     dom.plazaActionPrompt.textContent = `Ａ でベンチに座る`;
@@ -1514,11 +1564,11 @@ function handlePlazaAction() {
     else if (plazaNearBuilding.type === "restaurant") { showCooking(); }
     else if (plazaNearBuilding.type === "pond_area")  { enterPondArea(); }
     else if (plazaNearBuilding.type === "flower_area"){ enterFlowerArea(); }
+    else if (plazaNearBuilding.type === "gacha")      { showGacha(); }
   }
   else if (plazaNearFlower && nearestFlower) { pickFlower(); }
   else if (plazaNearPond)       { startFishing(); }
   else if (plazaNearNPC)        { startNPCConversation(plazaNearNPC); }
-  else if (plazaNearFountain)   { recoverAtFountain(); }
   else if (plazaNearBench)      { sitOnBench(); }
 }
 
@@ -1575,6 +1625,7 @@ function enterPondArea() {
   enterAreaWithFade("🎣 釣り場", () => {
     currentSubArea = "pond";
     showSubAreaBackButton("pond");
+    BGM.play("ocean"); // ★追加: 釣り場(海)専用BGMに切り替え
 
     // サブエリアのシーングループを切り替え
     setPlazaObjectsVisible(false);
@@ -1613,7 +1664,7 @@ function enterPondArea() {
     if (state.dailyFishCount >= FISHING_DAILY_LIMIT) {
       dom.statusLine.textContent = "🎣 今日はもう十分。また明日おいで。";
     } else {
-      dom.statusLine.textContent = "池のほとりに来た。Ａ で釣り糸を垂らそう！";
+      dom.statusLine.textContent = "浜辺に着いた。Ａ で釣り糸を垂らそう！";
     }
     setTimeout(() => dom.statusLine.textContent = "", 3000);
     // ★ 自動でstartFishingを呼ばない → プレイヤーがAボタンで開始する
@@ -1717,17 +1768,20 @@ function showSubAreaBackButton(areaType) {
       "left:50%",
       "transform:translateX(-50%)",
       "z-index:150",
-      "padding:14px 32px",
-      "min-height:52px",
-      "background:rgba(255,240,255,0.92)",
-      "color:#9a3080",
-      "border:2px solid #d070b0",
-      "border-radius:24px",
-      "font-size:16px",
+      "padding:12px 28px",
+      "min-height:48px",
+      // ★変更: このゲーム全体の木・葉・テラコッタ・ゴールド基調の配色から
+      //         浮いていた鮮やかなピンクをやめ、クリーム×バーク（茶色）の
+      //         落ち着いた配色にして目立ちすぎないようにする。
+      "background:rgba(255,248,237,0.94)",
+      "color:#6a4a2a",
+      "border:2px solid #A8875E",
+      "border-radius:20px",
+      "font-size:15px",
       "font-weight:700",
       "cursor:pointer",
-      "box-shadow:0 2px 12px rgba(200,100,180,0.25)",
-      "letter-spacing:0.08em",
+      "box-shadow:0 2px 10px rgba(90,60,30,0.22)",
+      "letter-spacing:0.06em",
       "touch-action:manipulation",
     ].join(";");
     document.body.appendChild(btn);
@@ -1773,6 +1827,7 @@ function leaveSubArea() {
     setPlazaObjectsVisible(true);
     setPondSceneVisible(false);
     setFlowerSceneVisible(false);
+    BGM.play("plaza"); // ★追加: 広場BGMに戻す
     plazaPlayer.x = returnPos.x;
     plazaPlayer.z = returnPos.z;
     if (plaza.playerMesh) plaza.playerMesh.position.set(plazaPlayer.x, 0, plazaPlayer.z);
@@ -1782,13 +1837,8 @@ function leaveSubArea() {
   });
 }
 
-function recoverAtFountain() {
-  state.player.hp = CONFIG.player.maxHp;
-  state.specialGauge = 100;
-  dom.statusLine.textContent = "💧 噴水の力で全回復した！";
-  setTimeout(() => dom.statusLine.textContent = "", 2000);
-  refreshUi();
-}
+// ★削除: 噴水での全回復機能(recoverAtFountain)は要望により撤去した。
+//         噴水オブジェクト自体は広場の装飾として残っている。
 
 function sitOnBench() {
   state.keys = { up: false, down: false, left: false, right: false, action: false };
@@ -1851,7 +1901,7 @@ function eatBentoOnBench() {
   if (buff.speedUp)    parts.push(`速度×${buff.speedUp}`);
   if (buff.critUp)     parts.push(`会心×${buff.critUp}`);
   if (buff.defenseUp)  parts.push(`防御×${buff.defenseUp}`);
-  if (buff.specialStart) parts.push(`ゲージ+${buff.specialStart}%`);
+  if (buff.specialStart) parts.push(`スキル・必殺技CD-${buff.specialStart}%`);
   const msg = parts.length > 0 ? parts.join("・") : "なんだか元気が出てきた！";
 
   dom.statusLine.textContent = `${recipe.icon} ${recipe.name} を食べた。${msg}`;
@@ -2417,49 +2467,53 @@ function buildPondScene() {
   //         position.set()に直接 plaza.pondPos を加算する方式にする。
   three.scene.add(plaza.pondSceneGroup);
 
-  // 地面
-  const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(150, 150),
-    new THREE.MeshStandardMaterial({ color: 0x4d9c4a, roughness: 0.9 })
+  // ★修正: 前回0.5→0.1に薄くしたが、実はプレイヤーは常に y=0 固定で描画されるため、
+  //         「高さ0.1の箱」でも下半分(y=0〜0.05)にスライムの下部がめり込んで見える
+  //         状態は変わっていなかった（埋もれるバグの本当の原因は厚みではなく、
+  //         y=0基準のプレイヤーに対して地面側が浮いていたこと）。
+  //         海面・砂浜・桟橋をすべてy≈0（z-fighting防止のためのごく僅かな差のみ）に揃える。
+  const ocean = new THREE.Mesh(
+    new THREE.PlaneGeometry(300, 300),
+    new THREE.MeshStandardMaterial({ color: 0x2f7fc4, roughness: 0.25, metalness: 0.25, transparent: true, opacity: 0.92 })
   );
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.set(plaza.pondPos.x, 0, plaza.pondPos.z);
-  ground.receiveShadow = true;
-  plaza.pondSceneGroup.add(ground);
+  ocean.rotation.x = -Math.PI / 2;
+  ocean.position.set(plaza.pondPos.x, 0, plaza.pondPos.z);
+  ocean.receiveShadow = true;
+  plaza.pondSceneGroup.add(ocean);
+  plaza.pondOcean = ocean; // ★波アニメ(updateFountain等と同様の揺らぎ)用に保持
 
-  // 巨大な池
-  const pond = new THREE.Mesh(
-    new THREE.CylinderGeometry(15, 15, 0.4, 32),
-    new THREE.MeshStandardMaterial({ color: 0x4a9cd4, roughness: 0.2, metalness: 0.3, transparent: true, opacity: 0.85 })
+  // 桟橋の付け根の小さな砂浜（プレイヤーの上陸地点）
+  const beach = new THREE.Mesh(
+    new THREE.CircleGeometry(8, 24),
+    new THREE.MeshStandardMaterial({ color: 0xe8d5a0, roughness: 0.95 })
   );
-  pond.position.set(plaza.pondPos.x, 0.2, plaza.pondPos.z);
-  pond.receiveShadow = true;
-  plaza.pondSceneGroup.add(pond);
+  beach.rotation.x = -Math.PI / 2;
+  beach.position.set(plaza.pondPos.x, 0.005, plaza.pondPos.z + 8);
+  beach.receiveShadow = true;
+  plaza.pondSceneGroup.add(beach);
 
   // 釣り桟橋
+  // ★修正: 高さ0.1の箱をy=0.05center配置にしていたが、プレイヤーはy=0固定描画のため
+  //         箱の下半分にスライムがめり込んで見えていた。箱をごく薄く(0.02)した上で
+  //         底面がほぼy=0に来るよう配置し、プレイヤーが埋もれないようにする。
   const dock = new THREE.Mesh(
-    new THREE.BoxGeometry(4, 0.6, 6),
+    new THREE.BoxGeometry(4, 0.02, 6),
     new THREE.MeshStandardMaterial({ color: 0x7a5030, roughness: 0.9 })
   );
-  // ★修正: 以前は pondPos.z + 10 (中心から距離7〜13) に配置されており、
-  //         POND_INTERACT_RADIUS(4.5)の範囲に桟橋のどこにいても絶対に入れず、
-  //         「桟橋の先端に行けば釣れる」という案内どおりに動いても永遠に釣りが
-  //         発動しないバグになっていた。桟橋を中心に近づけ、先端(中心側の端)が
-  //         判定範囲(距離3)に収まるようにする。
-  dock.position.set(plaza.pondPos.x, 0.5, plaza.pondPos.z + 6);
+  dock.position.set(plaza.pondPos.x, 0.01, plaza.pondPos.z + 6);
   dock.castShadow = true;
   dock.receiveShadow = true;
   plaza.pondSceneGroup.add(dock);
 
-  // 周囲の木々
+  // 周囲の木々（砂浜の外周のみ・海上には配置しない）
   // ★軽量化: 40本→18本に削減（サブエリアは表示中ずっとシャドウ計算コストがかかるため）
   for (let i = 0; i < 18; i++) {
     const geo = new THREE.CylinderGeometry(0, 2 + Math.random(), 6 + Math.random() * 4, 5);
     const mat = new THREE.MeshStandardMaterial({ color: 0x2d6c2a, roughness: 0.9 });
     const tree = new THREE.Mesh(geo, mat);
-    const angle = Math.random() * Math.PI * 2;
+    const angle = Math.PI * 0.15 + Math.random() * (Math.PI * 0.7); // 砂浜奥側の弧にだけ配置
     const r = 20 + Math.random() * 30;
-    tree.position.set(plaza.pondPos.x + Math.cos(angle) * r, tree.geometry.parameters.height / 2, plaza.pondPos.z + Math.sin(angle) * r);
+    tree.position.set(plaza.pondPos.x + Math.cos(angle) * r, tree.geometry.parameters.height / 2, plaza.pondPos.z + 8 + Math.sin(angle) * r);
     tree.rotation.y = Math.random() * Math.PI;
     tree.castShadow = true;
     plaza.pondSceneGroup.add(tree);

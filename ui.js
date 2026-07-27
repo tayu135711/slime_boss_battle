@@ -26,23 +26,9 @@ function refreshUi() {
   else if (hpPct < 50) dom.hpBarInner.style.background = "linear-gradient(90deg,#ff4d4d,#ff8c42)";
   else                 dom.hpBarInner.style.background = "linear-gradient(90deg,#ffb347,#ffd166)";
   document.getElementById("bossHpBar")?.setAttribute("aria-valuenow", Math.round(hpPct));
-  // 必殺技ゲージ
-  dom.gaugeInner.style.width = state.specialGauge + "%";
-  // ★ スキル持ちコスチュームはスキル名を表示、なければ「必殺技」
-  const _skillId = state.equippedCostume?.skillId;
-  const _skillInfo = _skillId ? SKILL_INFO[_skillId] : null;
-  const _skillLabel = _skillInfo ? _skillInfo.name : "必殺技";
-  dom.gaugeLabel.textContent = `${_skillLabel}ゲージ: ${state.specialGauge}%`;
-  // ★ ボタンテキストもスキル名に変更
-  const _btnText = document.getElementById("specialBtnText");
-  if (_btnText) {
-    const _icon = _skillInfo?.icon ?? "✨";
-    _btnText.textContent = `${_icon}${_skillLabel.length > 5 ? _skillLabel.slice(0,5) : _skillLabel}`;
-  }
-  const wasNotFull = !dom.specialBtn.classList.contains("visible");
-  dom.specialBtn.classList.toggle("visible", state.specialGauge >= 100);
-  if (wasNotFull && state.specialGauge >= 100) SE.gaugeFull();
-  document.getElementById("gaugeBar")?.setAttribute("aria-valuenow", state.specialGauge);
+  // ★変更: 必殺技ゲージ(0-100%)の表示は、スキル/必殺技のクールダウン制への変更に伴い
+  //         updateAttackButtonState()（毎フレーム呼ばれる）側に移設した。
+  //         そちらで時間経過に応じた滑らかな表示更新を行う。
   // 統計
   dom.totalDamageEl.textContent = state.totalDamage;
   dom.attackCountEl.textContent = state.attackCount;
@@ -63,6 +49,56 @@ function updateAttackButtonState() {
   dom.attackBtn.classList.toggle("disabled-look", !inRange);
   three.rangeRingMat.color.set(inRange ? 0x4466cc : 0xffffff);
   three.rangeRingMat.opacity = inRange ? 0.35 : 0.12;
+
+  // ★追加: スキル(5秒CD)・必殺技(30秒CD)のクールダウンを毎フレーム更新する。
+  //         ゲージ制の廃止に伴い、refreshUi()（アクション発生時のみ呼ばれる）ではなく
+  //         こちら（毎フレーム呼ばれる）で時間経過に応じた滑らかな表示にする。
+  const now = Date.now();
+
+  // ── スキル（Yボタン・★3コスチューム専用） ──
+  const skillId = state.equippedCostume?.skillId;
+  const skillInfo = skillId ? SKILL_INFO[skillId] : null;
+  const skillBtnText = document.getElementById("specialBtnText");
+  if (skillInfo) {
+    dom.specialBtn.classList.add("skill-available");
+    const remainMs = Math.max(0, getSkillCooldownMs() - (now - state.lastSkillAt));
+    const ready = remainMs <= 0;
+    dom.specialBtn.classList.toggle("visible", ready);
+    dom.specialBtn.classList.toggle("disabled-look", !ready);
+    if (skillBtnText) {
+      const label = skillInfo.name.length > 5 ? skillInfo.name.slice(0, 5) : skillInfo.name;
+      skillBtnText.textContent = ready ? `${skillInfo.icon}${label}` : `${(remainMs / 1000).toFixed(1)}s`;
+    }
+  } else {
+    // ★3以外のコスチュームはスキルを持たないため、ボタン自体を隠す
+    dom.specialBtn.classList.remove("skill-available", "visible", "disabled-look");
+  }
+
+  // ★追加: 回避のクールダウン(5秒)が長くなったため、準備完了までの残り秒数を
+  //         スキル/必殺技ボタンと同じ要領でボタン上に表示する。
+  const dodgeCooldownMs = CONFIG.player.dodgeCooldownMs * (state._buildDodgeCooldownMult || 1);
+  const dodgeRemainMs = Math.max(0, dodgeCooldownMs - (now - state.dodge.lastUsedAt));
+  const dodgeReady = dodgeRemainMs <= 0;
+  dom.dodgeBtn?.classList.toggle("disabled-look", !dodgeReady);
+  const dodgeBtnText = document.getElementById("dodgeBtnText");
+  if (dodgeBtnText) dodgeBtnText.textContent = dodgeReady ? "回避" : `${(dodgeRemainMs / 1000).toFixed(1)}s`;
+
+  // ── 必殺技（Xボタン・全コスチューム共通） ──
+  const uElapsed = now - state.lastUltimateAt;
+  const uRemainMs = Math.max(0, CONFIG.battle.ultimateCooldownMs - uElapsed);
+  const uReady = uRemainMs <= 0;
+  const wasReady = dom.ultimateBtn.classList.contains("visible");
+  dom.ultimateBtn.classList.toggle("visible", uReady);
+  dom.ultimateBtn.classList.toggle("disabled-look", !uReady);
+  if (!wasReady && uReady) SE.gaugeFull();
+  const ultimateBtnText = document.getElementById("ultimateBtnText");
+  if (ultimateBtnText) ultimateBtnText.textContent = uReady ? "💥必殺技" : `${Math.ceil(uRemainMs / 1000)}s`;
+
+  // 上部のゲージバーは必殺技のクールダウン進捗（0〜100%）を表示する
+  const uPct = Math.min(100, Math.max(0, (uElapsed / CONFIG.battle.ultimateCooldownMs) * 100));
+  dom.gaugeInner.style.width = uPct + "%";
+  dom.gaugeLabel.textContent = uReady ? "必殺技: 使用可能！" : `必殺技: 準備中… 残り${Math.ceil(uRemainMs / 1000)}秒`;
+  document.getElementById("gaugeBar")?.setAttribute("aria-valuenow", Math.round(uPct));
 }
 
 // ── タイトル・メニュー ────────────────────────────────────────
@@ -127,6 +163,7 @@ function showHomePlaza() {
   dom.homePlazaScreen.classList.add("visible");
   SE.resume();
   SE.plazaEnter();
+  BGM.play("plaza");
   // マップボタンを表示
   if (typeof updateMapBtnVisibility === "function") updateMapBtnVisibility();
   // 広場を初期化
@@ -498,19 +535,34 @@ function startStage() {
 
   state.stageStartAt  = Date.now();
   state.battleStarted = true;
+  // ★変更: スキル・必殺技のクールダウンを開始時点でリセット（-Infinityにして即使用可能に）
+  state.lastSkillAt    = -Infinity;
+  state.lastUltimateAt = -Infinity;
   const build = state.buildSkills[0];
   state._buildAttackMult = build?.attackMult || 1;
   state._buildDefenseMult = build?.defenseMult || 1;
   state._buildCritMult = build?.critMult || 1;
-  state._buildGaugeBonus = build?.gaugeBonus || 0;
+  // ★変更: ゲージ制の廃止に伴い、gaugeBonus(攻撃ごとのゲージ加算) →
+  //         cooldownReduceMs(攻撃ごとのクールダウン短縮量)に変更
+  state._buildCooldownReduceMs = build?.cooldownReduceMs || 0;
   state._buildDodgeCooldownMult = build?.dodgeCooldownMult || 1;
   if (build?.startHealRate) state.player.hp = Math.min(CONFIG.player.maxHp, state.player.hp + Math.floor(CONFIG.player.maxHp * build.startHealRate));
   SE.resume();
   SE.battleStart();
+  // ★追加: 戦闘BGM再生。「古王スライム・ガガントス」(stageIndex 5)と
+  //         「古王ガガントス」(stageIndex 10)は各チャプターの最終ボスなので
+  //         専用の壮大な曲(battle_finalboss)に切り替える。
+  const isFinalBoss = (state.stageIndex === 5 || state.stageIndex === 10);
+  BGM.play(isFinalBoss ? "battle_finalboss" : "battle");
 
-  // ★ お弁当バフ：specialStart を初期ゲージに反映
+  // ★変更: お弁当バフ(specialStart)は「ゲージが最初から溜まっている」ではなく
+  //         「スキル・必殺技のクールダウンが最初から一部進んでいる」という扱いに変更。
+  //         例えばspecialStart=20なら、両方のクールダウンが20%進んだ状態で始まる。
   if (state._buffSpecialStart) {
-    state.specialGauge = Math.min(100, state._buffSpecialStart);
+    const headStartRate = Math.min(100, state._buffSpecialStart) / 100;
+    const startedAt = Date.now();
+    state.lastSkillAt    = startedAt - CONFIG.battle.skillCooldownMs    * headStartRate;
+    state.lastUltimateAt = startedAt - CONFIG.battle.ultimateCooldownMs * headStartRate;
     state._buffSpecialStart = 0;
   }
 
@@ -543,9 +595,13 @@ function handleBossDefeated() {
   state.cleared = true;
   clearBentoBuffs(); // ★修正: このバトルで使い切ったお弁当バフをここでクリアする
   SE.victory();
+  // ★追加: 戦闘BGMを止めて勝利ジングルを再生
+  BGM.stop();
+  BGM.playJingle("victory");
   dom.attackBtn.disabled = true;
   dom.attackBtn.classList.add("disabled-look");
   dom.specialBtn.classList.remove("visible");
+  dom.ultimateBtn.classList.remove("visible");
   three.bossMesh.material.transparent = true;
   three.bossMesh.material.opacity     = 0.3;
 
@@ -596,72 +652,15 @@ function handleBossDefeated() {
         three.slimeParts.bodyMat.color.set(state.equippedCostume?.color ?? CONFIG.player.color);
       }
 
-      // ─ コスチューム3択報酬 ─
-      renderRewardChoices(stg.stageNo);
+      // ★変更: コスチュームは完全にガチャ入手のみにするため、3択報酬は廃止。
+      //         代わりに獲得したガチャ石の枚数を表示する。
+      dom.rewardTitle.textContent = `🎟️ ガチャ石 +${stg.chapter >= 2 ? 2 : 1} 獲得！広場のガチャでコスチュームを手に入れよう`;
+      saveToServer();
 
-      dom.nextStageBtn.style.display = "none";  // 選択後に表示する
+      dom.nextStageBtn.style.display = "";
       dom.resultScreen.classList.add("visible");
     }
   }, 800);
-}
-
-/** ステージ番号に対応した3択コスチューム選択UIを描画 */
-function renderRewardChoices(stageNo) {
-  const pool = getStageRewardPool(stageNo);
-  let html = "";
-  pool.forEach(c => {
-    const rareCls  = c.stars === 3 ? "reward-card-r3" : c.stars === 2 ? "reward-card-r2" : "reward-card-r1";
-    const owned    = !!state.ownedCostumes.find(o => o.id === c.id);
-    const equipped = state.equippedCostume?.id === c.id;
-    html += `<div class="reward-card ${rareCls}" data-id="${c.id}">
-      <div class="reward-card-art">${getSlimeSVG(c.id, 72)}</div>
-      <div class="reward-card-stars">${"⭐".repeat(c.stars)}</div>
-      <div class="reward-card-name">${c.name}</div>
-      <div class="reward-card-weapon">${weaponLabel(c.weapon)}</div>
-      ${owned    ? '<div class="reward-card-badge owned">所持済み</div>' : ""}
-      ${equipped ? '<div class="reward-card-badge equip">装備中</div>'  : ""}
-    </div>`;
-  });
-  dom.rewardCards.innerHTML = html;
-
-  // ★修正: 以前はどのカードをクリックしても取得できてしまい、
-  //         3枚とも順にクリックすれば3体とも無料で入手できるバグがあった。
-  //         「3択のうち1体だけ選べる」よう、一度選んだら他のカードを無効化する。
-  let rewardChosen = false;
-
-  // カードクリックで取得 & 装備（1回だけ）
-  dom.rewardCards.querySelectorAll(".reward-card").forEach(card => {
-    card.addEventListener("click", () => {
-      if (rewardChosen) return; // ★ 既に選択済みなら何もしない
-      const costume = COSTUMES.find(c => c.id === card.dataset.id);
-      if (!costume) return;
-
-      rewardChosen = true;
-
-      // 所持リストに追加
-      if (!state.ownedCostumes.find(o => o.id === costume.id)) {
-        state.ownedCostumes.push(costume);
-      }
-      // 装備
-      equipCostume(costume);
-
-      // 選択済みスタイル・他のカードは選べないように無効化
-      dom.rewardCards.querySelectorAll(".reward-card").forEach(c => {
-        c.classList.remove("reward-selected");
-        if (c !== card) {
-          c.classList.add("reward-card-locked");
-          c.style.pointerEvents = "none";
-        }
-      });
-      card.classList.add("reward-selected");
-
-      // ★ クリア報酬取得後にセーブ
-      saveToServer();
-
-      // 次のステージへボタンを出す
-      dom.nextStageBtn.style.display = "";
-    });
-  });
 }
 
 // ── リセット ──────────────────────────────────────────────────
@@ -675,7 +674,8 @@ function resetBattle() {
   state.gameOver      = false;
   state.battleStarted = false;
   state.lastAttackAt  = 0;
-  state.specialGauge  = 0;
+  state.lastSkillAt    = -Infinity;
+  state.lastUltimateAt = -Infinity;
   state.dodge.active  = false;
   state.dodge.lastUsedAt = -Infinity;
 
@@ -694,6 +694,11 @@ function resetBattle() {
   if (three.spearThrust) {
     three.spearThrust = { active: false, progress: 0 };
     if (three.spearPivot) { three.spearPivot.position.set(0, 0, 0); }
+  }
+  // ★追加: 必殺技モーションもリセット（ダッシュ/剣/槍と同様、リセット時に位置・拡縮が
+  //         中途半端な状態のまま固まらないようにする）
+  if (three.specialCast) {
+    three.specialCast = { active: false, progress: 0, baseRotY: three.playerGroup?.rotation.y || 0 };
   }
   if (three.playerGroup) {
     three.playerGroup.rotation.x = 0;
@@ -851,6 +856,7 @@ function pullGacha(n) {
   }
 
   SE.gacha();
+  BGM.playJingle("gacha"); // ★追加: ガチャジングルを再生
   if (results.some(r => r.isNew)) setTimeout(() => SE.reward(), 300);
 
   renderGachaResult(results);
