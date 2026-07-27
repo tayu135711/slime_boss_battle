@@ -1143,22 +1143,6 @@ html, body {
   font-size: 0.55rem; padding: 2px 6px; width: 100%;
   text-align: center; font-weight: 900;
 }
-.gacha-pity-info {
-  text-align: center; font-size: 0.72rem; color: #8B6B4A;
-  margin-top: 8px; padding: 4px 10px;
-  background: rgba(255,248,237,0.8); border-radius: 8px;
-  border: 1px solid #C4A27A;
-}
-.gacha-pity-info b { color: #A07020; }
-.gacha-jackpot {
-  text-align: center; color: #A07020; font-weight: 900;
-  font-size: 1rem; margin-top: 10px;
-  animation: jackpotPulse 0.8s ease-in-out infinite alternate;
-}
-@keyframes jackpotPulse {
-  from { opacity: 0.8; transform: scale(0.97); }
-  to   { opacity: 1.0; transform: scale(1.03); }
-}
 #gachaCollectionTitle {
   font-size: 0.78rem; color: #6BAB5A; text-align: center;
   width: 100%; margin-top: 6px; letter-spacing: 0.2em; font-weight: 900;
@@ -1791,8 +1775,6 @@ button:focus-visible {
   font-size: 12px !important;
   min-height: 28px !important;
 }
-.gacha-pity-info      { font-size: 13px !important; color: #5A3A18 !important; }
-.gacha-pity-info b    { color: #7A4A10 !important; }
 #gachaCollectionTitle { font-size: 14px !important; color: #2A6020 !important; }
 .gacha-coll-name      { font-size: 12px !important; }
 .gacha-coll-stars     { font-size: 11px !important; }

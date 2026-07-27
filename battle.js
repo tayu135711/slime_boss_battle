@@ -301,11 +301,20 @@ function spawnMagicCircle() {
   glow.position.y = 1.5;
   group.add(glow);
 
-  let frame = 0;
+  // ★修正: spawnShockwave()と同根のバグ。frame++を1回ずつ数える方式だと
+  //         高リフレッシュレート端末で演出が実時間より速く終わり、逆に演出中の
+  //         フレームレート低下（メッシュ大量生成の負荷等）が起きると経過時間に対して
+  //         進み方が飛び飛びになり「かくつく」見た目になっていた。経過ミリ秒ベースに変更する。
   const N = 80;
-  (function tick() {
+  const DURATION_MS = N * (1000 / 60); // 60fps換算でNフレーム分（従来の見た目の長さを維持）
+  const startTime = performance.now();
+  let lastTime = startTime;
+  (function tick(now) {
     if (group.userData.cancelled) return;
-    const t = ++frame / N;
+    now = typeof now === "number" ? now : performance.now();
+    const dtScale = (now - lastTime) / (1000 / 60); // 前回tickからの経過フレーム比
+    lastTime = now;
+    const t = Math.min(1, (now - startTime) / DURATION_MS);
     const op = t < 0.25 ? t / 0.25 : t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
     outer.material.opacity  = op * 0.85;
     mid.material.opacity    = op * 0.9;
@@ -314,11 +323,12 @@ function spawnMagicCircle() {
     const pv = Math.min(pt, 1 - Math.max(0, (t - 0.65) / 0.35));
     pillar.material.opacity = pv * 0.35;
     glow.intensity          = pv * 2.5;
-    outer.rotation.z += 0.04;
-    inner.rotation.z -= 0.07;
+    // 回転速度も経過時間ベースにする（元は1フレームあたり固定角だった）
+    outer.rotation.z += 0.04 * dtScale;
+    inner.rotation.z -= 0.07 * dtScale;
     const sc = t < 0.2 ? 0.5 + (t / 0.2) * 0.6 : 1.1 - (t - 0.2) * 0.1;
     group.scale.set(sc, 1, sc);
-    if (frame < N) {
+    if (t < 1) {
       requestAnimationFrame(tick);
     } else {
       three.scene.remove(group);
@@ -476,13 +486,13 @@ function showSkillCinematic(skillId, skillName, onDone) {
 }
 
 function useSkill() {
-  if (!state.battleStarted || state.cleared || state.gameOver || state.specialGauge < 100) return;
+  if (!state.battleStarted || state.cleared || state.gameOver) return;
   const skillId = state.equippedCostume?.skillId || null;
   if (!skillId) return;
-  const skillName = SKILL_INFO[skillId]?.name || "SPECIAL SKILL";
   const now = Date.now();
   if (now - state.lastSkillAt < getSkillCooldownMs()) return;
   state.lastSkillAt = now;
+  const skillName = SKILL_INFO[skillId]?.name || "";
 
   const { specialMinDamage, specialMaxDamage, skillMultiplier } = CONFIG.battle;
   const base = Math.floor(Math.random() * (specialMaxDamage - specialMinDamage + 1)) + specialMinDamage;
@@ -498,7 +508,7 @@ function useSkill() {
 
   // ★ 全画面演出を挟んでからスキルエフェクト発動
   showSkillCinematic(skillId, skillName, () => {
-    // ★追加: 画面演出が明けてボス側エフェクトが始るのに合わせてプレイヤーの
+    // ★追加: 画面演出が明けてボス側エフェクトが始まるのに合わせてプレイヤーの
     //         必殺技モーション（力溜め→回転ジャンプ→キメポーズ→着地）も再生する。
     startSpecialCast();
     if (skillId === "wave") {
@@ -584,15 +594,18 @@ function spawnWaveSkill(damage) {
       ring.position.set(state.boss.x, 0.1, state.boss.z);
       three.scene.add(ring);
 
-      let frame = 0;
+      // ★修正: frame++の固定歩幅だとフレームレート次第で速度・滑らかさが変わり
+      //         「かくつく」原因になっていたため、経過ミリ秒ベースに変更する。
       const N = 50;
+      const DURATION_MS = N * (1000 / 60);
+      const startTime = performance.now();
       const maxR = 5.0 + i * 1.2;
-      (function tick() {
-        const t = ++frame / N;
+      (function tick(now) {
+        const t = Math.min(1, ((typeof now === "number" ? now : performance.now()) - startTime) / DURATION_MS);
         const s = 1 + t * maxR;
         ring.scale.set(s, s, s);
         mat.opacity = 0.8 * (1 - t);
-        if (frame < N) requestAnimationFrame(tick);
+        if (t < 1) requestAnimationFrame(tick);
         else { three.scene.remove(ring); ring.geometry.dispose(); mat.dispose(); }
       })();
     }, i * 120);
@@ -636,13 +649,15 @@ function spawnIceSkill(baseDamage) {
       three.scene.add(shard);
 
       // 突き上げアニメ
-      let frame = 0;
+      // ★修正: frame++の固定歩幅による「かくつく」問題を解消するため経過ミリ秒ベースに変更
       const N = 35;
-      (function tick() {
-        const t = ++frame / N;
+      const DURATION_MS = N * (1000 / 60);
+      const startTime = performance.now();
+      (function tick(now) {
+        const t = Math.min(1, ((typeof now === "number" ? now : performance.now()) - startTime) / DURATION_MS);
         shard.position.y = (t < 0.6 ? (t / 0.6) : 1) * (h / 2) - h / 2;
         mat.opacity = t < 0.7 ? 0.85 : 0.85 * (1 - (t - 0.7) / 0.3);
-        if (frame < N) requestAnimationFrame(tick);
+        if (t < 1) requestAnimationFrame(tick);
         else { three.scene.remove(shard); geo.dispose(); mat.dispose(); }
       })();
     }, i * 80);
@@ -670,13 +685,15 @@ function spawnThunderSkill(damage) {
   three.scene.add(bolt);
 
   // 落下 → フラッシュ演出
-  let frame = 0;
+  // ★修正: frame++の固定歩幅による「かくつく」問題を解消するため経過ミリ秒ベースに変更
   const N = 28;
-  (function tick() {
-    const t = ++frame / N;
+  const DURATION_MS = N * (1000 / 60);
+  const startTime = performance.now();
+  (function tick(now) {
+    const t = Math.min(1, ((typeof now === "number" ? now : performance.now()) - startTime) / DURATION_MS);
     bolt.scale.x = bolt.scale.z = 1 + Math.sin(t * Math.PI * 6) * 0.3;
     mat.opacity = t < 0.7 ? 0.95 : 0.95 * (1 - (t - 0.7) / 0.3);
-    if (frame < N) requestAnimationFrame(tick);
+    if (t < 1) requestAnimationFrame(tick);
     else { three.scene.remove(bolt); bolt.geometry.dispose(); mat.dispose(); }
   })();
 
