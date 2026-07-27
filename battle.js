@@ -475,20 +475,11 @@ function showSkillCinematic(skillId, skillName, onDone) {
   }, 700);
 }
 
-function useSpecialMove() {
+function useSkill() {
   if (!state.battleStarted || state.cleared || state.gameOver || state.specialGauge < 100) return;
-  const { specialMinDamage, specialMaxDamage, specialMultiplier } = CONFIG.battle;
-  const base   = Math.floor(Math.random() * (specialMaxDamage - specialMinDamage + 1)) + specialMinDamage;
-  // ★修正: attackBoss()の通常攻撃はボスの防御中(state.bossAI.guarding)にダメージを
-  //         25%へ軽減しているが、必殺技だけはこの判定が抜けていたため、ガード中でも
-  //         必殺技だけは無条件にフルダメージ（ブレイクゲージ減少も含む）が通ってしまい、
-  //         「🛡 ボスは防御中！ダメージ大幅軽減」という演出・UI表示と矛盾していた上、
-  //         必殺技ゲージさえ溜めておけば防御ギミックを丸ごと無視できてしまっていた。
-  //         通常攻撃と同じガード減衰をここにも適用する。
-  let damage = Math.floor(base * specialMultiplier);
-  if (state.bossAI.guarding) damage = Math.max(1, Math.floor(damage * 0.25));
   const skillId = state.equippedCostume?.skillId || null;
-  if (!state.battleStarted || state.cleared || state.gameOver || !skillId) return;
+  if (!skillId) return;
+  const skillName = SKILL_INFO[skillId]?.name || "SPECIAL SKILL";
   const now = Date.now();
   if (now - state.lastSkillAt < getSkillCooldownMs()) return;
   state.lastSkillAt = now;
@@ -507,7 +498,7 @@ function useSpecialMove() {
 
   // ★ 全画面演出を挟んでからスキルエフェクト発動
   showSkillCinematic(skillId, skillName, () => {
-    // ★追加: 画面演出が明けてボス側エフェクトが始まるのに合わせてプレイヤーの
+    // ★追加: 画面演出が明けてボス側エフェクトが始るのに合わせてプレイヤーの
     //         必殺技モーション（力溜め→回転ジャンプ→キメポーズ→着地）も再生する。
     startSpecialCast();
     if (skillId === "wave") {
