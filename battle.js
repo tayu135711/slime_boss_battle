@@ -422,11 +422,71 @@ function attackBoss() {
 //         テンポを損なうとの要望で撤去した。SKILL_CINEMATICの色情報はもう
 //         使わないため、この演出関連コード一式を削除。
 
-// ── スキル（★3コスチューム専用・5秒クールダウン） ─────────────
-// wave/ice/thunderは元々「必殺技」枠だったが、ご要望の
-// 「通常攻撃=無制限／スキル=5秒に1回／必殺技=30秒に1回」という設計に合わせ、
-// ★3コスチューム固有の"スキル"としてこちらに分離した。
-function useSkill() {
+function showSkillCinematic(skillId, skillName, onDone) {
+  const cfg = SKILL_CINEMATIC[skillId] || SKILL_CINEMATIC.default;
+  const el = document.createElement("div");
+  el.id = "skillCinematic";
+  el.style.cssText = `
+    position:fixed;inset:0;z-index:9999;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:${cfg.bg};
+    opacity:0;transition:opacity 0.18s ease;
+    pointer-events:none;
+  `;
+  el.innerHTML = `
+    <div style="font-size:72px;animation:skillIconPop 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.1s both">${cfg.icon}</div>
+    <div style="font-size:28px;font-weight:900;color:${cfg.color};
+      text-shadow:0 0 20px rgba(255,255,255,0.8),0 2px 4px rgba(0,0,0,0.3);
+      letter-spacing:0.08em;margin-top:12px;
+      animation:skillNameSlide 0.35s cubic-bezier(0.34,1.56,0.64,1) 0.2s both">
+      ${skillName}
+    </div>
+    <div style="font-size:14px;color:rgba(255,255,255,0.85);margin-top:8px;letter-spacing:0.12em;
+      animation:skillNameSlide 0.35s ease 0.3s both">
+      SKILL ACTIVATED
+    </div>
+  `;
+  // アニメ定義（一度だけ追加）
+  if (!document.getElementById("skillCinematicStyle")) {
+    const st = document.createElement("style");
+    st.id = "skillCinematicStyle";
+    st.textContent = `
+      @keyframes skillIconPop {
+        from { opacity:0; transform:scale(0.3) rotate(-20deg); }
+        to   { opacity:1; transform:scale(1)   rotate(0deg);   }
+      }
+      @keyframes skillNameSlide {
+        from { opacity:0; transform:translateY(20px); }
+        to   { opacity:1; transform:translateY(0);    }
+      }
+    `;
+    document.head.appendChild(st);
+  }
+  document.body.appendChild(el);
+  requestAnimationFrame(() => { el.style.opacity = "1"; });
+
+  // 0.7秒表示してフェードアウト後にスキル発動
+  setTimeout(() => {
+    el.style.opacity = "0";
+    setTimeout(() => {
+      el.remove();
+      if (onDone) onDone();
+    }, 180);
+  }, 700);
+}
+
+function useSpecialMove() {
+  if (!state.battleStarted || state.cleared || state.gameOver || state.specialGauge < 100) return;
+  const { specialMinDamage, specialMaxDamage, specialMultiplier } = CONFIG.battle;
+  const base   = Math.floor(Math.random() * (specialMaxDamage - specialMinDamage + 1)) + specialMinDamage;
+  // ★修正: attackBoss()の通常攻撃はボスの防御中(state.bossAI.guarding)にダメージを
+  //         25%へ軽減しているが、必殺技だけはこの判定が抜けていたため、ガード中でも
+  //         必殺技だけは無条件にフルダメージ（ブレイクゲージ減少も含む）が通ってしまい、
+  //         「🛡 ボスは防御中！ダメージ大幅軽減」という演出・UI表示と矛盾していた上、
+  //         必殺技ゲージさえ溜めておけば防御ギミックを丸ごと無視できてしまっていた。
+  //         通常攻撃と同じガード減衰をここにも適用する。
+  let damage = Math.floor(base * specialMultiplier);
+  if (state.bossAI.guarding) damage = Math.max(1, Math.floor(damage * 0.25));
   const skillId = state.equippedCostume?.skillId || null;
   if (!state.battleStarted || state.cleared || state.gameOver || !skillId) return;
   const now = Date.now();
@@ -445,17 +505,33 @@ function useSkill() {
   state.attackCount += 1;
   refreshUi();
 
-  startSpecialCast();
-  if (skillId === "wave") {
-    SE.specialWave();
-    spawnWaveSkill(damage);
-  } else if (skillId === "ice") {
-    SE.specialIce();
-    spawnIceSkill(damage);
-  } else if (skillId === "thunder") {
-    SE.specialThunder();
-    spawnThunderSkill(damage);
-  }
+  // ★ 全画面演出を挟んでからスキルエフェクト発動
+  showSkillCinematic(skillId, skillName, () => {
+    // ★追加: 画面演出が明けてボス側エフェクトが始まるのに合わせてプレイヤーの
+    //         必殺技モーション（力溜め→回転ジャンプ→キメポーズ→着地）も再生する。
+    startSpecialCast();
+    if (skillId === "wave") {
+      SE.specialWave();
+      spawnWaveSkill(damage);
+    } else if (skillId === "ice") {
+      SE.specialIce();
+      spawnIceSkill(damage);
+    } else if (skillId === "thunder") {
+      SE.specialThunder();
+      spawnThunderSkill(damage);
+    } else {
+      SE.specialDefault();
+      spawnMagicCircle();
+      spawnDamageNumber(damage, true);
+      triggerCameraShake();
+      three.bossMat.color.set(0xffffff);
+      const idx = state.stageIndex;
+      setTimeout(() => { if (!state.cleared) three.bossMat.color.set(getCurrentStage(idx).color); }, 350);
+      three.bossGroup.scale.set(0.6, 0.6, 0.6);
+      setTimeout(() => { if (!state.cleared) three.bossGroup.scale.set(1, 1, 1); }, 200);
+      dom.statusLine.textContent = `✨ 光の必殺技！ 弱点ヒット！ ${damage} ダメージ！！`;
+    }
+  });
 
   if (state.currentHp === 0) handleBossDefeated();
 }
