@@ -1040,10 +1040,25 @@ html, body {
   touch-action: pan-y;
 }
 #gachaScreen.visible { display: flex; }
+/* ★追加: 戻るボタンをスクロールに追従させず常に画面上部に固定する。
+   以前はコレクション一覧の一番下にしかなく、スクロールしないと戻れなかった
+   （さらにスクロール不具合と重なって、実質「戻れない」画面になっていた）。
+   ★修正: position:stickyは#gachaScreenのflexレイアウトと絡んで期待通り
+   表示されなかったため、より確実なposition:fixedに変更。#gachaScreen自体が
+   fixed;inset:0で画面全体を覆っているので、これでスクロール位置に関係なく
+   常にビューポート最上部に固定表示される。 */
+#gachaStickyHeader {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 210;
+  display: flex; justify-content: center;
+  padding: 10px 0 4px;
+  background: linear-gradient(180deg, #EEF8E8 78%, rgba(238,248,232,0));
+}
+#gachaStickyHeader .back-btn { margin: 0; }
 #gachaBox {
   width: 100%; max-width: 480px;
   display: flex; flex-direction: column; align-items: center; gap: 14px;
   padding: 0 14px;
+  margin-top: 46px; /* ★追加: 固定ヘッダー(戻るボタン)分の見た目上の余白を確保 */
 }
 #gachaTitle {
   font-size: 1.45rem; font-weight: 900;
