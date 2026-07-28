@@ -136,6 +136,19 @@ function dismissTitle() {
         if (typeof applyCostume === "function" && state.equippedCostume) {
           applyCostume(state.equippedCostume);
         }
+        // ★修正: ロード完了時、メインHUD(refreshUi)は更新されるが、既に開いている
+        //         可能性のあるガチャ画面（ガチャ石の残数表示・所持コレクション・
+        //         ボタンのdisabled状態など）は一切再描画されていなかった。
+        //         タイトル→広場遷移直後は非同期ロードが終わる前にガチャ画面を
+        //         開けてしまうため、その間に開かれていると「見た目は初期値の
+        //         ままなのに、内部のstateだけ実際の保存値に切り替わる」状態になり、
+        //         見た目上は残数があるように見えるのにボタンを押しても実際は
+        //         チケット不足で即returnして何も起きない、という不具合になっていた。
+        if (dom.gachaScreen?.classList.contains("visible")) {
+          renderGachaCollection();
+          renderCurrentCostume();
+          refreshGachaTicketDisplay();
+        }
       }
     } catch (e) {
       console.warn("ロード失敗（続行）:", e);
