@@ -364,20 +364,13 @@ let _lastFrameTime = null;
 const REF_FRAME_MS = 1000 / 60;
 
 
-// ★修正: scene.jsで木にisTree:true/windPhase等のuserDataをセットしていたが、
-//         実際に揺らす関数が存在しなかったため木が常に静止していた。
-//         animate()からすでに呼ばれているのでここに実装を追加する。
-function updateWindAnimation(dtScale) {
-  if (!three.battleDecors) return;
-  const now = performance.now() * 0.001;
-  three.battleDecors.forEach(obj => {
-    if (!obj.userData?.isTree) return;
-    const { windPhase, windSpeed, windScale, crown } = obj.userData;
-    const sway = Math.sin(now * windSpeed * 60 + windPhase) * windScale;
-    obj.rotation.z = sway * 0.6;
-    if (crown) crown.rotation.z = sway;
-  });
-}
+// ★修正: 以前はここに簡易版のupdateWindAnimation(three.battleDecorsの木しか
+//         揺らさない)が定義されていたが、home_scene.js側により広範囲(広場・
+//         釣り場/花畑サブエリア・巨木・戦闘の木すべて)をカバーする完全版が
+//         同名で定義されており、スクリプト読み込み順(home_scene.js→game.js)の
+//         都合でこちらの簡易版が完全版を上書きしてしまっていた。その結果、
+//         広場の木々が一切風で揺れない不具合になっていたため、重複定義を
+//         削除しhome_scene.js側の完全版だけを使うようにする。
 
 function animate(timestamp) {
   let dtScale = 1;

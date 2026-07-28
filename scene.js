@@ -25,7 +25,11 @@ function initScene() {
   three.renderer.setSize(w, h);
   three.renderer.shadowMap.enabled = true;
   three.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  three.renderer.outputColorSpace = THREE.SRGBColorSpace; // ★ MeshPhysicalMaterial用
+  // ★修正: outputColorSpace / THREE.SRGBColorSpace はThree.js r152以降のAPIで、
+  //         このプロジェクトが読み込んでいるr128には存在しない（undefinedが
+  //         代入されるだけで実質何もしていなかった）。r128時代の正しいAPIである
+  //         outputEncoding / sRGBEncoding に修正し、実際にsRGB出力を有効化する。
+  three.renderer.outputEncoding = THREE.sRGBEncoding; // ★ MeshPhysicalMaterial用
   three.renderer.toneMapping = THREE.ACESFilmicToneMapping; // ★ ゼリー質感をきれいに表示
   three.renderer.toneMappingExposure = 1.0; // ★ 露出を下げて白飛びを抑制
   dom.sceneContainer.appendChild(three.renderer.domElement);
@@ -150,7 +154,14 @@ function buildAttackRing() {
 // --- 森の装飾 ---
 function makeFirTree(x, z, height = 3.5, baseRadius = 0.25) {
   const group = new THREE.Group();
-  
+
+  // ★修正: 以前は全ての木が同じ球体配置・同じ色のクローンで、拡縮と
+  //         Y軸回転だけで誤魔化していたため「量産品」感が強かった。
+  //         個体ごとに葉の配置・色味・幹の傾きにランダムなばらつきを
+  //         持たせ、同じ関数から生成しても一本一本違って見えるようにする。
+  const leanX = (Math.random() - 0.5) * 0.06;
+  const leanZ = (Math.random() - 0.5) * 0.06;
+
   // 幹
   const trunkHeight = height * 0.4;
   const trunk = new THREE.Mesh(
@@ -158,18 +169,25 @@ function makeFirTree(x, z, height = 3.5, baseRadius = 0.25) {
     new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9 })
   );
   trunk.position.y = trunkHeight / 2;
+  trunk.rotation.x = leanX;
+  trunk.rotation.z = leanZ;
   trunk.castShadow = true;
   trunk.receiveShadow = true;
   group.add(trunk);
 
   // もこもこな葉（複数の球体を重ねて雲のようなモコモコ樹冠を作る）
-  const leafColor = 0x3d8c3a;
-  const leafDark  = 0x2e6b2a;
-  const leafLight = 0x5c9c48;
+  // ベース色に木ごとの色相・明度ジッターをかけ、同じ緑一色の並木にならないようにする
+  const hueJitter = (Math.random() - 0.5) * 0.05;
+  const lightJitter = (Math.random() - 0.5) * 0.08;
+  const tint = c => {
+    const col = new THREE.Color(c);
+    col.offsetHSL(hueJitter, 0, lightJitter);
+    return col;
+  };
   const materials = [
-    new THREE.MeshStandardMaterial({ color: leafColor, roughness: 0.85 }),
-    new THREE.MeshStandardMaterial({ color: leafDark, roughness: 0.85 }),
-    new THREE.MeshStandardMaterial({ color: leafLight, roughness: 0.85 })
+    new THREE.MeshStandardMaterial({ color: tint(0x3d8c3a), roughness: 0.85 }),
+    new THREE.MeshStandardMaterial({ color: tint(0x2e6b2a), roughness: 0.85 }),
+    new THREE.MeshStandardMaterial({ color: tint(0x5c9c48), roughness: 0.85 })
   ];
 
   // 球体をずらしながら配置して、自然なモコモコ感を出す
@@ -186,9 +204,16 @@ function makeFirTree(x, z, height = 3.5, baseRadius = 0.25) {
     { r: height * 0.22, x: -height * 0.12, y: height * 0.08, z: -height * 0.12, matIdx: 2 }
   ];
 
-  spherePlacements.forEach(({ r, x, y, z, matIdx }) => {
-    const sphere = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 8), materials[matIdx]);
-    sphere.position.set(x, y, z);
+  spherePlacements.forEach(({ r, x: sx, y: sy, z: sz, matIdx }) => {
+    // ★追加: 各葉玉の半径・位置に±ジッターをかけ、シルエットを毎回変える
+    const rj = r * (0.85 + Math.random() * 0.3);
+    const jitterAmt = height * 0.05;
+    const sphere = new THREE.Mesh(new THREE.SphereGeometry(rj, 8, 8), materials[matIdx]);
+    sphere.position.set(
+      sx + (Math.random() - 0.5) * jitterAmt,
+      sy + (Math.random() - 0.5) * jitterAmt,
+      sz + (Math.random() - 0.5) * jitterAmt
+    );
     sphere.castShadow = true;
     sphere.receiveShadow = true;
     crownGroup.add(sphere);
@@ -197,7 +222,10 @@ function makeFirTree(x, z, height = 3.5, baseRadius = 0.25) {
   group.add(crownGroup);
   group.position.set(x, 0, z);
   group.rotation.y = Math.random() * Math.PI * 2;
-  
+  // ★追加: 全体スケールにもわずかなばらつきを持たせ、同じ樹冠の輪郭を崩す
+  const scaleJitter = 0.9 + Math.random() * 0.2;
+  group.scale.set(scaleJitter, 0.9 + Math.random() * 0.25, scaleJitter);
+
   // 風の揺れアニメーション用のプロパティをセット
   group.userData = {
     windPhase: Math.random() * Math.PI * 2,

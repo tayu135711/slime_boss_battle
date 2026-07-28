@@ -673,7 +673,17 @@ function spawnIceSkill(baseDamage) {
 }
 
 // ── thunder スキル（イカズチ）: 落雷 ──────────────────────────
-function spawnThunderSkill(damage) {
+function spawnThunderSkill(baseDamage) {
+  // ★修正: iceスキルは bonusDamageRate(1.1倍) がここで正しく反映されていたが、
+  //         thunderスキルの bonusDamageRate(0.95倍、連射型なので単発はやや控えめ
+  //         という設計値)だけ反映が漏れており、雷が常にフルダメージのまま
+  //         出てしまっていた。iceと同じ方式で差分をHPに反映する。
+  const thunderRate = SKILL_INFO["thunder"]?.bonusDamageRate ?? 1.0;
+  let damage = thunderRate !== 1.0 ? Math.floor(baseDamage * thunderRate) : baseDamage;
+  if (damage !== baseDamage) {
+    state.currentHp   = Math.max(0, state.currentHp - (damage - baseDamage));
+    state.totalDamage += (damage - baseDamage);
+  }
   triggerCameraShake();
   spawnDamageNumber(damage, true);
 

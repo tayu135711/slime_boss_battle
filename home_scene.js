@@ -16,6 +16,9 @@ const plaza = {
   initialized: false,
   sunLight: null,
   ambientLight: null,
+  skyDome: null,      // ★追加: グラデーション空ドーム
+  skyDomeCanvas: null,
+  skyDomeCtx: null,
   cobble: null,
   waterDrops: [],
   pond: null,
@@ -32,9 +35,14 @@ const plaza = {
   // サブエリア（専用マップ）用のグループ
   pondSceneGroup: null,
   flowerSceneGroup: null,
+  cookingSceneGroup: null, // ★追加: 食堂サブエリア
+  cookingAreaPos: { x: 15, z: -10 }, // restaurant建物と同座標
   // 時間帯システム
   lastTimeOfDay: null,
   timeOfDayLabel: null,
+  // ★追加: ベンチの座りモーション用
+  sitting: false,
+  sitTarget: null, // { x, z, rotY }
 };
 
 const plazaPlayer = { x: 0, z: 0 };
@@ -75,13 +83,15 @@ let plazaNearFountain = false;
 let plazaNearPond = false;
 let plazaNearBench = false;
 let plazaNearFlower = false;
+let plazaNearCookingCounter = false;
 
 // ── サブエリア管理 ─────────────────────────────────────────────
 // 釣り場・花畑に「入った」かどうかを追跡するフラグ
-let currentSubArea = null; // null | "pond" | "flower"
+let currentSubArea = null; // null | "pond" | "flower" | "cooking"
 // 広場に戻ったときのプレイヤー初期位置（エリア入口付近）
 const POND_AREA_ENTRY   = { x: 18,  z: 12 };    // ★修正: pond建物(z:6)の手前6ユニット
 const FLOWER_AREA_ENTRY = { x: -16, z: 20 };    // 花畑建物(z:14)の手前6ユニット
+const RESTAURANT_AREA_ENTRY = { x: 15, z: -16 }; // ★追加: 食堂建物(z:-10)の手前6ユニット（同じ命名パターン）
 // サブエリア用カメラ固定：trueの間はupdatePlazaCameraFollowでカメラを上書きしない
 let subAreaCameraLocked = false;
 let _subAreaCameraTimer = null; // ★ カメラロック解除タイマー
@@ -98,16 +108,19 @@ function initHomePlaza() {
     buildPlazaScene();
     buildPondScene();
     buildFlowerScene();
+    buildCookingScene();
     plaza.initialized = true;
     // ★ 初回も必ず広場オブジェクトを表示する（デフォルトvisible=falseのままだと何も見えない）
     setPlazaObjectsVisible(true);
     setPondSceneVisible(false);
     setFlowerSceneVisible(false);
+    setCookingSceneVisible(false);
     setBattleObjectsVisible(false);
   } else {
     setPlazaObjectsVisible(true);
     setPondSceneVisible(false);
     setFlowerSceneVisible(false);
+    setCookingSceneVisible(false);
     setBattleObjectsVisible(false);
     // ★ 再入場時に時間帯を即座に再適用（空・ライト・skyObjectsを確実に設定）
     applyTimeOfDay(getTimeOfDay(), false);
@@ -149,6 +162,8 @@ const TIME_OF_DAY_SETTINGS = {
   morning: {
     label: "🌅 朝",
     skyColor:   0xd4945a,  // ★ 朝焼けをもっと濃いオレンジに
+    skyTop:     0x4a3b6b,  // ★追加: 上空(暗めの紫)
+    skyHorizon: 0xffb37a,  // ★追加: 地平線(暖かい朝焼け色)
     fogColor:   0xd4945a,
     fogDensity: 0.008,
     sunColor:   0xffcc66,
@@ -161,6 +176,8 @@ const TIME_OF_DAY_SETTINGS = {
   noon: {
     label: "☀️ 昼",
     skyColor:   0x4a9ec2,  // ★ さらに落ち着いた青（0x5ab0d8→0x4a9ec2）
+    skyTop:     0x1e6fb8,  // ★追加: 上空(濃い青)
+    skyHorizon: 0xbfe6f7,  // ★追加: 地平線(淡い水色)
     fogColor:   0x5ab0d8,
     fogDensity: 0.007,
     sunColor:   0xffd890,  // ★ やや暖かみのある昼光
@@ -173,6 +190,8 @@ const TIME_OF_DAY_SETTINGS = {
   evening: {
     label: "🌆 夕方",
     skyColor:   0xe05a30,
+    skyTop:     0x47214f,  // ★追加: 上空(深い紫)
+    skyHorizon: 0xff7b3d,  // ★追加: 地平線(燃えるオレンジ)
     fogColor:   0xd06040,
     fogDensity: 0.010,
     sunColor:   0xff6600,
@@ -185,6 +204,8 @@ const TIME_OF_DAY_SETTINGS = {
   night: {
     label: "🌙 夜",
     skyColor:   0x0a1530,
+    skyTop:     0x04060f,  // ★追加: 上空(ほぼ黒に近い紺)
+    skyHorizon: 0x232c55,  // ★追加: 地平線(深いインディゴ)
     fogColor:   0x0a1530,
     fogDensity: 0.015,
     sunColor:   0x3355aa,
@@ -209,8 +230,13 @@ function applyTimeOfDay(tod, showLabel = false) {
   if (!s) return;
 
   // 空・霧
-  three.scene.background = new THREE.Color(s.skyColor);
+  // ★修正: 以前はscene.backgroundに単色をベタ塗りしていて、空全体が真っ平らな
+  //         一色になり安っぽく見えていた。上空〜地平線のグラデーションドームを
+  //         別途重ねて描画し、scene.backgroundはドームの外側に万一隙間ができた
+  //         場合のフォールバック用に地平線色を使う。
+  three.scene.background = new THREE.Color(s.skyHorizon ?? s.skyColor);
   three.scene.fog = new THREE.FogExp2(s.fogColor, s.fogDensity);
+  updateSkyDomeGradient(s.skyTop ?? s.skyColor, s.skyHorizon ?? s.skyColor);
 
   // 太陽光
   if (plaza.sunLight) {
@@ -378,16 +404,18 @@ function buildPlazaScene() {
 plaza.ambientLight = new THREE.AmbientLight(0x8ab4cc, 0.32);
   three.scene.add(plaza.ambientLight);
 
+  buildSkyDome(); // ★追加: グラデーション空ドーム（他の描画物より先に追加）
+
   plaza.ground = new THREE.Mesh(
     new THREE.PlaneGeometry(200, 200, 1, 1),
-    new THREE.MeshStandardMaterial({ color: 0x3d8c3a, roughness: 0.9 })
+    new THREE.MeshStandardMaterial({ color: 0x3d8c3a, roughness: 0.9, map: _makeGrassTexture() })
   );
   plaza.ground.rotation.x = -Math.PI / 2;
   plaza.ground.receiveShadow = true;
   three.scene.add(plaza.ground);
 
   const cobble = new THREE.Mesh(new THREE.CircleGeometry(12, 32), new THREE.MeshStandardMaterial({
-    color: 0x8a7a6a, roughness: 0.95,
+    color: 0xffffff, roughness: 0.95, map: _makeCobbleTexture(),
     polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
   }));
   cobble.rotation.x = -Math.PI / 2;
@@ -405,6 +433,203 @@ plaza.ambientLight = new THREE.AmbientLight(0x8ab4cc, 0.32);
 
   // 時間帯を初期適用（ライト・空が揃った後で実行）
   applyTimeOfDay(getTimeOfDay(), false);
+}
+
+// ★追加: グラデーション空ドーム
+// 単色ベタ塗りのscene.backgroundだけだと空が真っ平らに見えて安っぽいため、
+// 上空色→地平線色へなめらかにグラデーションするテクスチャを、プレイヤーを
+// 包む巨大な球体の内側に貼り付けて背景として描画する。
+const SKY_DOME_RADIUS = 90; // camera.far(120)より十分小さく、空オブジェクト(最大半径約58)は内側に収まる
+
+function _makeSkyGradientTexture(topHex, bottomHex) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 2;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  const topColor = new THREE.Color(topHex);
+  const bottomColor = new THREE.Color(bottomHex);
+  grad.addColorStop(0, `#${topColor.getHexString()}`);
+  grad.addColorStop(1, `#${bottomColor.getHexString()}`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.encoding = THREE.sRGBEncoding; // ★追加: レンダラーのsRGB出力修正に合わせてカラーテクスチャとして解釈させる
+  tex.needsUpdate = true;
+  return { canvas, ctx, tex };
+}
+
+function buildSkyDome() {
+  const { canvas, ctx, tex } = _makeSkyGradientTexture(0x1e6fb8, 0xbfe6f7); // 初期値は昼、直後にapplyTimeOfDayで上書きされる
+  plaza.skyDomeCanvas = canvas;
+  plaza.skyDomeCtx = ctx;
+
+  const geo = new THREE.SphereGeometry(SKY_DOME_RADIUS, 24, 16);
+  const mat = new THREE.MeshBasicMaterial({
+    map: tex,
+    side: THREE.BackSide, // 球の内側から見えるように
+    fog: false,            // 空自体は霧で薄めない（グラデーションそのものが大気を表現する）
+    depthWrite: false
+  });
+  const dome = new THREE.Mesh(geo, mat);
+  dome.renderOrder = -1; // 他の描画物より先に描く（スカイボックスの定石）
+  three.scene.add(dome);
+  plaza.skyDome = dome;
+}
+
+function updateSkyDomeGradient(topHex, bottomHex) {
+  if (!plaza.skyDomeCtx || !plaza.skyDome) return;
+  const ctx = plaza.skyDomeCtx;
+  const canvas = plaza.skyDomeCanvas;
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  const topColor = new THREE.Color(topHex);
+  const bottomColor = new THREE.Color(bottomHex);
+  grad.addColorStop(0, `#${topColor.getHexString()}`);
+  grad.addColorStop(1, `#${bottomColor.getHexString()}`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  plaza.skyDome.material.map.needsUpdate = true;
+}
+
+// ★追加: 地面・石畳のテクスチャ生成
+// 以前はどちらも単色ベタ塗りのMeshStandardMaterialで、平面的で安っぽく見えていた。
+// canvasで模様を生成してタイル状に貼るだけなので、ジオメトリやdraw callは増えず
+// 負荷はほぼゼロ（テクスチャ1枚ぶんのメモリのみ）。時間帯の色調(material.color)は
+// そのまま乗算されるので、時間帯システムとも問題なく共存する。
+function _makeGrassTexture() {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, size, size);
+
+  // 斑点状のムラ（濃淡2種）で単色べた塗りを崩す
+  const shades = ["#e8f0e0", "#c8dcc0", "#d8ecd0", "#b8d0b0"];
+  for (let i = 0; i < 700; i++) {
+    ctx.fillStyle = shades[Math.floor(Math.random() * shades.length)];
+    ctx.globalAlpha = 0.35 + Math.random() * 0.25;
+    const x = Math.random() * size, y = Math.random() * size;
+    const r = 2 + Math.random() * 5;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // 細い草の筋を少し加える
+  ctx.globalAlpha = 0.25;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 260; i++) {
+    ctx.strokeStyle = Math.random() > 0.5 ? "#a8c8a0" : "#f0f8e8";
+    const x = Math.random() * size, y = Math.random() * size;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + (Math.random() - 0.5) * 5, y - 4 - Math.random() * 4);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.encoding = THREE.sRGBEncoding; // ★追加: レンダラーのsRGB出力修正に合わせてカラーテクスチャとして解釈させる
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(50, 50); // 200x200の地面に対してタイル
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function _makeCobbleTexture() {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#4a3f34"; // 目地（石と石の間の溝）の色
+  ctx.fillRect(0, 0, size, size);
+
+  const cell = 30;
+  for (let gy = -cell; gy < size + cell; gy += cell) {
+    for (let gx = -cell; gx < size + cell; gx += cell) {
+      const jx = gx + (Math.random() - 0.5) * 8;
+      const jy = gy + (Math.random() - 0.5) * 8;
+      const w = cell - 5 + Math.random() * 4;
+      const h = cell - 5 + Math.random() * 4;
+      const base = 150 + Math.floor(Math.random() * 55); // 明るさのばらつき
+      ctx.fillStyle = `rgb(${base + 15},${base},${base - 20})`;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(jx, jy, w, h, 5);
+      else ctx.rect(jx, jy, w, h);
+      ctx.fill();
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.encoding = THREE.sRGBEncoding; // ★追加: レンダラーのsRGB出力修正に合わせてカラーテクスチャとして解釈させる
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(8, 8); // 半径12の円に対してタイル
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function _makeWoodPlankTexture(repeatX = 10, repeatY = 10) {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, size, size);
+
+  // 板の継ぎ目（横方向のライン）
+  const plankH = 32;
+  for (let y = 0; y < size; y += plankH) {
+    ctx.fillStyle = "#000000";
+    ctx.globalAlpha = 0.12;
+    ctx.fillRect(0, y, size, 2);
+    ctx.globalAlpha = 1;
+  }
+  // 木目の筋（縦方向の細い線を板ごとにランダムに）
+  for (let y = 0; y < size; y += plankH) {
+    for (let i = 0; i < 6; i++) {
+      ctx.strokeStyle = Math.random() > 0.5 ? "#000000" : "#ffffff";
+      ctx.globalAlpha = 0.06 + Math.random() * 0.06;
+      ctx.lineWidth = 1;
+      const x = Math.random() * size;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.bezierCurveTo(x + 4, y + plankH * 0.3, x - 4, y + plankH * 0.7, x + 2, y + plankH);
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.encoding = THREE.sRGBEncoding; // ★追加: レンダラーのsRGB出力修正に合わせてカラーテクスチャとして解釈させる
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(repeatX, repeatY); // 呼び出し元のサイズに応じて調整
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function _makeSandTexture() {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, size, size);
+  ctx.globalAlpha = 0.5;
+  for (let i = 0; i < 1400; i++) {
+    ctx.fillStyle = Math.random() > 0.5 ? "#f0e0b8" : "#d8c090";
+    const x = Math.random() * size, y = Math.random() * size;
+    const r = 0.6 + Math.random() * 1.4;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.encoding = THREE.sRGBEncoding; // ★追加: レンダラーのsRGB出力修正に合わせてカラーテクスチャとして解釈させる
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(12, 12);
+  tex.needsUpdate = true;
+  return tex;
 }
 
 function buildFountain() {
@@ -1241,6 +1466,34 @@ function updatePlazaPlayer(dtScale = 1) {
     if (state.keys.right) dx += 1;
   }
 
+  // ★追加: ベンチに座っている間の処理。
+  //         以前は「座る」がカメラをベンチに向けるだけの演出で、プレイヤー本体は
+  //         元の位置に立ったままだった（見た目上ただ突っ立っているだけ）。
+  //         実際にベンチの座席位置までキャラクターを動かし、スクワッシュした
+  //         座りポーズを保持するようにする。移動入力があれば自動的に立ち上がる。
+  if (plaza.sitting) {
+    if (dx !== 0 || dz !== 0) {
+      // 入力があったら立ち上がって通常の移動処理へ続行
+      plaza.sitting = false;
+      if (state._benchBentoReady) state._benchBentoReady = false;
+      dom.statusLine.textContent = "";
+    } else {
+      const target = plaza.sitTarget;
+      if (target && plaza.playerMesh) {
+        plazaPlayer.x = target.x;
+        plazaPlayer.z = target.z;
+        // ゆったりした座り呼吸（立ち待機よりゆっくり・大きめ）
+        const breathe = Math.sin(Date.now() * 0.0011) * 0.02;
+        plaza.playerMesh.position.set(target.x, target.y + breathe, target.z);
+        plaza.playerMesh.rotation.y = target.rotY;
+        // 座りスクワッシュ：縦に大きく潰れて横に広がる「ぺたん」ポーズ
+        const squash = 1 + Math.sin(Date.now() * 0.0011) * 0.015;
+        plaza.playerMesh.scale.set(1.28 * squash, 0.56 / squash, 1.28 * squash);
+      }
+      return; // 座っている間は通常の歩行アニメ処理をスキップ
+    }
+  }
+
   const isMoving = (dx !== 0 || dz !== 0);
 
   if (isMoving) {
@@ -1282,6 +1535,12 @@ function updatePlazaPlayer(dtScale = 1) {
       const flCX = plaza.flowerAreaPos.x, flCZ = plaza.flowerAreaPos.z;
       targetX = Math.max(flCX - 20, Math.min(flCX + 20, targetX));
       targetZ = Math.max(flCZ - 20, Math.min(flCZ + 20, targetZ));
+    } else if (currentSubArea === "cooking") {
+      // ★追加: 食堂サブエリア。カウンターの奥(厨房側)には入れないよう
+      //         Z方向の奥行きだけ他エリアより狭く制限する。
+      const ckCX = plaza.cookingAreaPos.x, ckCZ = plaza.cookingAreaPos.z;
+      targetX = Math.max(ckCX - 10, Math.min(ckCX + 10, targetX));
+      targetZ = Math.max(ckCZ - 3, Math.min(ckCZ + 12, targetZ));
     } else {
       targetX = Math.max(-PLAZA_FIELD_LIMIT, Math.min(PLAZA_FIELD_LIMIT, targetX));
       targetZ = Math.max(-PLAZA_FIELD_LIMIT, Math.min(PLAZA_FIELD_LIMIT, targetZ));
@@ -1353,6 +1612,12 @@ function updatePlazaCameraFollow() {
   if (subAreaCameraLocked) return;
   three.camera.position.set(plazaPlayer.x, 3.5, plazaPlayer.z + 10.0);
   three.camera.lookAt(plazaPlayer.x, 0.5, plazaPlayer.z - 5.0);
+  // ★追加: スカイドームをカメラの真上に追従させる（定石のスカイボックス手法）。
+  //         こうしないとプレイヤーが広場の端まで歩いたときにドームの内壁が
+  //         偏って見えたり、遠景がカメラのfar(120)を超えて欠けたりする。
+  if (plaza.skyDome) {
+    plaza.skyDome.position.set(three.camera.position.x, 0, three.camera.position.z);
+  }
 }
 
 function updatePlazaNPCs(dtScale = 1) {
@@ -1462,11 +1727,17 @@ function checkPlazaEntrances() {
   plazaNearPond = false;
   plazaNearBench = false;
   plazaNearFlower = false;  // ← 料理UI中でもゴーストプロンプトが残らないようリセット
+  plazaNearCookingCounter = false;
 
-  for (const b of plaza.buildings) {
-    if (Math.hypot(plazaPlayer.x - b.x, plazaPlayer.z - b.z) < PLAZA_ENTER_RADIUS) {
-      plazaNearBuilding = b;
-      break;
+  // ★追加: サブエリア内（釣り場/花畑/食堂）では建物入場判定自体を行わない。
+  //         建物の実座標とサブエリア内の滞在座標が近いケースがあり、
+  //         判定してしまうと「もう中にいるのに入場プロンプトが出る」ことがあるため。
+  if (!currentSubArea) {
+    for (const b of plaza.buildings) {
+      if (Math.hypot(plazaPlayer.x - b.x, plazaPlayer.z - b.z) < PLAZA_ENTER_RADIUS) {
+        plazaNearBuilding = b;
+        break;
+      }
     }
   }
   for (const npc of npcState) {
@@ -1478,6 +1749,9 @@ function checkPlazaEntrances() {
   // ★変更: 噴水での全回復機能は撤去したため、近接判定自体もう行わない
   //         （plazaNearFountainは常にfalseのまま。以降のプロンプト/アクション分岐からも削除済み）
   plazaNearPond = Math.hypot(plazaPlayer.x - plaza.pondPos.x, plazaPlayer.z - plaza.pondPos.z) < POND_INTERACT_RADIUS;
+  if (currentSubArea === "cooking" && plaza.cookingCounterPos) {
+    plazaNearCookingCounter = Math.hypot(plazaPlayer.x - plaza.cookingCounterPos.x, plazaPlayer.z - plaza.cookingCounterPos.z) < 3.2;
+  }
   if (plaza.bench) plazaNearBench = Math.hypot(plazaPlayer.x - plaza.bench.position.x, plazaPlayer.z - plaza.bench.position.z) < BENCH_INTERACT_RADIUS;
   // ★修正: ベンチから離れても_benchBentoReadyが4秒間(またはexitHomePlazaまで)残り続け、
   //         その間に花や池などに移動してAを押すと、handlePlazaAction()の先頭判定で
@@ -1515,6 +1789,9 @@ function checkPlazaEntrances() {
   } else if (plazaNearBench) {
     dom.plazaActionPrompt.textContent = `Ａ でベンチに座る`;
     dom.plazaActionPrompt.classList.add("visible");
+  } else if (plazaNearCookingCounter) {
+    dom.plazaActionPrompt.textContent = `Ａ で料理する`;
+    dom.plazaActionPrompt.classList.add("visible");
   } else {
     dom.plazaActionPrompt.classList.remove("visible");
   }
@@ -1548,6 +1825,16 @@ function handlePlazaAction() {
       }
       return;
     }
+    // ★追加: 食堂エリア内: カウンターの近くでAを押すと調理UIを開く
+    if (currentSubArea === "cooking") {
+      if (plazaNearCookingCounter) {
+        showCooking();
+      } else {
+        dom.statusLine.textContent = "🍳 カウンターに近づいてＡで料理しよう！";
+        setTimeout(() => dom.statusLine.textContent = "", 2500);
+      }
+      return;
+    }
     return;
   }
 
@@ -1561,7 +1848,7 @@ function handlePlazaAction() {
   if (plazaNearBuilding) {
     if (plazaNearBuilding.type === "stage")          { exitHomePlaza(); showStageSelect("plaza"); }
     else if (plazaNearBuilding.type === "shop")       { showShop(); }
-    else if (plazaNearBuilding.type === "restaurant") { showCooking(); }
+    else if (plazaNearBuilding.type === "restaurant") { enterCookingArea(); }
     else if (plazaNearBuilding.type === "pond_area")  { enterPondArea(); }
     else if (plazaNearBuilding.type === "flower_area"){ enterFlowerArea(); }
     else if (plazaNearBuilding.type === "gacha")      { showGacha(); }
@@ -1631,6 +1918,7 @@ function enterPondArea() {
     setPlazaObjectsVisible(false);
     setPondSceneVisible(true);
     setFlowerSceneVisible(false);
+    setCookingSceneVisible(false);
 
     // ★ プレイヤーをpond実体の手前（桟橋の前）に移動
     const px = plaza.pondPos.x;
@@ -1681,6 +1969,7 @@ function enterFlowerArea() {
     setPlazaObjectsVisible(false);
     setPondSceneVisible(false);
     setFlowerSceneVisible(true);
+    setCookingSceneVisible(false);
 
     // ★ プレイヤーを花畑の入口（中心から少し手前）に移動
     const fc = plaza.flowerAreaPos; // ★修正: buildFlowerSceneと同じ定数を共有し座標ズレを防止
@@ -1753,9 +2042,44 @@ function enterFlowerArea() {
 }
 
 /**
+ * 食堂サブエリアに入る（釣り場・花畑と同じフェード演出パターン）。
+ * カウンターまで実際に歩いて行き、近づいてＡを押すと調理UI(showCooking)を開く。
+ */
+function enterCookingArea() {
+  enterAreaWithFade("🍜 食　堂", () => {
+    currentSubArea = "cooking";
+    showSubAreaBackButton("cooking");
+
+    setPlazaObjectsVisible(false);
+    setPondSceneVisible(false);
+    setFlowerSceneVisible(false);
+    setCookingSceneVisible(true);
+
+    // プレイヤーを食堂の入口付近に配置
+    const ck = plaza.cookingAreaPos;
+    plazaPlayer.x = ck.x;
+    plazaPlayer.z = ck.z + 6;
+    if (plaza.playerMesh) plaza.playerMesh.position.set(plazaPlayer.x, 0, plazaPlayer.z);
+
+    // カメラをカウンターに向ける演出（一定時間後に通常フォローへ）
+    subAreaCameraLocked = true;
+    three.camera.position.set(ck.x, 3.0, ck.z + 9);
+    three.camera.lookAt(ck.x, 1.0, ck.z - 3);
+    if (_subAreaCameraTimer) clearTimeout(_subAreaCameraTimer);
+    _subAreaCameraTimer = setTimeout(() => {
+      subAreaCameraLocked = false;
+      _subAreaCameraTimer = null;
+    }, 2000);
+
+    dom.statusLine.textContent = "食堂に着いた。カウンターに近づいてＡで料理しよう！";
+    setTimeout(() => dom.statusLine.textContent = "", 3000);
+  });
+}
+
+/**
  * サブエリア（釣り場・花畑）用の「広場に戻る」ボタンを表示する。
  * 既存のボタンがあれば使い回し、なければ動的生成。
- * @param {"pond"|"flower"} areaType
+ * @param {"pond"|"flower"|"cooking"} areaType
  */
 function showSubAreaBackButton(areaType) {
   let btn = document.getElementById("subAreaBackBtn");
@@ -1809,6 +2133,10 @@ function leaveSubArea() {
   const flui = document.getElementById("flowerUI");
   if (flui) flui.style.display = "none";
 
+  // ★追加: 調理UIが開いたままサブエリアを離脱した場合は閉じる
+  const cui = document.getElementById("cookingUI");
+  if (cui && cui.style.display !== "none") closeCooking();
+
   // ボタンを隠す
   const btn = document.getElementById("subAreaBackBtn");
   if (btn) btn.style.display = "none";
@@ -1819,7 +2147,9 @@ function leaveSubArea() {
 
   // エリアに応じた戻り先座標を設定（フェード後に適用）
   // ★ currentSubAreaはコールバック内でnullになるため事前にキャプチャ
-  const returnPos = currentSubArea === "pond" ? POND_AREA_ENTRY : FLOWER_AREA_ENTRY;
+  const returnPos = currentSubArea === "pond" ? POND_AREA_ENTRY
+                   : currentSubArea === "flower" ? FLOWER_AREA_ENTRY
+                   : RESTAURANT_AREA_ENTRY;
 
   enterAreaWithFade("🏡 広　場", () => {
     currentSubArea = null;
@@ -1827,6 +2157,7 @@ function leaveSubArea() {
     setPlazaObjectsVisible(true);
     setPondSceneVisible(false);
     setFlowerSceneVisible(false);
+    setCookingSceneVisible(false);
     BGM.play("plaza"); // ★追加: 広場BGMに戻す
     plazaPlayer.x = returnPos.x;
     plazaPlayer.z = returnPos.z;
@@ -1845,6 +2176,19 @@ function sitOnBench() {
   three.camera.position.set(plaza.bench.position.x + 2, 2.0, plaza.bench.position.z + 3);
   three.camera.lookAt(plaza.bench.position.x, 1.0, plaza.bench.position.z);
 
+  // ★修正: 以前はカメラをベンチに向けるだけで、プレイヤー本体は元の位置に
+  //         立ったままだった。実際に座席の位置までキャラクターを移動させ、
+  //         スクワッシュした座りポーズをupdatePlazaPlayer()側で保持させる。
+  //         ベンチは回転させていない(rotation.y=0)ので、背もたれ(-z側)を背に
+  //         して+z方向(前面)を向いて座る形にする。
+  const seatX = plaza.bench.position.x;
+  const seatZ = plaza.bench.position.z + 0.05;
+  const seatY = 0.42; // 座面(y≈0.575)にスクワッシュした体がめり込みすぎない高さ
+  plaza.sitTarget = { x: seatX, z: seatZ, y: seatY, rotY: 0 };
+  plaza.sitting = true;
+  plazaPlayer.x = seatX;
+  plazaPlayer.z = seatZ;
+
   if (state.bento.length > 0) {
     // お弁当がある → 食べるか聞く
     const recipe = state.bento[0];
@@ -1852,15 +2196,25 @@ function sitOnBench() {
     // Aボタンで食べられるよう一時フラグ
     state._benchBentoReady = true;
     setTimeout(() => {
+      // ★追加: 広場を離れた後にこのタイマーが発火しても、カメラやテキストを
+      //         勝手に触らないようにする（exitHomePlazaで既にplaza.sittingは
+      //         falseになっているはずだが、念のため二重にガードする）
+      if (!dom.homePlazaScreen.classList.contains("visible")) return;
       if (state._benchBentoReady) {
         dom.statusLine.textContent = "";
         state._benchBentoReady = false;
+        plaza.sitting = false;
         updatePlazaCameraFollow();
       }
     }, 4000);
   } else {
     dom.statusLine.textContent = "🪑 ベンチに座ってのんびり…　お弁当があればここで食べられる";
-    setTimeout(() => { dom.statusLine.textContent = ""; updatePlazaCameraFollow(); }, 3000);
+    setTimeout(() => {
+      if (!dom.homePlazaScreen.classList.contains("visible")) return;
+      dom.statusLine.textContent = "";
+      plaza.sitting = false;
+      updatePlazaCameraFollow();
+    }, 3000);
   }
 }
 
@@ -1984,12 +2338,22 @@ function exitHomePlaza() {
   closePlazaMap();
   if (typeof updateMapBtnVisibility === "function") updateMapBtnVisibility();
 
+  // ★追加: 座ったまま広場を離れた場合の状態リセット。
+  //         これが無いと、①座り終了用のsetTimeoutが広場を離れた後に発火して
+  //         広場・バトルで共有しているthree.cameraを勝手に動かしてしまう、
+  //         ②次に広場に戻った時、plaza.sittingがtrueのままなので本来の出現位置
+  //         ではなく毎回ベンチへ引き戻されてしまう、という2つの不具合があった。
+  plaza.sitting = false;
+  plaza.sitTarget = null;
+  state._benchBentoReady = false;
+
   // ★ サブエリアフラグ・「広場に戻る」ボタンをリセット
   currentSubArea = null;
   subAreaCameraLocked = false;
   if (_subAreaCameraTimer) { clearTimeout(_subAreaCameraTimer); _subAreaCameraTimer = null; }
   setPondSceneVisible(false);
   setFlowerSceneVisible(false);
+  setCookingSceneVisible(false);
   const subBtn = document.getElementById("subAreaBackBtn");
   if (subBtn) subBtn.style.display = "none";
 
@@ -2155,7 +2519,7 @@ function updateWindAnimation(dtScale = 1) {
   if (plaza.bigTree && plaza.bigTree.userData && plaza.bigTree.userData.isTree) allTrees.push(plaza.bigTree);
 
   // サブエリアの木々
-  const groups = [plaza.pondSceneGroup, plaza.flowerSceneGroup];
+  const groups = [plaza.pondSceneGroup, plaza.flowerSceneGroup, plaza.cookingSceneGroup];
   groups.forEach(g => {
     if (!g) return;
     g.traverse(child => {
@@ -2208,6 +2572,12 @@ function updateBuildingAnimations() {
     s.mesh.material.opacity = 0.3 + Math.sin(t * 0.001 + s.phase) * 0.15;
     s.mesh.scale.setScalar(0.8 + Math.sin(t * 0.0006 + s.phase) * 0.2);
   });
+
+  // ★追加: 食堂のマスター（店主スライム）のゆったりした呼吸アニメーション
+  if (plaza.animParts.chef) {
+    const breathe = Math.sin(t * 0.0013) * 0.05;
+    plaza.animParts.chef.group.scale.set(1 + breathe * 0.4, 1 - breathe, 1 + breathe * 0.4);
+  }
 }
 
 // ★ パーティクルシステム
@@ -2326,7 +2696,7 @@ function warpToArea(dest) {
   const WARP_TARGETS = {
     stage:      { x:  0,  z: -12, action: () => { exitHomePlaza(); showStageSelect('plaza'); } },
     shop:       { x: -14, z:  -5, action: () => showShop() },
-    restaurant: { x:  14, z:  -5, action: () => showCooking() },
+    restaurant: { x:  14, z:  -5, action: () => enterCookingArea() },
     pond:       { x:  18, z:  12, action: () => enterPondArea() },   // ★修正: 建物(z:6)手前6u
     flower:     { x: -16, z:  20, action: () => enterFlowerArea() }, // ★修正: 建物(z:14)手前6u
   };
@@ -2457,6 +2827,10 @@ function setFlowerSceneVisible(visible) {
   if (plaza.flowerSceneGroup) plaza.flowerSceneGroup.visible = visible;
 }
 
+function setCookingSceneVisible(visible) {
+  if (plaza.cookingSceneGroup) plaza.cookingSceneGroup.visible = visible;
+}
+
 function buildPondScene() {
   plaza.pondSceneGroup = new THREE.Group();
   plaza.pondSceneGroup.visible = false;
@@ -2485,7 +2859,7 @@ function buildPondScene() {
   // 桟橋の付け根の小さな砂浜（プレイヤーの上陸地点）
   const beach = new THREE.Mesh(
     new THREE.CircleGeometry(8, 24),
-    new THREE.MeshStandardMaterial({ color: 0xe8d5a0, roughness: 0.95 })
+    new THREE.MeshStandardMaterial({ color: 0xe8d5a0, roughness: 0.95, map: _makeSandTexture() })
   );
   beach.rotation.x = -Math.PI / 2;
   beach.position.set(plaza.pondPos.x, 0.005, plaza.pondPos.z + 8);
@@ -2498,7 +2872,7 @@ function buildPondScene() {
   //         底面がほぼy=0に来るよう配置し、プレイヤーが埋もれないようにする。
   const dock = new THREE.Mesh(
     new THREE.BoxGeometry(4, 0.02, 6),
-    new THREE.MeshStandardMaterial({ color: 0x7a5030, roughness: 0.9 })
+    new THREE.MeshStandardMaterial({ color: 0x7a5030, roughness: 0.9, map: _makeWoodPlankTexture(2, 3) })
   );
   dock.position.set(plaza.pondPos.x, 0.01, plaza.pondPos.z + 6);
   dock.castShadow = true;
@@ -2531,7 +2905,7 @@ function buildFlowerScene() {
   // 地面
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(150, 150),
-    new THREE.MeshStandardMaterial({ color: 0x5dae5a, roughness: 0.9 })
+    new THREE.MeshStandardMaterial({ color: 0x5dae5a, roughness: 0.9, map: _makeGrassTexture() })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(plaza.flowerAreaPos.x, 0, plaza.flowerAreaPos.z);
@@ -2596,4 +2970,147 @@ function buildFlowerScene() {
     tree.castShadow = true;
     plaza.flowerSceneGroup.add(tree);
   }
+}
+// ── 食堂サブエリア（キッチンカウンター） ─────────────────────
+// ★追加: 以前は「食堂」建物に入ると即座にDOM製の2Dポップアップ(cookingUI)が
+//         開くだけで、専用の3D空間がなかった（釣り場・花畑と比べて浮いていた）。
+//         pond/flowerと同じ構成で専用サブエリアを作り、実際にキッチンカウンター
+//         まで歩いて行ってから調理UIを開く形にする。
+function buildCookingScene() {
+  plaza.cookingSceneGroup = new THREE.Group();
+  plaza.cookingSceneGroup.visible = false;
+  three.scene.add(plaza.cookingSceneGroup);
+
+  const ckX = plaza.cookingAreaPos.x;
+  const ckZ = plaza.cookingAreaPos.z;
+
+  // 床（あたたかみのある木目色。屋外テラスのような食堂前スペース）
+  const floor = new THREE.Mesh(
+    new THREE.CircleGeometry(20, 28),
+    new THREE.MeshStandardMaterial({ color: 0xc8945e, roughness: 0.85, map: _makeWoodPlankTexture() })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(ckX, 0, ckZ);
+  floor.receiveShadow = true;
+  plaza.cookingSceneGroup.add(floor);
+
+  // 奥の壁（食堂の朱色に合わせる）＋窓
+  const wall = new THREE.Mesh(
+    new THREE.BoxGeometry(16, 5, 0.4),
+    new THREE.MeshStandardMaterial({ color: 0xc03018, roughness: 0.7 })
+  );
+  wall.position.set(ckX, 2.5, ckZ - 4.6);
+  wall.castShadow = true;
+  wall.receiveShadow = true;
+  plaza.cookingSceneGroup.add(wall);
+  const win1 = new THREE.Mesh(
+    new THREE.BoxGeometry(1.6, 1.4, 0.1),
+    new THREE.MeshStandardMaterial({ color: 0xffdca0, roughness: 0.2, emissive: 0xffaa44, emissiveIntensity: 0.5 })
+  );
+  win1.position.set(ckX - 4.5, 3.0, ckZ - 4.35);
+  plaza.cookingSceneGroup.add(win1);
+  const win2 = win1.clone();
+  win2.position.set(ckX + 4.5, 3.0, ckZ - 4.35);
+  plaza.cookingSceneGroup.add(win2);
+
+  // キッチンカウンター（interactionPointはこの少し手前）
+  const counterMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.85 });
+  const counter = new THREE.Mesh(new THREE.BoxGeometry(6.5, 1.1, 1.3), counterMat);
+  counter.position.set(ckX, 0.55, ckZ - 4);
+  counter.castShadow = true;
+  counter.receiveShadow = true;
+  plaza.cookingSceneGroup.add(counter);
+  const counterTop = new THREE.Mesh(
+    new THREE.BoxGeometry(6.7, 0.1, 1.5),
+    new THREE.MeshStandardMaterial({ color: 0xf0d0a0, roughness: 0.6 })
+  );
+  counterTop.position.set(ckX, 1.15, ckZ - 4);
+  plaza.cookingSceneGroup.add(counterTop);
+  plaza.cookingCounterPos = { x: ckX, z: ckZ - 4 }; // ★ handlePlazaAction側の近接判定に使う
+
+  // 鍋（湯気は既存のplaza.animParts.steamの仕組みを再利用）
+  const pot = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.55, 0.45, 0.55, 14),
+    new THREE.MeshStandardMaterial({ color: 0x333840, roughness: 0.4, metalness: 0.6 })
+  );
+  pot.position.set(ckX, 1.5, ckZ - 4);
+  pot.castShadow = true;
+  plaza.cookingSceneGroup.add(pot);
+  const potRim = new THREE.Mesh(
+    new THREE.TorusGeometry(0.55, 0.06, 6, 16),
+    new THREE.MeshStandardMaterial({ color: 0x556070, roughness: 0.3, metalness: 0.7 })
+  );
+  potRim.rotation.x = Math.PI / 2;
+  potRim.position.set(ckX, 1.76, ckZ - 4);
+  plaza.cookingSceneGroup.add(potRim);
+  const steamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 });
+  for (let i = 0; i < 3; i++) {
+    const steam = new THREE.Mesh(new THREE.SphereGeometry(0.13 + i * 0.03, 5, 5), steamMat);
+    steam.position.set(ckX, 2.0 + i * 0.28, ckZ - 4);
+    plaza.cookingSceneGroup.add(steam);
+    plaza.animParts.steam.push({ mesh: steam, originalY: 2.0 + i * 0.28, phase: i * (Math.PI / 3) });
+  }
+  // コンロの火（暖色の点光源でカウンター周りをほんのり照らす）
+  const stoveLight = new THREE.PointLight(0xff8830, 0.9, 6, 2);
+  stoveLight.position.set(ckX, 1.3, ckZ - 4);
+  plaza.cookingSceneGroup.add(stoveLight);
+
+  // 背後の棚と食材の瓶
+  const shelf = new THREE.Mesh(
+    new THREE.BoxGeometry(5.5, 0.15, 0.5),
+    new THREE.MeshStandardMaterial({ color: 0x6a4425, roughness: 0.9 })
+  );
+  shelf.position.set(ckX, 2.6, ckZ - 4.3);
+  plaza.cookingSceneGroup.add(shelf);
+  const jarColors = [0xff8844, 0x66cc66, 0xffdd44, 0xff6688, 0x88ccee];
+  jarColors.forEach((col, i) => {
+    const jar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.16, 0.18, 0.32, 8),
+      new THREE.MeshStandardMaterial({ color: col, roughness: 0.4, transparent: true, opacity: 0.85 })
+    );
+    jar.position.set(ckX - 2.2 + i * 1.1, 2.83, ckZ - 4.3);
+    plaza.cookingSceneGroup.add(jar);
+  });
+
+  // マスター（食堂の店主スライム）：カウンターの奥に立って出迎える
+  const chefGroup = new THREE.Group();
+  buildCuteSlimeBody(chefGroup, 0.5, 0xfff2d8);
+  chefGroup.position.set(ckX, 0, ckZ - 4.9);
+  chefGroup.rotation.y = Math.PI; // カウンター越しにプレイヤー側(+z)を向く
+  plaza.cookingSceneGroup.add(chefGroup);
+  // コック帽
+  const hatBase = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.28, 0.24, 0.22, 10),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 })
+  );
+  hatBase.position.set(ckX, 0.92, ckZ - 4.9);
+  plaza.cookingSceneGroup.add(hatBase);
+  const hatTop = new THREE.Mesh(
+    new THREE.SphereGeometry(0.3, 10, 8),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 })
+  );
+  hatTop.position.set(ckX, 1.12, ckZ - 4.9);
+  hatTop.scale.set(1, 0.7, 1);
+  plaza.cookingSceneGroup.add(hatTop);
+  plaza.animParts.chef = { group: chefGroup, baseY: 0 };
+
+  // 休憩用の小さなテーブル×2（雰囲気づくり。座席機能は無し）
+  [[-4.5, 3], [4.5, 3]].forEach(([ox, oz]) => {
+    const tableGroup = new THREE.Group();
+    const top = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.7, 0.7, 0.08, 16),
+      new THREE.MeshStandardMaterial({ color: 0xa8875e, roughness: 0.8 })
+    );
+    top.position.y = 0.75;
+    tableGroup.add(top);
+    const leg = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.08, 0.08, 0.75, 8),
+      new THREE.MeshStandardMaterial({ color: 0x6a4425, roughness: 0.85 })
+    );
+    leg.position.y = 0.37;
+    tableGroup.add(leg);
+    tableGroup.position.set(ckX + ox, 0, ckZ + oz);
+    tableGroup.castShadow = true;
+    plaza.cookingSceneGroup.add(tableGroup);
+  });
 }
