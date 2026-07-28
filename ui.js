@@ -215,7 +215,7 @@ function showShop() {
     background:linear-gradient(160deg,#3a2410 0%,#1f1408 100%);
     border:2px solid #C89030; border-radius:20px;
     padding:0 0 24px 0; width:min(96vw,680px); max-height:92vh;
-    overflow-y:auto; box-shadow:0 8px 40px rgba(160,90,20,0.5);
+    overflow-y:auto; touch-action:pan-y; box-shadow:0 8px 40px rgba(160,90,20,0.5);
     font-family:'Noto Sans JP','Hiragino Maru Gothic Pro','M PLUS Rounded 1c',sans-serif; color:#f5e8d0;
   ">
     <!-- ヘッダー -->
