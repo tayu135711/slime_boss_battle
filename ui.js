@@ -854,28 +854,60 @@ function refreshGachaTicketDisplay() {
   if (dom.gachaPull10Btn) dom.gachaPull10Btn.disabled = tickets < 10;
 }
 
+// ★修正: 以前は処理中に例外が起きるとチケットだけ減った状態で画面が
+//         一切更新されず、「ボタンを押しても何も起きない（フリーズしたように見える）」
+//         状態になり得た（例: SE/BGM側の一時的な不具合、DOM未生成タイミングでの
+//         呼び出しなど）。try/catchで確実に復旧させ、連打で二重に処理が走らないよう
+//         演出中はボタンを無効化する。
+let _gachaPulling = false;
+
 /** n連ガチャを実行（1 or 10） */
 function pullGacha(n) {
+  if (_gachaPulling) return; // 連打で二重実行されるのを防ぐ
   if ((state.gachaTickets ?? 0) < n) return;
-  state.gachaTickets -= n;
 
-  const pool = getGachaPool();
-  const results = [];
-  for (let i = 0; i < n; i++) {
-    const picked = weightedGachaPick(pool);
-    const isNew  = !state.ownedCostumes.find(o => o.id === picked.id);
-    if (isNew) state.ownedCostumes.push(COSTUMES.find(c => c.id === picked.id));
-    results.push({ costume: picked, isNew });
+  _gachaPulling = true;
+  if (dom.gachaPullBtn)   dom.gachaPullBtn.disabled   = true;
+  if (dom.gachaPull10Btn) dom.gachaPull10Btn.disabled = true;
+
+  const ticketsBefore = state.gachaTickets;
+
+  try {
+    state.gachaTickets -= n;
+
+    const pool = getGachaPool();
+    const results = [];
+    for (let i = 0; i < n; i++) {
+      const picked = weightedGachaPick(pool);
+      const isNew  = !state.ownedCostumes.find(o => o.id === picked.id);
+      if (isNew) state.ownedCostumes.push(COSTUMES.find(c => c.id === picked.id));
+      results.push({ costume: picked, isNew });
+    }
+
+    // ★修正: SE/BGM再生で例外が起きても抽選結果の表示は必ず行われるよう分離
+    try {
+      SE.gacha();
+      BGM.playJingle("gacha");
+      if (results.some(r => r.isNew)) setTimeout(() => SE.reward(), 300);
+    } catch (seErr) {
+      console.error("[gacha] SE/BGM再生に失敗しましたが、結果表示は続行します", seErr);
+    }
+
+    renderGachaResult(results);
+    renderGachaCollection();
+    saveToServer();
+  } catch (err) {
+    // ここに来た場合は抽選処理自体が失敗しているので、チケットを元に戻して
+    // ユーザーに何が起きたか分かるようにする（無言で固まるのが一番よくない）。
+    console.error("[gacha] ガチャ処理中にエラーが発生しました", err);
+    state.gachaTickets = ticketsBefore;
+    if (dom.gachaResult) {
+      dom.gachaResult.innerHTML = `<div class="gacha-result-title">⚠️ ガチャの処理に失敗しました。もう一度お試しください。</div>`;
+    }
+  } finally {
+    _gachaPulling = false;
+    refreshGachaTicketDisplay();
   }
-
-  SE.gacha();
-  BGM.playJingle("gacha"); // ★追加: ガチャジングルを再生
-  if (results.some(r => r.isNew)) setTimeout(() => SE.reward(), 300);
-
-  renderGachaResult(results);
-  renderGachaCollection();
-  refreshGachaTicketDisplay();
-  saveToServer();
 }
 
 function renderGachaResult(results) {

@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#2a4a2e">
 <title>スライム討伐戦</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=20260729">
 </head>
 <body>
 
@@ -305,24 +305,28 @@
 </div><!-- /hud -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="config.js"></script>
-<script src="se.js"></script>
-<script src="bgm.js"></script>
-<script src="timing_ring.js"></script>
-<script src="costume_art.js"></script>
-<script src="boss_models.js"></script>
-<script src="main.js"></script>
-<script src="scene.js"></script>
-<script src="battle.js"></script>
-<script src="ui.js"></script>
-<script src="home_npcs.js"></script>
-<script src="home_scene.js"></script>
-<script src="fishing.js"></script>
-<script src="cooking.js"></script>
-<script src="flower.js"></script>
-<script src="quest.js"></script>
-<script src="save.js"></script>
-<script src="game.js"></script>
-<script src="admin.js"></script>
+<!-- ★追加: GitHub Pages(CDN)やブラウザが各jsファイルを積極的にキャッシュし、
+     修正版をpushしても古いバージョンが読み込まれ続けるケースがあったため、
+     全ローカルスクリプトにバージョンクエリを付与してキャッシュを確実に無効化する。
+     コードを更新するたびに、このバージョン文字列(v=...)を更新すること。 -->
+<script src="config.js?v=20260729"></script>
+<script src="se.js?v=20260729"></script>
+<script src="bgm.js?v=20260729"></script>
+<script src="timing_ring.js?v=20260729"></script>
+<script src="costume_art.js?v=20260729"></script>
+<script src="boss_models.js?v=20260729"></script>
+<script src="main.js?v=20260729"></script>
+<script src="scene.js?v=20260729"></script>
+<script src="battle.js?v=20260729"></script>
+<script src="ui.js?v=20260729"></script>
+<script src="home_npcs.js?v=20260729"></script>
+<script src="home_scene.js?v=20260729"></script>
+<script src="fishing.js?v=20260729"></script>
+<script src="cooking.js?v=20260729"></script>
+<script src="flower.js?v=20260729"></script>
+<script src="quest.js?v=20260729"></script>
+<script src="save.js?v=20260729"></script>
+<script src="game.js?v=20260729"></script>
+<script src="admin.js?v=20260729"></script>
 </body>
 </html>
