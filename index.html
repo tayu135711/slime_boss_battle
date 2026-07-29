@@ -2,406 +2,331 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-<title>捕獲RPGデモ</title>
-<meta name="description" content="Three.js製の捕獲RPGデモ。フィールドを探索して電波人間を捕まえよう！">
-
-<!-- ========================================================
-     PWA (スマホでホーム画面に追加してアプリのように起動できるようにする)
-     2026/07/26 追加
-======================================================== -->
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#fbecc8">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
-<!-- iOS向け (Android/ChromeはWeb App Manifestだけで足りるが、iOS SafariはPWAへの対応が独自仕様のため個別に指定する) -->
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="捕獲RPG">
-
-<!-- Google Fonts -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
-
-<!-- ゲームスタイルシート -->
-<link rel="stylesheet" href="css/style.css">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2a4a2e">
+<title>スライム討伐戦</title>
+<link rel="stylesheet" href="style.css?v=20260729">
 </head>
 <body>
 
-<!-- ========================================================
-     フィールドキャンバス
-======================================================== -->
-<div id="canvas-container"></div>
+<div id="sceneContainer"></div>
 
-<!-- ========================================================
-     HUD (フィールド操作ガイド)
-======================================================== -->
-<div id="hud" class="tag-panel">
-  移動: WASD / 矢印キー<br>
-  敵シンボルに近づくとエンカウント
-</div>
+<div id="hud">
 
-<!-- スタミナ表示 (2026/07/26 追加) -->
-<div id="stamina-badge" class="tag-panel">
-  <span class="icon-stamina">⚡</span>
-  <span id="stamina-count">3/3</span>
-</div>
-
-<!-- ========================================================
-     ミニマップ (フィールド右上・迷路探索時のみ表示)
-======================================================== -->
-<div id="minimap-wrap">
-  <div id="minimap-floor-label" class="display">ステージ</div>
-  <canvas id="minimap-canvas" width="140" height="140"></canvas>
-  <button id="btn-minimap-zoom">🔍 拡大</button>
-</div>
-
-<!-- ミニマップ拡大表示 -->
-<div id="minimap-zoom-overlay">
-  <div id="minimap-zoom-box" class="tag-panel">
-    <div id="minimap-zoom-title" class="display">ちず</div>
-    <canvas id="minimap-zoom-canvas" width="340" height="340"></canvas>
-    <button class="btn" id="btn-minimap-zoom-close">とじる</button>
+  <!-- 上部：ボスHP＆ゲージ -->
+  <div id="bossHpArea">
+    <div id="hpText">古龍スライム・ギガンテス　HP 5000 / 5000</div>
+    <div class="hp-bar-outer" role="progressbar" aria-label="ボスHP" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" id="bossHpBar"><div class="hp-bar-inner" id="hpBarInner"></div></div>
   </div>
-</div>
+  <div id="gaugeArea">
+    <div id="gaugeLabel">必殺技ゲージ: 0%</div>
+    <div class="gauge-outer" role="progressbar" aria-label="必殺技ゲージ" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="gaugeBar"><div class="gauge-inner" id="gaugeInner"></div></div>
+  </div>
 
-<!-- ========================================================
-     パーティパネル (フィールド右上)
-======================================================== -->
-<div id="party-panel" class="tag-panel">
-  <h3 class="display">パーティ (<span id="party-count">0</span>/3)</h3>
-  <div id="party-list" style="color:#999;">まだ誰もいない…</div>
-</div>
+  <!-- 左上：ステータス -->
+  <div id="statsArea">
+    <span>ダメージ: <b id="totalDamage">0</b></span>
+    <span>攻撃: <b id="attackCount">0</b>回</span>
+    <button id="muteBtn" title="サウンドON/OFF" style="margin-left:8px;background:none;border:1px solid rgba(255,255,255,0.4);border-radius:6px;color:#fff;font-size:14px;padding:2px 7px;cursor:pointer;vertical-align:middle;">🔊</button>
+  </div>
 
-<!-- ========================================================
-     バトルオーバーレイ
-======================================================== -->
-<div id="battle-overlay">
+  <!-- プレイヤーHP（左下、コントローラーパネルの上） -->
+  <div id="playerHpArea">
+    <div id="playerHpText">勇者　HP 500 / 500</div>
+    <div class="player-hp-bar-outer" role="progressbar" aria-label="プレイヤーHP" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" id="playerHpBar"><div class="player-hp-bar-inner" id="playerHpBarInner"></div></div>
+  </div>
 
-  <!-- バトル3Dビュー (フルスクリーン背景) -->
-  <div id="battle-stage-wrap">
-    <canvas id="battle-canvas"></canvas>
-    <div id="battle-flash"></div>
-    <div id="battle-shockwave"></div>
-    <div id="damage-popup-container"></div>
-    <div id="skill-burst"></div>
-    <div id="skill-banner"><span id="skill-banner-text"></span></div>
+  <!-- 画面赤フラッシュ（被弾時） -->
+  <div id="damageFlash"></div>
 
-    <!-- 上部: タイトル -->
-    <div id="battle-top-row">
-      <button id="battle-menu-button" class="btn battle-menu-btn" type="button">
-        <span class="menu-icon">
-          <span></span>
-          <span></span>
-          <span></span>
-        </span>
-        <span class="menu-label">L</span>
-      </button>
-      <div id="battle-top-bonus">
-        <div class="battle-bonus-chip">けいけんち +0%</div>
-        <div class="battle-bonus-chip">ゴールド +0%</div>
-        <div class="battle-bonus-chip">ドロップ +0%</div>
+  <!-- タイトル画面 -->
+  <div id="titleScreen" class="visible">
+    <div id="titleContent">
+      <div id="titleSub">〜 Chapter 1 〜</div>
+      <div id="titleLogo">
+        <span class="title-line1">不思議な</span>
+        <span class="title-line2">スライム大冒険</span>
+      </div>
+      <div id="titleDeco">✦ ✦ ✦</div>
+      <button id="titleStartBtn">⚔️ 冒険を始める</button>
+    </div>
+  </div>
+
+  <!-- メニュー画面 -->
+  <div id="menuScreen">
+    <div id="menuBox">
+      <div id="menuTitle">不思議なスライム大冒険</div>
+      <div id="menuBtns">
+        <button class="menu-btn btn-stage" id="menuStageBtn">
+          <span class="menu-btn-icon">⚔️</span>
+          <span class="menu-btn-label">ステージ選択</span>
+        </button>
+        <button class="menu-btn btn-gacha" id="menuGachaBtn">
+          <span class="menu-btn-icon">📖</span>
+          <span class="menu-btn-label">コスチューム図鑑</span>
+        </button>
+        <button class="menu-btn btn-other" id="menuOtherBtn">
+          <span class="menu-btn-icon">⚙️</span>
+          <span class="menu-btn-label">その他</span>
+        </button>
       </div>
     </div>
-    <div id="battle-title" class="display">やせいの ??? があらわれた！</div>
+  </div>
 
-    <!-- 敵HPバー (背景の上にフロート表示) -->
-    <div id="enemy-hp-float">
-      <div class="hpbar-label">
-        <span id="enemy-name">敵</span>
-        <span id="enemy-hp-text">0/0</span>
+  <!-- ホーム広場画面 -->
+  <div id="homePlazaScreen">
+    <div id="npcBubble" aria-live="polite"></div>
+    <div id="plazaActionPrompt">Ａ で入る</div>
+    <!-- マップボタン（広場右上） -->
+    <button id="plazaMapBtn" title="マップ">🗺️</button>
+    <!-- NPC会話ウィンドウ -->
+    <div id="npcDialog" role="dialog" aria-modal="true" aria-labelledby="npcDialogName">
+      <div id="npcDialogName"></div>
+      <div id="npcDialogText"></div>
+      <button id="npcDialogNext">次へ ▶</button>
+    </div>
+  </div>
+
+  <!-- ワールドマップ画面 -->
+  <div id="plazaMapScreen">
+    <div id="plazaMapBox">
+      <div id="plazaMapTitle">🗺️ 広場マップ</div>
+      <div id="plazaMapCanvas">
+        <svg id="plazaMapSvg" viewBox="0 0 320 280" xmlns="http://www.w3.org/2000/svg">
+          <rect x="0" y="0" width="320" height="280" rx="12" fill="#5a9e4a"/>
+          <ellipse cx="160" cy="140" rx="55" ry="50" fill="#9a8a7a"/>
+          <circle cx="160" cy="140" r="10" fill="#6aacdf" stroke="#4488bb" stroke-width="2"/>
+          <text x="160" y="144" text-anchor="middle" font-size="10" fill="white">💧</text>
+          <rect x="135" y="62" width="50" height="38" rx="6" fill="#7a5030" stroke="#5a3010" stroke-width="2"/>
+          <text x="160" y="79" text-anchor="middle" font-size="9" fill="#ffeebb" font-weight="bold">冒険の門</text>
+          <text x="160" y="92" text-anchor="middle" font-size="13">⚔️</text>
+          <rect x="38" y="104" width="48" height="36" rx="6" fill="#4f7ec4" stroke="#2a5090" stroke-width="2"/>
+          <text x="62" y="120" text-anchor="middle" font-size="9" fill="#ffeebb" font-weight="bold">商　店</text>
+          <text x="62" y="133" text-anchor="middle" font-size="12">🛍</text>
+          <rect x="234" y="104" width="48" height="36" rx="6" fill="#c84040" stroke="#902020" stroke-width="2"/>
+          <text x="258" y="120" text-anchor="middle" font-size="9" fill="#ffeebb" font-weight="bold">食　堂</text>
+          <text x="258" y="133" text-anchor="middle" font-size="12">🍜</text>
+          <rect x="220" y="178" width="80" height="64" rx="8" fill="#1a5a80" stroke="#0a3050" stroke-width="2"/>
+          <ellipse cx="260" cy="210" rx="28" ry="20" fill="#3a8ac0" opacity="0.9"/>
+          <text x="260" y="200" text-anchor="middle" font-size="8" fill="#cceeff">池</text>
+          <text x="260" y="216" text-anchor="middle" font-size="14">🎣</text>
+          <text x="260" y="232" text-anchor="middle" font-size="9" fill="#aaddff" font-weight="bold">釣り場</text>
+          <rect x="22" y="178" width="80" height="64" rx="8" fill="#5a1a70" stroke="#3a0050" stroke-width="2"/>
+          <circle cx="52" cy="205" r="8" fill="#ff88cc" opacity="0.9"/>
+          <circle cx="68" cy="200" r="7" fill="#ffdd44" opacity="0.9"/>
+          <circle cx="82" cy="208" r="8" fill="#aa66ff" opacity="0.9"/>
+          <text x="62" y="228" text-anchor="middle" font-size="14">🌸</text>
+          <text x="62" y="236" text-anchor="middle" font-size="9" fill="#ffccee" font-weight="bold">花　畑</text>
+          <circle id="mapPlayerDot" cx="160" cy="140" r="7" fill="#ffee44" stroke="#cc8800" stroke-width="2"/>
+          <text id="mapPlayerIcon" x="160" y="144" text-anchor="middle" font-size="8">🫧</text>
+        </svg>
+        <button class="map-area-btn" id="mapBtnStage"      style="left:42%;top:22%;width:16%;height:14%;" title="冒険の門"></button>
+        <button class="map-area-btn" id="mapBtnShop"       style="left:12%;top:37%;width:15%;height:13%;" title="商店"></button>
+        <button class="map-area-btn" id="mapBtnRestaurant" style="left:73%;top:37%;width:15%;height:13%;" title="食堂"></button>
+        <button class="map-area-btn" id="mapBtnPond"       style="left:69%;top:64%;width:25%;height:23%;" title="釣り場"></button>
+        <button class="map-area-btn" id="mapBtnFlower"     style="left:7%;top:64%;width:25%;height:23%;" title="花畑"></button>
       </div>
-      <div class="hpbar-outer">
-        <div id="enemy-hpbar" class="hpbar-inner" style="width:100%"></div>
+      <div id="plazaMapDesc">行きたい場所をタップ！</div>
+      <button id="plazaMapCloseBtn">✕ とじる</button>
+    </div>
+  </div>
+
+  <!-- コレクション画面 -->
+  <div id="gachaScreen">
+    <div id="gachaBox">
+      <div id="gachaTitle">📖 コスチューム図鑑</div>
+      <div id="gachaCurrentCostume"></div>
+
+      <!-- ガチャ抽選 -->
+      <div id="gachaTicketCount">🎫 ガチャ石: <span id="gachaTicketNum">0</span></div>
+      <div id="gachaBtns">
+        <button class="gacha-pull-btn" id="gachaPullBtn">🎰 ガチャを回す（1回）</button>
+        <button class="gacha-pull-10btn" id="gachaPull10Btn">🎰 10連ガチャ</button>
+      </div>
+      <div id="gachaResult"></div>
+
+      <div id="gachaCollectionTitle">── コレクション ──</div>
+      <div id="gachaCollection"></div>
+      <button class="back-btn" id="gachaBackBtn">← もどる</button>
+    </div>
+  </div>
+
+  <!-- ステージ選択画面 -->
+  <div id="stageSelectScreen">
+    <div id="stageSelectBox">
+      <div id="stageSelectTitle">⚔️ ステージ選択</div>
+      <div id="stageSelectChapter">Chapter 1 ─ 不思議な森</div>
+      <div id="stageList"></div>
+      <button class="back-btn" id="stageSelectBackBtn">← もどる</button>
+    </div>
+  </div>
+
+  <!-- ステージ開始画面 -->
+  <div id="stageStartScreen">
+    <div id="stageStartBox" role="dialog" aria-modal="true" aria-labelledby="stageBossName">
+      <div id="stageChapter">Chapter 1</div>
+      <div id="stageNo">Stage 1</div>
+      <div id="stageBossName">ぷちスライム・ポヨ</div>
+      <button id="stageStartBtn">⚔️ バトル開始！</button>
+    </div>
+  </div>
+
+  <!-- リザルト画面 -->
+  <div id="resultScreen">
+    <div id="resultBox" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+      <div id="resultTitle">✨ STAGE CLEAR! ✨</div>
+      <div id="resultStats"></div>
+      <!-- ★変更: コスチュームは完全にガチャ入手のみにするため、クリア報酬の3択UIを廃止し、
+           ガチャ石を獲得した旨のシンプルな表示に置き換え -->
+      <div id="rewardArea">
+        <div id="rewardTitle">🎟️ ガチャ石を獲得！広場のガチャでコスチュームを手に入れよう</div>
+      </div>
+      <button id="nextStageBtn">次のステージへ ▶</button>
+      <button id="backToPlazaBtn">🏡 広場へもどる</button>
+    </div>
+  </div>
+
+  <!-- エンディング画面 -->
+  <div id="endingScreen">
+    <div id="endingBox">
+      <div id="endingTitle">👑 CHAPTER 1 CLEAR! 👑</div>
+      <div id="endingSub">古王スライム・ガガントスを討伐した！</div>
+      <button id="endingRetryBtn">最初から遊ぶ</button>
+    </div>
+  </div>
+
+  <!-- ゲームオーバー画面 -->
+  <div id="gameOverScreen">
+    <div id="gameOverBox" role="alertdialog" aria-modal="true" aria-labelledby="gameOverTitle">
+      <div id="gameOverTitle">💀 GAME OVER</div>
+      <div id="gameOverSub">ボスに倒されました…</div>
+      <button id="retryBtn">もう一度挑戦</button>
+      <button id="gameOverBackToPlazaBtn">🏡 広場へもどる</button>
+    </div>
+  </div>
+
+  <!-- ステータスライン -->
+  <div id="statusLine" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- ============ 着替え画面（ドレッシングルーム） ============ -->
+  <div id="dressingScreen" role="dialog" aria-modal="true" aria-labelledby="dressingTitle">
+    <div id="dressingBox">
+      <div id="dressingTitle">👗 きがえる</div>
+      <!-- プレビュー：現在 → 新しいコスチューム -->
+      <div id="dressingPreview">
+        <div id="dressingFrom">
+          <div class="dressing-label">いま装備中</div>
+          <div id="dressingFromArt"></div>
+          <div id="dressingFromName"></div>
+          <div id="dressingFromStars"></div>
+        </div>
+        <div id="dressingArrow">→</div>
+        <div id="dressingTo">
+          <div class="dressing-label">きがえる！</div>
+          <div id="dressingToArt"></div>
+          <div id="dressingToName"></div>
+          <div id="dressingToStars"></div>
+        </div>
+      </div>
+      <!-- 特技・武器情報 -->
+      <div id="dressingInfo"></div>
+      <!-- ボタン -->
+      <div id="dressingBtns">
+        <button id="dressingConfirmBtn">✨ きがえる！</button>
+        <button id="dressingCancelBtn">← やめる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- リセット（右上） -->
+  <button class="reset-btn" id="resetBtn" aria-label="リセット">↺</button>
+
+  <!-- ============ コントローラーパネル（下部） ============ -->
+  <div id="controllerPanel">
+
+    <!-- 左：バーチャルジョイスティック（広場用） / 十字型Dパッド（バトル用） -->
+    <div id="dpadWrap">
+      <!-- バーチャルジョイスティック -->
+      <div id="joystickBase" role="slider" aria-label="移動コントロール" aria-valuetext="中央">
+        <div id="joystickKnob"></div>
+      </div>
+
+      <svg width="0" height="0" style="position:absolute">
+        <defs>
+          <clipPath id="crossClip" clipPathUnits="objectBoundingBox">
+            <path d="
+              M 0.33,0   L 0.67,0   L 0.67,0.33
+              L 1,0.33   L 1,0.67   L 0.67,0.67
+              L 0.67,1   L 0.33,1   L 0.33,0.67
+              L 0,0.67   L 0,0.33   L 0.33,0.33 Z
+            "/>
+          </clipPath>
+        </defs>
+      </svg>
+
+      <div class="dpad-cross">
+        <button class="dpad-btn dpad-up"    data-dir="up" aria-label="上">▲</button>
+        <button class="dpad-btn dpad-left"  data-dir="left" aria-label="左">◀</button>
+        <div    class="dpad-center-dot"></div>
+        <button class="dpad-btn dpad-right" data-dir="right" aria-label="右">▶</button>
+        <button class="dpad-btn dpad-down"  data-dir="down" aria-label="下">▼</button>
       </div>
     </div>
 
-    <!-- 敵が複数いるときのターゲット切り替え行 (2026/07/25 追加) -->
-    <div id="enemy-target-row"></div>
-
-    <!-- 行動キュー (このラウンドでこれから行動するメンバー) -->
-    <div id="battle-queue-wrap">
-      <span class="queue-label display">こうどうじゅん</span>
-      <div id="battle-queue-list" class="queue-list"></div>
-      <div id="queued-stack" style="display:flex; gap:4px; margin-top:6px;"></div>
-      <span id="active-actor-label"></span>
+    <!-- 中央：ロゴエリア -->
+    <div id="controllerCenter">
+      <div id="gameTitle">⚔️<br><span>SLIME<br>BATTLE</span></div>
     </div>
 
-    <!-- バトルログ (最小限の一行表示、スクロールなし) -->
-    <div id="battle-log"></div>
-  </div>
-
-  <!-- 下部UI: 味方HPカード + コマンド (常に画面内におさまる固定エリア) -->
-  <div id="battle-bottom-bar">
-    <!-- 味方HPカードリスト -->
-    <div id="ally-hp-list"></div>
-
-    <!-- コマンドボタン (丸型・行動中のキャラによって出し分け) -->
-    <div id="battle-actions">
-      <button class="btn cmd" id="btn-normal-atk">
-        <span class="cmd-icon icon-attack"></span>
-        <span>こうげき</span>
+    <!-- 右：アクションボタン -->
+    <div id="actionPad">
+      <button class="action-btn btn-y" id="specialBtn" aria-label="スキル">
+        <span class="btn-label">Y</span>
+        <span class="btn-text" id="specialBtnText">✨スキル</span>
       </button>
-      <button class="btn cmd" id="btn-element-atk">
-        <span class="cmd-icon icon-attack" id="element-atk-icon"></span>
-        <span id="element-atk-text">属性</span>
+      <button class="action-btn btn-x" id="ultimateBtn" aria-label="必殺技">
+        <span class="btn-label">X</span>
+        <span class="btn-text" id="ultimateBtnText">💥必殺技</span>
       </button>
-      <button class="btn cmd" id="btn-skill">
-        <span class="cmd-icon icon-attack" id="skill-icon"></span>
-        <span id="skill-text">とくぎ</span>
+      <button class="action-btn btn-dodge" id="dodgeBtn" aria-label="回避">
+        <span class="btn-label">B</span>
+        <span class="btn-text" id="dodgeBtnText">回避</span>
       </button>
-      <button class="btn cmd item-btn" id="btn-item">
-        <span class="cmd-icon icon-item"></span>
-        <span>アイテム</span>
-      </button>
-      <button class="btn cmd defend-btn" id="btn-defend">
-        <span class="cmd-icon icon-shield"></span>
-        <span>ぼうぎょ</span>
-      </button>
-      <button class="btn cmd capture-btn" id="btn-capture">
-        <span class="cmd-icon icon-capture"></span>
-        <span id="capture-text">つかまえる</span>
-      </button>
-      <button class="btn cmd run-btn" id="btn-run">
-        <span class="cmd-icon icon-run"></span>
-        <span>にげる</span>
-      </button>
-      <button class="btn cmd round" id="btn-cmd-back" style="background:var(--ink); color:#fff;">
-        <span class="cmd-icon">◀</span>
-        <span>もどる</span>
+      <button class="action-btn btn-a" id="attackBtn" aria-label="攻撃">
+        <span class="btn-label">A</span>
+        <span class="btn-text">攻撃</span>
       </button>
     </div>
-  </div>
 
-  <!-- アイテム選択ミニウィンドウ -->
-  <div id="item-panel">
-    <div id="item-panel-title" class="display">アイテム</div>
-    <div id="item-panel-list"></div>
-    <button class="btn" id="btn-item-close">とじる</button>
-  </div>
-</div>
+  </div><!-- /controllerPanel -->
+</div><!-- /hud -->
 
-<!-- ========================================================
-     タイトル画面 (2026/07/26 追加)
-     起動時に最初に表示する。「はじめから」「つづきから」を選ぶまで
-     ゲーム内の操作は受け付けない(裏では島マップがそのまま動いている)。
-======================================================== -->
-<div id="title-screen">
-  <div id="title-logo-wrap">
-    <div id="title-logo" class="display">捕獲RPG</div>
-    <div id="title-sub">〜 ケーキとわがしの しま 〜</div>
-  </div>
-  <div id="title-menu">
-    <button class="btn title-btn" id="btn-title-continue" style="background:var(--green);">つづきから</button>
-    <button class="btn title-btn" id="btn-title-new" style="background:var(--red);">はじめから</button>
-  </div>
-  <button id="btn-mute-toggle" title="サウンドON/OFF">🔊</button>
-</div>
-
-<!-- BGM再生用 (音源ファイルは別途 audio/ フォルダなどに追加して js/audio.js の playBgm() から鳴らす想定) -->
-<audio id="bgm-player" loop></audio>
-
-<!-- ========================================================
-     島オーバーレイ (ステージ選択ハブ)
-======================================================== -->
-<div id="island-overlay">
-  <div id="island-title" class="tag-panel display">しまマップ</div>
-  <div id="island-hint">WASD / 矢印キー で あるける</div>
-  <div id="takeo-talk-hint" style="display:none;">Z / Enter / Space で 話す</div>
-
-  <!-- 通貨表示 -->
-  <div id="island-currency">
-    <div class="currency-badge">
-      <span class="icon-stamina">⚡</span>
-      <span id="stamina-count-island">3/3</span>
-    </div>
-    <div class="currency-badge">
-      <span class="icon-diamond"></span>
-      <span id="diamond-count">0</span>
-    </div>
-    <div class="currency-badge">
-      <span class="icon-coin"></span>
-      <span id="coin-count">0</span>
-    </div>
-  </div>
-
-  <!-- メニューボタン -->
-  <div id="island-menu-buttons">
-    <button class="btn" id="btn-open-gacha">ガチャ</button>
-    <button class="btn" id="btn-open-party">パーティ</button>
-    <button class="btn" id="btn-save-game" style="background:var(--defend);">セーブ</button>
-  </div>
-
-  <!-- 島3Dビュー -->
-  <div id="island-canvas-wrap">
-    <canvas id="island-canvas"></canvas>
-  </div>
-
-  <!-- ステージドット (右サイド) -->
-  <div id="stage-dots"></div>
-
-  <!-- ステージ選択カード (下部) -->
-  <div id="stage-card" class="tag-panel">
-    <div id="stage-card-icon">?</div>
-    <div id="stage-card-name" class="display">ステージ1</div>
-    <div id="stage-card-desc"></div>
-    <button class="btn" id="btn-depart">出発する</button>
-  </div>
-</div>
-
-<!-- ========================================================
-     ガチャモーダル
-======================================================== -->
-<div id="gacha-modal">
-  <div id="gacha-box" class="tag-panel">
-    <div class="modal-title display">そうびガチャ</div>
-    <div id="gacha-tabs">
-      <button class="btn" id="tab-equip">そうびガチャ (コイン30)</button>
-      <button class="btn" id="tab-premium">プレミアム (ダイヤ8)</button>
-    </div>
-    <div id="gacha-result">そうびガチャ: コインを30消費して、装備を1つひくよ</div>
-    <button class="btn capture" id="btn-gacha-pull">ひく</button>
-    <button class="btn" id="btn-gacha-close">とじる</button>
-  </div>
-</div>
-
-<!-- ========================================================
-     パーティ編成モーダル
-======================================================== -->
-<div id="party-modal">
-  <div id="party-box" class="tag-panel">
-    <div class="modal-title display" style="display:flex; justify-content:space-between; align-items:center;">
-      <span>パーティへんせい</span>
-      <button class="btn" id="btn-open-box" style="font-size:11px; padding:4px 8px; box-shadow:1.5px 1.5px 0 var(--ink);" onclick="renderBoxRoster()">ボックス</button>
-    </div>
-    <div id="party-roster"></div>
-    <button class="btn" id="btn-party-close">とじる</button>
-  </div>
-</div>
-
-<!-- ========================================================
-     アイテムショップモーダル (2026/07/25 追加)
-     もうひとつの家: ステージ2クリアで解放され、コインできずぐすりを買える
-======================================================== -->
-<div id="shop-screen">
-  <div id="shop-canvas-wrap">
-    <canvas id="shop-canvas"></canvas>
-  </div>
-  <div id="shop-title" class="tag-panel display">どうぐや</div>
-  <div id="shop-dialogue" class="tag-panel"></div>
-  <div id="shop-list-panel" class="tag-panel">
-    <div id="item-shop-list"></div>
-  </div>
-  <button class="btn" id="btn-shop-exit">でる</button>
-</div>
-
-<!-- ========================================================
-     演出要素
-======================================================== -->
-<div id="catch-flash"></div>
-<div id="encounter-flash"></div>
-
-<!-- ボスの間へ進むか確認するダイアログ (2026/07/24 追加) -->
-<!-- ========================================================
-     会話ウィンドウ (2026/07/26 追加: ストーリー演出用)
-     タップ/クリックで次の行に進む。名前が無いナレーション行にも対応。
-======================================================== -->
-<div id="dialogue-box" class="tag-panel">
-  <div id="dialogue-name"></div>
-  <div id="dialogue-text"></div>
-  <div id="dialogue-next-indicator">▼</div>
-</div>
-
-<div id="gate-confirm-panel" class="tag-panel" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:60; text-align:center; padding:20px 26px; min-width:260px;">
-  <div id="gate-confirm-title" class="display" style="font-size:15px; margin-bottom:8px; color:var(--plum);">ボスの間へ すすみますか？</div>
-  <div id="gate-confirm-desc" style="font-size:11px; opacity:0.8; margin-bottom:16px; font-weight:700;">この先に入ると、たおすまで もどれません</div>
-  <div style="display:flex; gap:10px; justify-content:center;">
-    <button class="btn" id="btn-gate-yes" style="background:var(--green); box-shadow:2px 2px 0 var(--ink);">はい</button>
-    <button class="btn" id="btn-gate-no" style="background:var(--red); box-shadow:2px 2px 0 var(--ink);">いいえ</button>
-  </div>
-</div>
-
-<!-- 宝箱を開けるか確認するダイアログ (2026/07/25 追加) -->
-<div id="chest-confirm-panel" class="tag-panel" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:60; text-align:center; padding:20px 26px; min-width:260px;">
-  <div class="display" style="font-size:15px; margin-bottom:16px; color:var(--plum);">たからばこを あけますか？</div>
-  <div style="display:flex; gap:10px; justify-content:center;">
-    <button class="btn" id="btn-chest-yes" style="background:var(--green); box-shadow:2px 2px 0 var(--ink);">あける</button>
-    <button class="btn" id="btn-chest-no" style="background:var(--red); box-shadow:2px 2px 0 var(--ink);">やめる</button>
-  </div>
-</div>
-
-<!-- どうぐやに入るか確認するダイアログ (2026/07/28 追加) -->
-<div id="shop-confirm-panel" class="tag-panel" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:60; text-align:center; padding:20px 26px; min-width:260px;">
-  <div class="display" style="font-size:15px; margin-bottom:16px; color:var(--plum);">どうぐやに 行きますか？</div>
-  <div style="display:flex; gap:10px; justify-content:center;">
-    <button class="btn" id="btn-shop-yes" style="background:var(--green); box-shadow:2px 2px 0 var(--ink);">はい</button>
-    <button class="btn" id="btn-shop-no" style="background:var(--red); box-shadow:2px 2px 0 var(--ink);">いいえ</button>
-  </div>
-</div>
-<div id="toast"></div>
-
-<!-- ========================================================
-     スマホ向け移動ボタン (2026/07/26 追加)
-     タッチ端末(pointer:coarse)でのみ表示。フィールド探索中のみ有効。
-======================================================== -->
-<div id="mobile-controls">
-  <div id="dpad">
-    <button class="dpad-btn dpad-up"    data-key="w">▲</button>
-    <button class="dpad-btn dpad-left"  data-key="a">◀</button>
-    <button class="dpad-btn dpad-right" data-key="d">▶</button>
-    <button class="dpad-btn dpad-down"  data-key="s">▼</button>
-  </div>
-</div>
-<!-- スマホ向け「はなす/しらべる」ボタン (2026/07/27 追加。NPC会話・迷路の隠し要素の決定キー(z)に相当) -->
-<div id="mobile-action">
-  <button class="dpad-btn action-btn" data-key="z">はなす</button>
-</div>
-
-<!-- ========================================================
-     JavaScript (読み込み順に注意)
-     1. Three.js (外部ライブラリ)
-     2. config.js     … 定数・ステージ定義
-     2.5 audio.js     … 効果音/BGM (依存なしなのでどこでも良いが早めに)
-     2.6 story.js     … 会話エンジン・ストーリーテキスト
-     3. models.js     … 3Dモデル生成 + ENEMY_TYPES
-     4. maze.js       … 迷路生成・ステージセットアップ
-     5. party.js      … パーティ管理・追従
-     6. island.js     … 島シーン・ガチャ・通貨 (scene は main.js より先に必要なためDOMは参照するが、sceneはmain.jsで初期化後に使用)
-     7. save.js       … セーブ/ロード (localStorage)
-     8. battle.js     … バトルシステム
-     9. main.js       … メインシーン初期化・プレイヤー・ループ・タイトル画面
-======================================================== -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<!-- ポストプロセス(ブルーム)用アドオン -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-<script src="js/config.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/story.js"></script>
-<script src="js/models.js"></script>
-<script src="js/maze.js"></script>
-<script src="js/party.js"></script>
-<script src="js/island.js"></script>
-<script src="js/save.js"></script>
-<script src="js/battle.js"></script>
-<script src="js/main.js"></script>
-
-<!-- PWA: Service Worker登録 (2026/07/26 追加。file://で直接開いた場合は登録できないので握りつぶす) -->
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(() => {
-        // file:// で開いている、またはhttps以外の場合はここに来る。ゲーム自体は問題なく遊べる。
-      });
-    });
-  }
-</script>
-
+<!-- ★追加: GitHub Pages(CDN)やブラウザが各jsファイルを積極的にキャッシュし、
+     修正版をpushしても古いバージョンが読み込まれ続けるケースがあったため、
+     全ローカルスクリプトにバージョンクエリを付与してキャッシュを確実に無効化する。
+     コードを更新するたびに、このバージョン文字列(v=...)を更新すること。 -->
+<script src="config.js?v=20260729"></script>
+<script src="se.js?v=20260729"></script>
+<script src="bgm.js?v=20260729"></script>
+<script src="timing_ring.js?v=20260729"></script>
+<script src="costume_art.js?v=20260729"></script>
+<script src="boss_models.js?v=20260729"></script>
+<script src="main.js?v=20260729"></script>
+<script src="scene.js?v=20260729"></script>
+<script src="battle.js?v=20260729"></script>
+<script src="ui.js?v=20260729"></script>
+<script src="home_npcs.js?v=20260729"></script>
+<script src="home_scene.js?v=20260729"></script>
+<script src="fishing.js?v=20260729"></script>
+<script src="cooking.js?v=20260729"></script>
+<script src="flower.js?v=20260729"></script>
+<script src="quest.js?v=20260729"></script>
+<script src="save.js?v=20260729"></script>
+<script src="game.js?v=20260729"></script>
+<script src="admin.js?v=20260729"></script>
 </body>
 </html>
