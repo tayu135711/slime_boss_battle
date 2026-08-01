@@ -297,9 +297,12 @@ function spawnMagicCircle() {
   pillar.position.y = 3;
   group.add(pillar);
 
-  const glow = new THREE.PointLight(0xaaddff, 0, 5);
-  glow.position.y = 1.5;
-  group.add(glow);
+  // ★修正: 以前はここでPointLightを毎回new生成してグロー表現していたが、
+  //         three.jsはシーン内のライト数が変化するたびに影響下のマテリアルの
+  //         シェーダーを裏で再コンパイルするため、必殺技を撃つたびに一瞬
+  //         処理が固まる（カクつく）原因になっていた。ライトを増やさず、
+  //         MeshBasicMaterialの発光っぽい見た目（不透明度を通常より強めに
+  //         振る）だけで同等のグロー感を出す。
 
   // ★修正: spawnShockwave()と同根のバグ。frame++を1回ずつ数える方式だと
   //         高リフレッシュレート端末で演出が実時間より速く終わり、逆に演出中の
@@ -309,8 +312,20 @@ function spawnMagicCircle() {
   const DURATION_MS = N * (1000 / 60); // 60fps換算でNフレーム分（従来の見た目の長さを維持）
   const startTime = performance.now();
   let lastTime = startTime;
+
+  // ★修正: 中断時(cancelled)にもジオメトリ/マテリアルをdisposeするための共通処理。
+  //         以前は自然終了(t>=1)の分岐でしかdisposeしておらず、戦闘リセットで
+  //         演出途中にキャンセルされた場合はGPUリソースが解放されないまま
+  //         残り続けていた（長時間プレイでの重さの一因）。
+  const disposeAll = () => {
+    three.scene.remove(group);
+    [outer, mid, inner, pillar].forEach(m => { m.geometry.dispose(); m.material.dispose(); });
+    const i = three.magicCircles.indexOf(group);
+    if (i !== -1) three.magicCircles.splice(i, 1);
+  };
+
   (function tick(now) {
-    if (group.userData.cancelled) return;
+    if (group.userData.cancelled) { disposeAll(); return; }
     now = typeof now === "number" ? now : performance.now();
     const dtScale = (now - lastTime) / (1000 / 60); // 前回tickからの経過フレーム比
     lastTime = now;
@@ -321,8 +336,7 @@ function spawnMagicCircle() {
     inner.material.opacity  = op * 0.9;
     const pt = Math.max(0, (t - 0.15) / 0.3);
     const pv = Math.min(pt, 1 - Math.max(0, (t - 0.65) / 0.35));
-    pillar.material.opacity = pv * 0.35;
-    glow.intensity          = pv * 2.5;
+    pillar.material.opacity = pv * 0.42; // ライトを無くした分、柱の存在感を少し補強
     // 回転速度も経過時間ベースにする（元は1フレームあたり固定角だった）
     outer.rotation.z += 0.04 * dtScale;
     inner.rotation.z -= 0.07 * dtScale;
@@ -331,11 +345,7 @@ function spawnMagicCircle() {
     if (t < 1) {
       requestAnimationFrame(tick);
     } else {
-      three.scene.remove(group);
-      [outer, mid, inner, pillar].forEach(m => { m.geometry.dispose(); m.material.dispose(); });
-      group.remove(glow);
-      const i = three.magicCircles.indexOf(group);
-      if (i !== -1) three.magicCircles.splice(i, 1);
+      disposeAll();
     }
   })();
 }
@@ -389,7 +399,7 @@ function attackBoss() {
 
   const { minDamage, maxDamage, criticalThreshold } = CONFIG.battle;
   // ★ お弁当バフ（攻撃力・クリティカル率）を反映
-  const atkMult  = (state._buffAttackMult  || 1) * (state._buildAttackMult || 1);
+  const atkMult  = (state._buffAttackMult  || 1) * (state._buildAttackMult || 1) * getPlayerAtkMult();
   const critMult = (state._buffCritMult    || 1) * (state._buildCritMult || 1);
   const baseMin  = Math.floor(minDamage * atkMult);
   const baseMax  = Math.floor(maxDamage * atkMult);

@@ -2226,7 +2226,7 @@ function eatBentoOnBench() {
 
   // ★ HPかいふく
   if (buff.hpRecover) {
-    state.player.hp = Math.min(CONFIG.player.maxHp, state.player.hp + buff.hpRecover);
+    state.player.hp = Math.min(getPlayerMaxHp(), state.player.hp + buff.hpRecover);
   }
   // ★ 必殺技ゲージ先行チャージ（次バトル開始時に反映させるためstateに保存）
   if (buff.specialStart) {

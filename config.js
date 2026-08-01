@@ -178,6 +178,26 @@ function getCurrentStage(stageIndex) {
   return STAGES[stageIndex] || STAGES[STAGES.length - 1];
 }
 
+// ── プレイヤーの恒久成長 ──────────────────────────────────────
+// ★追加: これまでプレイヤーのHP/攻撃力は全11ステージを通じて完全固定で、
+//         成長要素が「その場限りのビルド選択」と「ガチャで★3コスチューム
+//         (スキル)を引く運」しかなかった。一方ボスはHPが約23倍・DPS換算で
+//         約15倍まで伸びる設計だったため、後半ステージがガチャ運頼みの
+//         壁になりやすかった。ステージクリア数(state.unlockedStages-1)に応じて
+//         ゆるやかな恒久成長を追加する。ボスの数値は一切変更していない。
+const PLAYER_GROWTH = {
+  maxClearsCounted: 10,  // 全11ステージ中10クリア分まで成長（最終ステージ到達時点で頭打ち）
+  hpPerClear:   0.05,    // クリア1回につきHP  +5%
+  atkPerClear:  0.04,    // クリア1回につき攻撃力 +4%
+};
+
+function getPlayerGrowthClears() {
+  return Math.max(0, Math.min((state.unlockedStages || 1) - 1, PLAYER_GROWTH.maxClearsCounted));
+}
+function getPlayerHpMult()  { return 1 + PLAYER_GROWTH.hpPerClear  * getPlayerGrowthClears(); }
+function getPlayerAtkMult() { return 1 + PLAYER_GROWTH.atkPerClear * getPlayerGrowthClears(); }
+function getPlayerMaxHp()   { return Math.round(CONFIG.player.maxHp * getPlayerHpMult()); }
+
 const COSTUMES = [
   { id:"c01", no:"No.01", name:"ノーマルスライム",     stars:1, color:0x6ee7b7, weapon:"none",  hat:null,      skillId:null,      rarity:0.22 },
   { id:"c02", no:"No.02", name:"みどりスライム",       stars:1, color:0x5adb5a, weapon:"none",  hat:null,      skillId:null,      rarity:0.18 },

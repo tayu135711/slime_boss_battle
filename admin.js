@@ -289,7 +289,7 @@
     // プレイヤーHP
     setupSlider('adminPlayerHp', 'adminPlayerHpVal',
       () => state.player.hp,
-      () => CONFIG.player.maxHp,
+      () => getPlayerMaxHp(),
       v => { state.player.hp = v; refreshUi(); }
     );
 
@@ -339,7 +339,7 @@
 
     // アクションボタン
     document.getElementById('adminHealBtn').addEventListener('click', () => {
-      state.player.hp = CONFIG.player.maxHp;
+      state.player.hp = getPlayerMaxHp();
       refreshUi();
       showToast('💚 HP全回復！');
     });
@@ -391,7 +391,7 @@
     };
 
     sync('adminBossHp',      'adminBossHpVal',      state.currentHp,            s.maxHp);
-    sync('adminPlayerHp',    'adminPlayerHpVal',    state.player.hp,            CONFIG.player.maxHp);
+    sync('adminPlayerHp',    'adminPlayerHpVal',    state.player.hp,            getPlayerMaxHp());
     sync('adminChargeDmg',   'adminChargeDmgVal',   s.chargeDamage,             200);
     sync('adminShockDmg',    'adminShockDmgVal',    s.shockwaveDamage,          200);
     sync('adminAtkInterval', 'adminAtkIntervalVal', s.attackIntervalMs,         8000);

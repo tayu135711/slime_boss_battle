@@ -175,8 +175,8 @@ function setupInput() {
     showHomePlaza();
   });
   dom.stageStartBtn.addEventListener("click", startStage);
-  dom.titleStartBtn.addEventListener("click", () => { SE.resume(); SE.button(); dismissTitle(); });
-  dom.titleStartBtn.addEventListener("touchend", e => { e.preventDefault(); SE.resume(); SE.button(); dismissTitle(); }, { passive: false });
+  dom.titleStartBtn.addEventListener("click", () => { SE.resume(); SE.titleStart(); dismissTitle(); });
+  dom.titleStartBtn.addEventListener("touchend", e => { e.preventDefault(); SE.resume(); SE.titleStart(); dismissTitle(); }, { passive: false });
   dom.menuStageBtn.addEventListener("click", () => { SE.button(); showStageSelect("menu"); });
   dom.menuGachaBtn.addEventListener("click", () => { SE.button(); showGacha("menu"); });
   // ★修正: 「その他」ボタン（管理者パネルへの表示上の入口）を廃止。

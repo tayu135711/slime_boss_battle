@@ -33,9 +33,9 @@ function refreshUi() {
   dom.totalDamageEl.textContent = state.totalDamage;
   dom.attackCountEl.textContent = state.attackCount;
   // プレイヤーHP
-  const pct = Math.max(0, (state.player.hp / CONFIG.player.maxHp) * 100);
+  const pct = Math.max(0, (state.player.hp / getPlayerMaxHp()) * 100);
   dom.playerHpBarInner.style.width = pct + "%";
-  dom.playerHpText.textContent = `勇者　HP ${state.player.hp} / ${CONFIG.player.maxHp}`;
+  dom.playerHpText.textContent = `勇者　HP ${state.player.hp} / ${getPlayerMaxHp()}`;
   if      (pct < 25) dom.playerHpBarInner.style.background = "linear-gradient(90deg,#cc0000,#ff4444)";
   else if (pct < 50) dom.playerHpBarInner.style.background = "linear-gradient(90deg,#ff8c00,#ffcc00)";
   else               dom.playerHpBarInner.style.background = "linear-gradient(90deg,#44cc88,#88ffcc)";
@@ -559,7 +559,7 @@ function startStage() {
   //         cooldownReduceMs(攻撃ごとのクールダウン短縮量)に変更
   state._buildCooldownReduceMs = build?.cooldownReduceMs || 0;
   state._buildDodgeCooldownMult = build?.dodgeCooldownMult || 1;
-  if (build?.startHealRate) state.player.hp = Math.min(CONFIG.player.maxHp, state.player.hp + Math.floor(CONFIG.player.maxHp * build.startHealRate));
+  if (build?.startHealRate) state.player.hp = Math.min(getPlayerMaxHp(), state.player.hp + Math.floor(getPlayerMaxHp() * build.startHealRate));
   SE.resume();
   SE.battleStart();
   // ★追加: 戦闘BGM再生。「古王スライム・ガガントス」(stageIndex 5)と
@@ -739,7 +739,7 @@ function resetBattle() {
   }
   if (typeof removeBossAttackIndicator === "function") removeBossAttackIndicator();
 
-  state.player.hp              = CONFIG.player.maxHp;
+  state.player.hp              = getPlayerMaxHp();
   state.player.invincibleUntil = 0;
   state.player.vx              = 0;   // ★ 慣性速度リセット
   state.player.vz              = 0;
