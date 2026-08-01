@@ -792,13 +792,29 @@ function resetBattle() {
 }
 
 // ── コレクション図鑑 ──────────────────────────────────────────
-function showGacha() {
+// ガチャ画面の呼び元（"menu" or "plaza"）を記憶して戻り先を切り替える
+// ★修正: 呼び元を記憶せず常にmenuScreenへ戻していたため、広場のガチャ処から
+//         開いた場合でも「戻る」を押すとメインメニューが出てしまい、
+//         広場に戻れなくなっていた。
+let _gachaCaller = "menu";
+
+function showGacha(caller) {
+  _gachaCaller = caller || "menu";
   hideMenu();
   dom.gachaScreen.classList.add("visible");
   renderGachaCollection();
   renderCurrentCostume();
   refreshGachaTicketDisplay();
   if (dom.gachaResult) dom.gachaResult.innerHTML = "";
+}
+
+function backFromGacha() {
+  dom.gachaScreen.classList.remove("visible");
+  if (_gachaCaller === "menu") {
+    showMenu();
+  } else {
+    showHomePlaza();
+  }
 }
 
 function renderCurrentCostume() {

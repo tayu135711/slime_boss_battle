@@ -26,7 +26,6 @@ const dom = {
   menuScreen:          document.getElementById("menuScreen"),
   menuStageBtn:        document.getElementById("menuStageBtn"),
   menuGachaBtn:        document.getElementById("menuGachaBtn"),
-  menuOtherBtn:        document.getElementById("menuOtherBtn"),
   stageSelectScreen:   document.getElementById("stageSelectScreen"),
   stageList:           document.getElementById("stageList"),
   stageSelectBackBtn:  document.getElementById("stageSelectBackBtn"),

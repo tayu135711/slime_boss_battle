@@ -1851,7 +1851,7 @@ function handlePlazaAction() {
     else if (plazaNearBuilding.type === "restaurant") { enterCookingArea(); }
     else if (plazaNearBuilding.type === "pond_area")  { enterPondArea(); }
     else if (plazaNearBuilding.type === "flower_area"){ enterFlowerArea(); }
-    else if (plazaNearBuilding.type === "gacha")      { showGacha(); }
+    else if (plazaNearBuilding.type === "gacha")      { showGacha("plaza"); }
   }
   else if (plazaNearFlower && nearestFlower) { pickFlower(); }
   else if (plazaNearPond)       { startFishing(); }

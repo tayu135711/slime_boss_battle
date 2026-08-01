@@ -178,8 +178,9 @@ function setupInput() {
   dom.titleStartBtn.addEventListener("click", () => { SE.resume(); SE.button(); dismissTitle(); });
   dom.titleStartBtn.addEventListener("touchend", e => { e.preventDefault(); SE.resume(); SE.button(); dismissTitle(); }, { passive: false });
   dom.menuStageBtn.addEventListener("click", () => { SE.button(); showStageSelect("menu"); });
-  dom.menuGachaBtn.addEventListener("click", () => { SE.button(); showGacha(); });
-  dom.menuOtherBtn.addEventListener("click", () => window.__adminOpenPanel?.());
+  dom.menuGachaBtn.addEventListener("click", () => { SE.button(); showGacha("menu"); });
+  // ★修正: 「その他」ボタン（管理者パネルへの表示上の入口）を廃止。
+  //         管理者機能はHUD左上の隠し長押しトリガー(admin.js)のみからアクセスする。
   dom.stageSelectBackBtn.addEventListener("click", backFromStageSelect);
   dom.nextStageBtn.addEventListener("click", goNextStage);
   dom.backToPlazaBtn.addEventListener("click", () => {
@@ -188,7 +189,7 @@ function setupInput() {
     showHomePlaza();
   });
   dom.endingRetryBtn.addEventListener("click", () => { state.stageIndex = 0; dom.endingScreen.classList.remove("visible"); resetBattle(); showMenu(); });
-  dom.gachaBackBtn.addEventListener("click", () => { dom.gachaScreen.classList.remove("visible"); dom.menuScreen.classList.add("visible"); });
+  dom.gachaBackBtn.addEventListener("click", backFromGacha);
   dom.gachaPullBtn?.addEventListener("click", () => pullGacha(1));
   dom.gachaPull10Btn?.addEventListener("click", () => pullGacha(10));
 
