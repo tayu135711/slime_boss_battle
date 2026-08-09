@@ -141,12 +141,37 @@ function setupInput() {
       startDodge();
       return;
     }
+    // ★追加: これまでマウス/タップでしか押せなかった「スキル」「ひっさつわざ」
+    //         ボタンに、それぞれ Q / F キーを割り当てる。
+    if (k === "q") {
+      useSkill();
+      return;
+    }
+    if (k === "f") {
+      useUltimate();
+      return;
+    }
     if (k === " " || k === "enter") {
       e.preventDefault();
-      if (state.titleShown) return; // タイトル表示中は何もしない
+      if (state.titleShown) { SE.resume(); SE.titleStart(); dismissTitle(); return; }
       if (fishingActive) fishingAction();
       else if (dom.homePlazaScreen.classList.contains("visible")) handlePlazaAction();
       else attackBoss();
+    }
+    // ★追加: これまでマウス/タップでの✕ボタン・外側クリックでしか閉じられなかった
+    //         各種オーバーレイ画面（商店/ガチャ/着替え/ステージ選択/釣り場等の
+    //         サブエリア）を、Escキー1つでまとめて閉じられるようにする。
+    if (k === "escape") {
+      const shopScreen = document.getElementById("shopScreen");
+      const dressingScreen = document.getElementById("dressingScreen");
+      if (shopScreen && shopScreen.style.display !== "none") { closeShop(); return; }
+      if (dressingScreen?.classList.contains("visible")) { closeDressingRoom(); return; }
+      if (dom.gachaScreen?.classList.contains("visible")) { backFromGacha(); return; }
+      if (dom.stageSelectScreen?.classList.contains("visible")) { backFromStageSelect(); return; }
+      if (typeof currentSubArea !== "undefined" && currentSubArea) {
+        document.getElementById("subAreaBackBtn")?.click();
+        return;
+      }
     }
   });
   window.addEventListener("keyup", (e) => {

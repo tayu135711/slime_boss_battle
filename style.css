@@ -317,6 +317,27 @@ html, body {
 }
 .btn-label { font-size: 13px; font-weight: 900; line-height: 1; }
 .btn-text { font-size: 9px; font-weight: bold; line-height: 1; opacity: 0.9; }
+
+/* ── キーボード操作ヒント（マウス/キーボード環境のみ表示） ── */
+.key-hint {
+  display: none;
+  position: absolute;
+  top: -6px; right: -6px;
+  background: rgba(20, 20, 30, 0.88);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 2px 5px;
+  border-radius: 7px;
+  border: 1px solid rgba(255,255,255,0.45);
+  pointer-events: none;
+  z-index: 5;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+@media (pointer: fine) {
+  .key-hint { display: block; }
+}
 .btn-a {
   bottom: 8px; right: 8px;
   background: radial-gradient(circle at 38% 32%, #F07A5A, #C44A30);
@@ -1008,6 +1029,42 @@ html, body {
 .stage-card-name { font-size: 14px; font-weight: 900; color: #e0f0d8; }
 .stage-card-hp { font-size: 11px; color: #90a880; margin-top: 2px; }
 .stage-card-lock { font-size: 20px; }
+
+/* ── ステージ選択：章ごとの見出し区切り ── */
+.chapter-divider {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  margin: 14px 2px 4px;
+  padding-bottom: 5px;
+  border-bottom: 2px dashed currentColor;
+}
+.chapter-divider:first-child { margin-top: 2px; }
+.chapter-divider.ch1 { color: #5a9850; }
+.chapter-divider.ch2 { color: #b48aff; }
+.chapter-divider.ch3 { color: #6fd4f5; }
+
+/* ── ステージ選択：章ごとのカード配色 ── */
+.stage-card.chapter-1 { border-color: #4a7840; background: rgba(40,80,30,0.45); }
+.stage-card.chapter-1:hover { background: rgba(50,100,35,0.55); }
+.stage-card.chapter-1:active { background: rgba(60,110,40,0.6); }
+
+.stage-card.chapter-2 { border-color: #8a6fd0; background: rgba(58,40,88,0.45); }
+.stage-card.chapter-2 .stage-card-no { color: #c9a8ff !important; }
+.stage-card.chapter-2 .stage-card-no b { color: #e4cdff !important; text-shadow: 0 1px 4px rgba(140,80,220,0.4); }
+.stage-card.chapter-2 .stage-card-name { color: #ede2ff !important; }
+.stage-card.chapter-2 .stage-card-hp { color: #b3a0cc !important; }
+.stage-card.chapter-2:hover { background: rgba(74,50,108,0.55); }
+.stage-card.chapter-2:active { background: rgba(84,58,120,0.6); }
+
+.stage-card.chapter-3 { border-color: #5aa8c8; background: rgba(28,68,88,0.45); }
+.stage-card.chapter-3 .stage-card-no { color: #8fe0ff !important; }
+.stage-card.chapter-3 .stage-card-no b { color: #cdf5ff !important; text-shadow: 0 1px 4px rgba(60,180,220,0.4); }
+.stage-card.chapter-3 .stage-card-name { color: #e3f8ff !important; }
+.stage-card.chapter-3 .stage-card-hp { color: #9dc6d6 !important; }
+.stage-card.chapter-3:hover { background: rgba(38,88,108,0.55); }
+.stage-card.chapter-3:active { background: rgba(44,98,118,0.6); }
 .back-btn {
   padding: 10px 20px;
   font-size: 13px;

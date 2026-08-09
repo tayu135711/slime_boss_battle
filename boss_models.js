@@ -552,6 +552,157 @@ function buildMonsterGaganthos(group, s, mat) {
 }
 
 // ───────────────────────────────────────────────
+// Chapter 3 — 氷結の秘境（結晶・氷雪モンスター系）
+// ───────────────────────────────────────────────
+
+/** 1体目: クリスタルゴーレム（氷の結晶が突き出た岩巨人） */
+function buildMonsterCrystalGolem(group, s, mat) {
+  const r = s.radius;
+  const ice = 0xbdeeff, iceDark = 0x5aa8c8;
+  const body = new THREE.Mesh(new THREE.DodecahedronGeometry(r * 0.95, 0), mat);
+  body.scale.set(1.05, 1.1, 0.95);
+  body.castShadow = true;
+  group.add(body);
+  // 頭部（小さめの結晶頭）
+  const head = new THREE.Mesh(new THREE.OctahedronGeometry(r * 0.5, 0),
+    new THREE.MeshStandardMaterial({ color: ice, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.9, emissive: 0x2288aa, emissiveIntensity: 0.25 }));
+  head.position.set(0, r * 1.55, 0);
+  group.add(head);
+  [-1, 1].forEach(side => {
+    const eye = mkSphere(r * 0.09, 0x1affff, { emissive: 0x1affff, emissiveInt: 1.3, rough: 0.1 });
+    eye.position.set(side * r * 0.2, r * 1.55, r * 0.4);
+    group.add(eye);
+  });
+  // 背中や肩から突き出た氷の結晶
+  const shardMat = new THREE.MeshStandardMaterial({ color: ice, roughness: 0.1, metalness: 0.05, transparent: true, opacity: 0.85, emissive: 0x2299bb, emissiveIntensity: 0.35 });
+  const shardSpots = [
+    [0, r * 0.9, -r * 0.55, 0.0],
+    [-r * 0.65, r * 0.55, -r * 0.3, -0.4],
+    [r * 0.65, r * 0.55, -r * 0.3, 0.4],
+    [-r * 0.4, r * 1.1, r * 0.1, -0.2],
+    [r * 0.4, r * 1.1, r * 0.1, 0.2],
+  ];
+  shardSpots.forEach(([x, y, z, tilt]) => {
+    const shard = new THREE.Mesh(new THREE.ConeGeometry(r * 0.16, r * 0.75, 5), shardMat);
+    shard.position.set(x, y, z);
+    shard.rotation.z = tilt;
+    shard.rotation.x = 0.15;
+    group.add(shard);
+  });
+  // 太い腕（氷結した岩）
+  [-1, 1].forEach(side => {
+    const arm = mkCyl(r * 0.24, r * 0.3, r * 0.85, iceDark, { rough: 0.7 });
+    arm.rotation.z = side * 0.75;
+    arm.position.set(side * r * 0.95, r * 0.35, 0);
+    group.add(arm);
+    const fist = new THREE.Mesh(new THREE.DodecahedronGeometry(r * 0.3, 0), new THREE.MeshStandardMaterial({ color: iceDark, roughness: 0.7 }));
+    fist.position.set(side * r * 1.45, r * 0.0, 0);
+    group.add(fist);
+  });
+  [-1, 1].forEach(side => {
+    const leg = mkCyl(r * 0.25, r * 0.3, r * 0.65, iceDark, { rough: 0.75 });
+    leg.position.set(side * r * 0.38, -r * 0.55, 0);
+    group.add(leg);
+  });
+  return { mesh: body };
+}
+
+/** 2体目: フロストレイス（漂う氷の亡霊、マント状の裾） */
+function buildMonsterFrostWraith(group, s, mat) {
+  const r = s.radius;
+  const frost = 0x9fd8ff;
+  const core = new THREE.Mesh(new THREE.SphereGeometry(r * 0.7, 20, 18), mat);
+  core.scale.set(1, 1.2, 1);
+  core.castShadow = true;
+  group.add(core);
+  // 漂うマント（円錐を逆さにして裾を広げる）
+  const cloak = new THREE.Mesh(new THREE.ConeGeometry(r * 1.1, r * 1.7, 14, 1, true),
+    new THREE.MeshStandardMaterial({ color: 0x3a6f99, roughness: 0.5, transparent: true, opacity: 0.55, side: THREE.DoubleSide, emissive: 0x184a66, emissiveIntensity: 0.3 }));
+  cloak.position.set(0, -r * 0.3, 0);
+  group.add(cloak);
+  // フード部分
+  const hood = new THREE.Mesh(new THREE.SphereGeometry(r * 0.62, 16, 14, 0, Math.PI * 2, 0, Math.PI * 0.62),
+    new THREE.MeshStandardMaterial({ color: 0x2a4f6f, roughness: 0.6, side: THREE.DoubleSide }));
+  hood.position.set(0, r * 1.15, 0);
+  hood.rotation.x = Math.PI;
+  group.add(hood);
+  // フード内の顔・目
+  [-1, 1].forEach(side => {
+    const eye = mkSphere(r * 0.1, frost, { emissive: 0x66e0ff, emissiveInt: 1.6, rough: 0.1 });
+    eye.position.set(side * r * 0.18, r * 0.98, r * 0.35);
+    group.add(eye);
+  });
+  // 漂う氷の欠片（周囲を回る小さな結晶）
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2;
+    const shard = new THREE.Mesh(new THREE.OctahedronGeometry(r * 0.09, 0),
+      new THREE.MeshStandardMaterial({ color: frost, roughness: 0.2, transparent: true, opacity: 0.8, emissive: 0x2299cc, emissiveIntensity: 0.5 }));
+    shard.position.set(Math.cos(angle) * r * 1.3, r * 0.6 + Math.sin(angle * 2) * r * 0.3, Math.sin(angle) * r * 1.3);
+    group.add(shard);
+  }
+  const chill = new THREE.PointLight(0x66ccff, 1.8, 7);
+  chill.position.set(0, r * 0.5, 0);
+  group.add(chill);
+  return { mesh: core };
+}
+
+/** 3体目（Chapter3ボス）: 氷結の女王（王冠・翼を持つ最終ボス） */
+function buildMonsterIceQueen(group, s, mat) {
+  const r = s.radius;
+  const pale = 0xdff6ff, deep = 0x1a5f99, gold = 0xcfe8ff;
+  const body = new THREE.Mesh(new THREE.SphereGeometry(r * 1.0, 24, 20), mat);
+  body.scale.set(0.9, 1.3, 0.85);
+  body.castShadow = true;
+  group.add(body);
+  const neck = mkCyl(r * 0.35, r * 0.42, r * 0.6, deep, { rough: 0.3, metal: 0.15 });
+  neck.position.set(0, r * 1.25, 0);
+  group.add(neck);
+  const head = mkSphere(r * 0.55, pale, { rough: 0.25 });
+  head.scale.set(1.05, 1.05, 1.05);
+  head.position.set(0, r * 1.85, 0);
+  group.add(head);
+  [-1, 1].forEach(side => {
+    const eye = mkSphere(r * 0.11, 0x2ad4ff, { emissive: 0x2ad4ff, emissiveInt: 1.4, rough: 0.1 });
+    eye.position.set(side * r * 0.22, r * 1.9, r * 0.46);
+    group.add(eye);
+  });
+  // 王冠（結晶の突起）
+  for (let i = -2; i <= 2; i++) {
+    const spike = new THREE.Mesh(new THREE.ConeGeometry(r * 0.08, r * (0.35 + Math.abs(i) * -0.05 + 0.35), 5),
+      new THREE.MeshStandardMaterial({ color: gold, roughness: 0.15, metalness: 0.3, emissive: 0x88bbdd, emissiveIntensity: 0.4 }));
+    spike.position.set(i * r * 0.16, r * 2.32, 0);
+    group.add(spike);
+  }
+  // 氷の翼（半透明の板）
+  [-1, 1].forEach(side => {
+    const wing = new THREE.Mesh(
+      new THREE.ConeGeometry(r * 0.85, r * 1.6, 3, 1, true),
+      new THREE.MeshStandardMaterial({ color: 0xcdeeff, transparent: true, opacity: 0.55, side: THREE.DoubleSide, roughness: 0.2, emissive: 0x3fa8d8, emissiveIntensity: 0.35 })
+    );
+    wing.rotation.z = side * 1.35;
+    wing.rotation.y = side * 0.3;
+    wing.position.set(side * r * 0.9, r * 0.75, -r * 0.2);
+    group.add(wing);
+    const upperArm = mkCyl(r * 0.22, r * 0.28, r * 0.8, deep, { rough: 0.3, metal: 0.15 });
+    upperArm.rotation.z = side * 0.65;
+    upperArm.position.set(side * r * 0.9, r * 0.3, 0);
+    group.add(upperArm);
+  });
+  // 裾（下半身のドレス状）
+  const gown = new THREE.Mesh(new THREE.ConeGeometry(r * 0.95, r * 1.1, 16, 1, true),
+    new THREE.MeshStandardMaterial({ color: deep, roughness: 0.4, side: THREE.DoubleSide }));
+  gown.position.set(0, -r * 0.55, 0);
+  group.add(gown);
+  const staffCrystal = mkSphere(r * 0.16, 0x66e0ff, { emissive: 0x66e0ff, emissiveInt: 1.5, rough: 0.1 });
+  staffCrystal.position.set(r * 1.2, r * 1.1, r * 0.2);
+  group.add(staffCrystal);
+  const aura = new THREE.PointLight(0x66ccff, 2.2, 8);
+  aura.position.set(0, r * 0.6, 0);
+  group.add(aura);
+  return { mesh: body };
+}
+
+// ───────────────────────────────────────────────
 // エクスポート：chapter と stageNo で振り分け
 // ───────────────────────────────────────────────
 const CHAPTER2_MONSTERS = [
@@ -560,6 +711,12 @@ const CHAPTER2_MONSTERS = [
   buildMonsterBehemoth,
   buildMonsterMushroom,
   buildMonsterGaganthos,
+];
+
+const CHAPTER3_MONSTERS = [
+  buildMonsterCrystalGolem,
+  buildMonsterFrostWraith,
+  buildMonsterIceQueen,
 ];
 
 function buildBossModel(group, stage, mat) {
@@ -574,14 +731,19 @@ function buildBossModel(group, stage, mat) {
       case 6: return buildSlimeStage6(group, stage, mat);
       default: return buildSlimeStage1(group, stage, mat);
     }
-  } else {
-    // Chapter2+ は異形モンスターを順番に出す
-    // ★修正: 以前は「stage.stageNo - 1」をそのままchapter内インデックスとして使っていたが、
-    //         chapter2以降のstageNoは（bestTimesやSTAGE_REWARD_POOLSのキーの一意性を保つため）
-    //         7,8,9...のようにグローバルに連番なので、常にidx>=4となり全ステージがガガントス固定
-    //         になってしまっていた。config.js側で明示的に振られる monsterIndex（0始まり）を使う。
+  } else if (stage.chapter === 2) {
+    // Chapter2 は異形モンスターを順番に出す
     const idx = Math.min(stage.monsterIndex ?? (stage.stageNo - 1), CHAPTER2_MONSTERS.length - 1);
     const builder = CHAPTER2_MONSTERS[idx];
     return builder(group, stage, mat);
+  } else if (stage.chapter === 3) {
+    // Chapter3（氷結の秘境）は結晶・氷雪モンスターを順番に出す
+    const idx = Math.min(stage.monsterIndex ?? 0, CHAPTER3_MONSTERS.length - 1);
+    const builder = CHAPTER3_MONSTERS[idx];
+    return builder(group, stage, mat);
+  } else {
+    // 将来Chapter4以降を追加するまでのフォールバック：Chapter3のモンスターを再利用
+    const idx = Math.min(stage.monsterIndex ?? 0, CHAPTER3_MONSTERS.length - 1);
+    return CHAPTER3_MONSTERS[idx](group, stage, mat);
   }
 }

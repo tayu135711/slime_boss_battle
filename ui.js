@@ -466,12 +466,27 @@ function backFromStageSelect() {
   }
 }
 
+// 章ごとの表示名（ステージ選択画面の見出しに使用）
+const CHAPTER_NAMES = {
+  1: "はじまりの草原",
+  2: "異形の深淵",
+  3: "氷結の秘境",
+};
+
 function buildStageList() {
   dom.stageList.innerHTML = "";
+  let lastChapter = null;
   STAGES.forEach((stg, idx) => {
+    if (stg.chapter !== lastChapter) {
+      lastChapter = stg.chapter;
+      const divider = document.createElement("div");
+      divider.className = `chapter-divider ch${stg.chapter}`;
+      divider.textContent = `── Chapter ${stg.chapter}：${CHAPTER_NAMES[stg.chapter] || ""} ──`;
+      dom.stageList.appendChild(divider);
+    }
     const locked = idx >= state.unlockedStages;
     const card   = document.createElement("div");
-    card.className = "stage-card" + (locked ? " locked" : "");
+    card.className = `stage-card chapter-${stg.chapter}` + (locked ? " locked" : "");
     card.innerHTML = `
       <div class="stage-card-no">Stage<b>${stg.stageNo}</b></div>
       <div class="stage-card-info">
@@ -528,7 +543,7 @@ function showStageStart() {
     if (typeof exitHomePlaza === "function") exitHomePlaza();
   }
   const stg = getCurrentStage(state.stageIndex);
-  dom.stageChapter.textContent  = `Chapter ${stg.chapter}`;
+  dom.stageChapter.textContent  = `Chapter ${stg.chapter}：${CHAPTER_NAMES[stg.chapter] || ""}`;
   dom.stageNo.textContent       = `Stage ${stg.stageNo}`;
   dom.stageBossName.textContent = stg.name;
   renderBuildChoices();
@@ -637,7 +652,8 @@ function handleBossDefeated() {
   // ★ クリア記録を更新
   state.totalClears += 1;
   // ★ ガチャ石（チケット）をクリア報酬として付与。図鑑のガチャ機能を実際に回せるようにする。
-  state.gachaTickets = (state.gachaTickets ?? 0) + (stg.chapter >= 2 ? 2 : 1);
+  const gachaGain = stg.chapter >= 3 ? 3 : stg.chapter >= 2 ? 2 : 1;
+  state.gachaTickets = (state.gachaTickets ?? 0) + gachaGain;
   const stageKey = String(stg.stageNo);
   if (!state.bestTimes[stageKey] || elapsed < state.bestTimes[stageKey]) {
     state.bestTimes[stageKey] = elapsed;
@@ -667,7 +683,7 @@ function handleBossDefeated() {
 
       // ★変更: コスチュームは完全にガチャ入手のみにするため、3択報酬は廃止。
       //         代わりに獲得したガチャ石の枚数を表示する。
-      dom.rewardTitle.textContent = `🎟️ ガチャ石 +${stg.chapter >= 2 ? 2 : 1} 獲得！広場のガチャでコスチュームを手に入れよう`;
+      dom.rewardTitle.textContent = `🎟️ ガチャ石 +${gachaGain} 獲得！広場のガチャでコスチュームを手に入れよう`;
       saveToServer();
 
       dom.nextStageBtn.style.display = "";

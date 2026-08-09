@@ -118,6 +118,39 @@ const STAGES = [
     phase2At: 0.6, phase3At: 0.3, hasShockwave: true,
     bgColor: 0x2a1040, groundColor: 0x120522, fogDensity: 0.028,
   },
+  // ★追加: Chapter3「氷結の秘境」。結晶・氷雪モンスター3体（boss_models.js の
+  //         CHAPTER3_MONSTERS）を monsterIndex 0〜2 で順番に登場させる。
+  //         数値バランスはChapter2最終(Stage11)からの緩やかな延長線上に設定。
+  {
+    stageNo: 12, chapter: 3, monsterIndex: 0, name: "クリスタルゴーレム",
+    color: 0x8fd3ea, hitColor: 0xffffff,
+    maxHp: 16800, radius: 1.42, floatHeight: 0.08, floatSpeedMs: 600,
+    moveSpeed: 0.031, wanderRadius: 5.6,
+    attackIntervalMs: 2150, chargeDamage: 140, shockwaveDamage: 105,
+    chargeSpeed: 0.28, shockwaveRadius: 4.7,
+    phase2At: 0.6, phase3At: 0.3, hasShockwave: true,
+    bgColor: 0xbfe6f5, groundColor: 0x3a5a68, fogDensity: 0.024,
+  },
+  {
+    stageNo: 13, chapter: 3, monsterIndex: 1, name: "フロストレイス",
+    color: 0x6fa8cf, hitColor: 0xaaeeff,
+    maxHp: 19500, radius: 1.35, floatHeight: 0.22, floatSpeedMs: 480,
+    moveSpeed: 0.033, wanderRadius: 5.8,
+    attackIntervalMs: 2050, chargeDamage: 150, shockwaveDamage: 112,
+    chargeSpeed: 0.30, shockwaveRadius: 4.8,
+    phase2At: 0.6, phase3At: 0.3, hasShockwave: true,
+    bgColor: 0x9fd0ea, groundColor: 0x2c4a58, fogDensity: 0.030,
+  },
+  {
+    stageNo: 14, chapter: 3, monsterIndex: 2, name: "氷結の女王",
+    color: 0xdff6ff, hitColor: 0x2ad4ff,
+    maxHp: 23500, radius: 1.48, floatHeight: 0.12, floatSpeedMs: 560,
+    moveSpeed: 0.032, wanderRadius: 6.0,
+    attackIntervalMs: 1950, chargeDamage: 162, shockwaveDamage: 122,
+    chargeSpeed: 0.29, shockwaveRadius: 5.0,
+    phase2At: 0.6, phase3At: 0.3, hasShockwave: true,
+    bgColor: 0x7fbfe0, groundColor: 0x1c3a4a, fogDensity: 0.032,
+  },
 ];
 
 const CONFIG = {
@@ -186,7 +219,7 @@ function getCurrentStage(stageIndex) {
 //         壁になりやすかった。ステージクリア数(state.unlockedStages-1)に応じて
 //         ゆるやかな恒久成長を追加する。ボスの数値は一切変更していない。
 const PLAYER_GROWTH = {
-  maxClearsCounted: 10,  // 全11ステージ中10クリア分まで成長（最終ステージ到達時点で頭打ち）
+  maxClearsCounted: 13,  // 全14ステージ中13クリア分まで成長（最終ステージ到達時点で頭打ち）
   hpPerClear:   0.05,    // クリア1回につきHP  +5%
   atkPerClear:  0.04,    // クリア1回につき攻撃力 +4%
 };

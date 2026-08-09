@@ -146,7 +146,7 @@ const Tutorial = {
       hasSkill ? {
         key: "skill",
         title: "スキルをつかおう",
-        text: "コスチューム専用の「スキル」ボタンを押してみよう！\nクールダウンが短めで、連発しやすい技だよ。",
+        text: "コスチューム専用の「スキル」ボタン（またはQキー）を押してみよう！\nクールダウンが短めで、連発しやすい技だよ。",
         highlight: () => dom.specialBtn,
         onEnter: () => { this._baseline.skillAt = this._stepStartedAt; },
         check: () => state.lastSkillAt >= (this._baseline.skillAt ?? Infinity),
@@ -159,7 +159,7 @@ const Tutorial = {
       {
         key: "ultimate",
         title: "ひっさつわざをつかおう",
-        text: "「ひっさつわざ」ボタンで大技を発動！\nクールダウンは30秒と長めだけど、その分ダメージは抜群。ボスが防御中でもしっかりダメージが通るよ。",
+        text: "「ひっさつわざ」ボタン（またはFキー）で大技を発動！\nクールダウンは30秒と長めだけど、その分ダメージは抜群。ボスが防御中でもしっかりダメージが通るよ。",
         highlight: () => dom.ultimateBtn,
         onEnter: () => { this._baseline.ultimateAt = this._stepStartedAt; },
         check: () => state.lastUltimateAt >= (this._baseline.ultimateAt ?? Infinity),
