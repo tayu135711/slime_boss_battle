@@ -23,6 +23,7 @@ const dom = {
   damageFlash:         document.getElementById("damageFlash"),
   gameOverScreen:      document.getElementById("gameOverScreen"),
   titleScreen:         document.getElementById("titleScreen"),
+  titleSub:            document.getElementById("titleSub"),
   menuScreen:          document.getElementById("menuScreen"),
   menuStageBtn:        document.getElementById("menuStageBtn"),
   menuGachaBtn:        document.getElementById("menuGachaBtn"),
@@ -132,6 +133,9 @@ const state = {
   bestTimes: {},
   totalClears: 0,
   buildSkills: [],
+  // ★追加: ミライ図システム — ボス撃破・クエスト達成で貯まるカケラ。
+  //         広場のネオンタワーを点灯させる数として使う（save.jsで永続化）。
+  miraiPieces: 0,
 };
 
 // Three.jsオブジェクト群

@@ -87,6 +87,7 @@ async function _saveToServerOnce() {
     bestTimes:         JSON.stringify(state.bestTimes    || {}),
     totalClears:       state.totalClears ?? 0,
     gachaTickets:      state.gachaTickets ?? 0,
+    miraiPieces:       state.miraiPieces ?? 0,
   };
 
   const reqOptions = {
@@ -253,6 +254,8 @@ async function loadFromServer() {
     state.totalClears = data.totalClears ?? 0;
     // ★ 既存セーブにはまだ無いフィールドなので、無ければ初回同様に少額プレゼント
     state.gachaTickets = data.gachaTickets ?? 3;
+    // ★追加: ミライ図のカケラ。既存セーブには無いので未所持(0)から開始
+    state.miraiPieces = data.miraiPieces ?? 0;
 
     return true;
   } catch (e) {

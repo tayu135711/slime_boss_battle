@@ -153,6 +153,20 @@ const STAGES = [
   },
 ];
 
+// ★追加: ネオン街化(全体) — 各ステージの空色(bgColor)を、元の色相を保ったまま
+// 「昼の空」から「夜のネオン都市の空」に一括変換する。個別のステージ性(色の違い)
+// は残しつつ、彩度を上げて明度を大きく落とすことで全ステージがネオン夜景に統一される。
+(function neonifyStageSky() {
+  const tmp = new THREE.Color();
+  STAGES.forEach(stage => {
+    tmp.setHex(stage.bgColor);
+    const hsl = { h: 0, s: 0, l: 0 };
+    tmp.getHSL(hsl);
+    tmp.setHSL(hsl.h, Math.min(hsl.s + 0.25, 0.9), Math.max(hsl.l * 0.32, 0.06));
+    stage.bgColor = tmp.getHex();
+  });
+})();
+
 const CONFIG = {
   player: {
     color: 0x6ee7b7,
@@ -343,3 +357,18 @@ const RECIPES = [
     buff: { critUp: 1.3 }
   }
 ];
+
+// ============================================================
+// ミライ図システム: ボス撃破・クエスト達成で「ミライ図のカケラ」を集め、
+// 広場のネオンタワーが1本ずつ点灯していく（デジコン「ミライ図」テーマ対応）。
+// ============================================================
+const MIRAI_CONFIG = {
+  // タワー1本を点灯させるのに必要なカケラ数
+  piecesPerTower: 1,
+  // ボス撃破時のカケラ獲得数（chapterが進むほど多くもらえる）
+  bossPieceGain(chapter) {
+    return chapter >= 3 ? 4 : chapter >= 2 ? 3 : 2;
+  },
+  // クエスト達成時のカケラ獲得数（固定）
+  questPieceGain: 3,
+};

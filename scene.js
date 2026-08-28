@@ -42,11 +42,11 @@ function initScene() {
 }
 
 function setupLights() {
-  // ★ 全体の基本明るさ（白飛びしない程度に抑える）
-  three.scene.add(new THREE.AmbientLight(0xfff5e0, 0.7));
+  // ★変更: ネオン街化(全体) — 昼光の暖色から、夜のネオン都市に合う寒色寄りの光へ
+  three.scene.add(new THREE.AmbientLight(0x4a4a70, 0.55));
 
-  // ★ 太陽光（メインの昼光）
-  const sun = new THREE.DirectionalLight(0xfff8d0, 1.4);
+  // ★変更: ネオン街化(全体) — 「太陽光」は月光/ネオン反射光としてシアン寄りに弱める
+  const sun = new THREE.DirectionalLight(0x8fd8ff, 0.9);
   sun.position.set(10, 20, 8);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -56,22 +56,22 @@ function setupLights() {
   sun.shadow.camera.right = sun.shadow.camera.top = 80;
   three.scene.add(sun);
 
-  // ★ 補助ライト（影を柔らかくする逆方向の光）
-  const fill = new THREE.DirectionalLight(0xc8e8ff, 0.4);
+  // ★変更: ネオン街化(全体) — 補助ライトをマゼンタ寄りに（ネオン反射を意識）
+  const fill = new THREE.DirectionalLight(0xff6fd8, 0.35);
   fill.position.set(-6, 8, -4);
   three.scene.add(fill);
 
-  // ★ 地面反射光（下からの跳ね返り）
-  const bounce = new THREE.HemisphereLight(0x88dd88, 0x44aa44, 0.3);
+  // ★変更: ネオン街化(全体) — 地面反射光を緑からシアン/紫の街灯反射色に
+  const bounce = new THREE.HemisphereLight(0x39e6ff, 0x2a1a45, 0.35);
   three.scene.add(bounce);
 
-  // ★ ボス周辺の光
+  // ★ ボス周辺の光（元々ネオンに近い紫だったのでそのまま活用）
   three.bossLight = new THREE.PointLight(0xcc66ff, 1.2, 12);
   three.bossLight.position.set(0, 1.5, -2.5);
   three.scene.add(three.bossLight);
 
-  // ★ フィールド中央の暖かい環境光（控えめに）
-  const centerGlow = new THREE.PointLight(0xffdd88, 0.4, 30);
+  // ★変更: ネオン街化(全体) — フィールド中央の光を暖色オレンジからシアンのネオンに
+  const centerGlow = new THREE.PointLight(0x39e6ff, 0.35, 30);
   centerGlow.position.set(0, 5, 0);
   three.scene.add(centerGlow);
 }
@@ -79,25 +79,28 @@ function setupLights() {
 function buildGround() {
   three.battleGround = []; // ★ バトル用地面オブジェクト管理
 
-  // ★ 広い草原（オープンワールド感）
+  // ★変更: ネオン街化(全体) — 草原からアスファルト地面へ。広場(home_scene.js)の
+  //         _makeAsphaltTextureをそのまま流用し、街と戦闘場で質感を統一する。
+  const asphaltTex = (typeof _makeAsphaltTexture === "function") ? _makeAsphaltTexture() : null;
   const size = CONFIG.field.halfSize * 2 + 60;
+  const groundMat = new THREE.MeshStandardMaterial({
+    color: 0x201f2c, roughness: 0.6, metalness: 0.2, map: asphaltTex,
+    polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1,
+  });
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(size, size, 20, 20),
-    new THREE.MeshStandardMaterial({
-      color: 0x3a7d2a, roughness: 0.85,
-      polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1,
-    })
+    groundMat
   );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   three.scene.add(ground);
   three.battleGround.push(ground);
 
-  // ★ バトルアリーナ（明るめの緑）- y=0.02で確実に浮かせてZファイティング防止
+  // ★変更: ネオン街化(全体) — バトルアリーナをシアンのネオン発光リングで縁取り
   const arena = new THREE.Mesh(
     new THREE.CircleGeometry(CONFIG.field.halfSize * 0.95, 64),
     new THREE.MeshStandardMaterial({
-      color: 0x4a9e38, roughness: 0.75,
+      color: 0x2a2838, roughness: 0.55, metalness: 0.25, map: asphaltTex,
       polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
     })
   );
@@ -107,11 +110,11 @@ function buildGround() {
   three.scene.add(arena);
   three.battleGround.push(arena);
 
-  // ★ 境界リング（柔らかいトーン）- y=0.04
+  // ★変更: ネオン街化(全体) — 境界リングをネオン発光色に
   const ring = new THREE.Mesh(
     new THREE.RingGeometry(CONFIG.field.halfSize * 0.95, CONFIG.field.halfSize + 0.8, 64),
     new THREE.MeshBasicMaterial({
-      color: 0x2a5a20, side: THREE.DoubleSide,
+      color: 0x39e6ff, side: THREE.DoubleSide,
       polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
     })
   );
@@ -120,13 +123,13 @@ function buildGround() {
   three.scene.add(ring);
   three.battleGround.push(ring);
 
-  // ★ 遠方の草原（段階的に広がる）- y=0.015
+  // ★変更: ネオン街化(全体) — 遠方の地面もアスファルト寄りの暗いトーンに統一
   for (let r = CONFIG.field.halfSize + 8; r < CONFIG.field.halfSize + 40; r += 12) {
     const farGrass = new THREE.Mesh(
       new THREE.RingGeometry(r, r + 10, 32),
       new THREE.MeshStandardMaterial({
-        color: r % 24 === (CONFIG.field.halfSize + 8) % 24 ? 0x3a7d2a : 0x336e25,
-        roughness: 0.9,
+        color: r % 24 === (CONFIG.field.halfSize + 8) % 24 ? 0x201f2c : 0x181722,
+        roughness: 0.75, metalness: 0.15,
         polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
       })
     );
@@ -341,32 +344,37 @@ function buildForestDecor() {
   //         カメラが絶対に届かない安全マージンを取った半径から木を配置し直す。
   const CAM_SAFE_R = half + CONFIG.camera.offsetZ + 8; // カメラ最大到達距離+安全マージン
 
-  // アリーナ周辺の木（近い輪）
+  // ★変更: ネオン街化(全体) — 森の木(makeFirTree)から、広場と同じネオンタワー
+  //         (home_scene.js: makeNeonTower)に統一。本数が多いため、PointLightは
+  //         一切持たせず(false固定)、発光メッシュ(MeshBasicMaterial)だけで負荷を抑える。
+  const makeTower = (typeof makeNeonTower === "function") ? makeNeonTower : makeFirTree;
+
+  // アリーナ周辺のタワー（近い輪）
   for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
     const r = rng(CAM_SAFE_R, CAM_SAFE_R + 4);
-    const obj = makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(2.8, 5.2));
+    const obj = makeTower(Math.cos(angle) * r, Math.sin(angle) * r, rng(6, 11), false);
     three.scene.add(obj); three.battleDecors.push(obj);
   }
 
-  // ★ 中距離の木（広い輪 1）
+  // ★ 中距離のタワー（広い輪 1）
   for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 12) {
     const r = rng(CAM_SAFE_R + 6, CAM_SAFE_R + 16);
-    const obj = makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(4, 8));
+    const obj = makeTower(Math.cos(angle) * r, Math.sin(angle) * r, rng(9, 16), false);
     three.scene.add(obj); three.battleDecors.push(obj);
   }
 
-  // ★ 遠距離の木（広い輪 2）
+  // ★ 遠距離のタワー（広い輪 2）
   for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 18) {
     const r = rng(CAM_SAFE_R + 18, CAM_SAFE_R + 32);
-    const obj = makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(6, 12));
+    const obj = makeTower(Math.cos(angle) * r, Math.sin(angle) * r, rng(14, 24), false);
     three.scene.add(obj); three.battleDecors.push(obj);
   }
 
-  // ★ ランダム散在木（オープンワールド感）
+  // ★ ランダム散在タワー（オープンワールド感）
   for (let i = 0; i < 40; i++) {
     const angle = Math.random() * Math.PI * 2;
     const r = rng(CAM_SAFE_R + 2, CAM_SAFE_R + 36);
-    const obj = makeFirTree(Math.cos(angle) * r, Math.sin(angle) * r, rng(3, 10));
+    const obj = makeTower(Math.cos(angle) * r, Math.sin(angle) * r, rng(7, 20), false);
     three.scene.add(obj); three.battleDecors.push(obj);
   }
 

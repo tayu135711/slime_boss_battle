@@ -867,5 +867,34 @@ const SE = (() => {
         osc.start(t + i * 0.07); osc.stop(t + i * 0.07 + 0.35);
       });
     },
+
+    /** ★追加: ミライ図のタワー点灯: 「キュイーン…ポワン」上昇＋残響で近未来的に */
+    miraiTowerLight() {
+      if (!ctx || !enabled) return;
+      const t = now();
+      // 上昇スイープ（シンセっぽい近未来感）
+      const sweep = ctx.createOscillator();
+      const sweepGain = ctx.createGain();
+      sweep.type = "sawtooth";
+      sweep.frequency.setValueAtTime(220, t);
+      sweep.frequency.exponentialRampToValueAtTime(1400, t + 0.35);
+      sweepGain.gain.setValueAtTime(0.001, t);
+      sweepGain.gain.linearRampToValueAtTime(0.1, t + 0.05);
+      sweepGain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+      sweep.connect(sweepGain); sweepGain.connect(masterGain);
+      sweep.start(t); sweep.stop(t + 0.42);
+      // 着地の余韻（澄んだベル）
+      [1568, 2093].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        g.gain.setValueAtTime(0.001, t + 0.32);
+        g.gain.linearRampToValueAtTime(0.14, t + 0.34 + i * 0.03);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.9 + i * 0.03);
+        osc.connect(g); g.connect(masterGain);
+        osc.start(t + 0.32); osc.stop(t + 0.95 + i * 0.03);
+      });
+    },
   };
 })();

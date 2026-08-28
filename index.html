@@ -6,9 +6,15 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#2a4a2e">
+<!-- ★変更: ネオン街化に合わせてブラウザのテーマカラーも緑→紺に更新 -->
+<meta name="theme-color" content="#0c1030">
+<!-- ★追加: 検索エンジン・SNSシェア時の見え方を整えるための説明文とOGPタグ -->
+<meta name="description" content="不思議なスライム大冒険 — 討伐で貯めた「ミライ図のカケラ」で、暗い広場がネオン輝く未来都市へと生まれ変わっていく育成型バトルRPG。">
+<meta property="og:title" content="不思議なスライム大冒険">
+<meta property="og:description" content="倒したボスの数だけ、自分の街の未来が明るくなる。ミライ図をテーマにした育成型バトルRPG。">
+<meta property="og:type" content="website">
 <title>スライム討伐戦</title>
-<link rel="stylesheet" href="style.css?v=20260809">
+<link rel="stylesheet" href="style.css?v=20260828">
 </head>
 <body>
 
@@ -17,24 +23,33 @@
 <div id="hud">
 
   <!-- 上部：ボスHP＆ゲージ -->
-  <div id="bossHpArea">
+  <!-- ★修正: 戦闘開始前（タイトル画面など）から常時表示されてしまい、
+       タイトルカードの裏にボスHP/ゲージ/ステータス/プレイヤーHPが
+       透けて見える重なりバグがあったため、デフォルトはhud-hiddenにしておき、
+       実際の戦闘開始時(exitHomePlaza)にJSで表示する方式へ統一する。 -->
+  <div id="bossHpArea" class="hud-hidden">
     <div id="hpText">古龍スライム・ギガンテス　HP 5000 / 5000</div>
     <div class="hp-bar-outer" role="progressbar" aria-label="ボスHP" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" id="bossHpBar"><div class="hp-bar-inner" id="hpBarInner"></div></div>
   </div>
-  <div id="gaugeArea">
+  <div id="gaugeArea" class="hud-hidden">
     <div id="gaugeLabel">必殺技ゲージ: 0%</div>
     <div class="gauge-outer" role="progressbar" aria-label="必殺技ゲージ" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="gaugeBar"><div class="gauge-inner" id="gaugeInner"></div></div>
   </div>
 
   <!-- 左上：ステータス -->
-  <div id="statsArea">
+  <div id="statsArea" class="hud-hidden">
     <span>ダメージ: <b id="totalDamage">0</b></span>
     <span>攻撃: <b id="attackCount">0</b>回</span>
-    <button id="muteBtn" title="サウンドON/OFF" style="margin-left:8px;background:none;border:1px solid rgba(255,255,255,0.4);border-radius:6px;color:#fff;font-size:14px;padding:2px 7px;cursor:pointer;vertical-align:middle;">🔊</button>
   </div>
 
+  <!-- ★修正: 以前はここ(statsArea内)にミュートボタンがあったが、statsAreaは
+       戦闘中のみ表示(hud-hidden)のため、広場にいる間はボタンごと触れなくなっていた。
+       案内役NPC(ガイドスライム)は「左上の🔊ボタン」を広場の遊び方として案内している
+       ため、タイトル・広場・戦闘のどの画面でも常時押せる独立ボタンに変更する。 -->
+  <button id="muteBtn" title="サウンドON/OFF">🔊</button>
+
   <!-- プレイヤーHP（左下、コントローラーパネルの上） -->
-  <div id="playerHpArea">
+  <div id="playerHpArea" class="hud-hidden">
     <div id="playerHpText">勇者　HP 500 / 500</div>
     <div class="player-hp-bar-outer" role="progressbar" aria-label="プレイヤーHP" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" id="playerHpBar"><div class="player-hp-bar-inner" id="playerHpBarInner"></div></div>
   </div>
@@ -45,7 +60,12 @@
   <!-- タイトル画面 -->
   <div id="titleScreen" class="visible">
     <div id="titleContent">
-      <div id="titleSub">〜 Chapter 1 〜</div>
+      <!-- ★修正: 「Chapter 1」固定表示だと進捗も分からずテーマ性も薄いので、
+           ミライ図をテーマにした導入コピーに変更。
+           （実際の点灯本数はセーブ読込後でないと分からずタイトルの時点では
+           不正確な値になってしまうため、ここは数値なしのテーマ訴求に留める。
+           正確な進捗は広場左上／ステージ選択画面／エンディングで確認できる） -->
+      <div id="titleSub">〜 ミライ図を、描きにいこう 〜</div>
       <div id="titleLogo">
         <span class="title-line1">不思議な</span>
         <span class="title-line2">スライム大冒険</span>
@@ -74,6 +94,8 @@
 
   <!-- ホーム広場画面 -->
   <div id="homePlazaScreen">
+    <!-- ★追加: ミライ図システム — 街の点灯進捗を表示するHUD -->
+    <div id="miraiProgress">🏙️ ミライ図 <span id="miraiProgressText">0 / 0</span></div>
     <div id="npcBubble" aria-live="polite"></div>
     <div id="plazaActionPrompt">Ａ で入る</div>
     <!-- マップボタン（広場右上） -->
@@ -157,6 +179,8 @@
     <div id="stageSelectBox">
       <div id="stageSelectTitle">⚔️ ステージ選択</div>
       <div id="stageSelectChapter">Chapter 1 ─ 不思議な森</div>
+      <!-- ★追加: ミライ図システム — 広場の街の点灯進捗をここでも確認できるように -->
+      <div id="stageSelectMiraiProgress">🏙️ ミライ図の進み具合: 0 / 0</div>
       <div id="stageList"></div>
       <button class="back-btn" id="stageSelectBackBtn">← もどる</button>
     </div>
@@ -190,8 +214,13 @@
   <!-- エンディング画面 -->
   <div id="endingScreen">
     <div id="endingBox">
-      <div id="endingTitle">👑 CHAPTER 1 CLEAR! 👑</div>
-      <div id="endingSub">古王スライム・ガガントスを討伐した！</div>
+      <!-- ★修正: 以前はStage6(古王スライム・ガガントス)当時の固定テキストのままで、
+           実際にこの画面が出る条件(STAGES.length-1クリア＝Stage14)と食い違っていた。
+           JS側(showFinalEnding的な箇所)で毎回ステージ名を差し込む方式に変更。 -->
+      <div id="endingTitle">👑 GAME CLEAR! 👑</div>
+      <div id="endingSub"></div>
+      <!-- ★追加: ミライ図システム — ここまで街をどれだけ育てたかの集大成表示 -->
+      <div id="endingMiraiText"></div>
       <button id="endingRetryBtn">最初から遊ぶ</button>
     </div>
   </div>
@@ -240,10 +269,14 @@
   </div>
 
   <!-- リセット（右上） -->
-  <button class="reset-btn" id="resetBtn" aria-label="リセット">↺</button>
+  <!-- ★修正: bossHpArea等と同様、タイトル画面の裏に「戦闘リセット」ボタンが
+       常時表示されてしまっていたため、デフォルトhud-hiddenにして戦闘開始時のみ表示する -->
+  <button class="reset-btn hud-hidden" id="resetBtn" aria-label="リセット">↺</button>
 
   <!-- ============ コントローラーパネル（下部） ============ -->
-  <div id="controllerPanel">
+  <!-- ★修正: タイトル画面の裏に攻撃/回避/必殺技ボタンが常時表示されて
+       いたため、デフォルトhud-hiddenにしてタイトル終了後(dismissTitle)に表示する -->
+  <div id="controllerPanel" class="hud-hidden">
 
     <!-- 左：バーチャルジョイスティック（広場用） / 十字型Dパッド（バトル用） -->
     <div id="dpadWrap">
@@ -311,24 +344,24 @@
      修正版をpushしても古いバージョンが読み込まれ続けるケースがあったため、
      全ローカルスクリプトにバージョンクエリを付与してキャッシュを確実に無効化する。
      コードを更新するたびに、このバージョン文字列(v=...)を更新すること。 -->
-<script src="config.js?v=20260729"></script>
-<script src="se.js?v=20260729"></script>
+<script src="config.js?v=20260828"></script>
+<script src="se.js?v=20260828"></script>
 <script src="bgm.js?v=20260729"></script>
 <script src="timing_ring.js?v=20260729"></script>
 <script src="costume_art.js?v=20260729"></script>
 <script src="boss_models.js?v=20260729"></script>
-<script src="main.js?v=20260729"></script>
+<script src="main.js?v=20260828"></script>
 <script src="scene.js?v=20260729"></script>
 <script src="battle.js?v=20260729"></script>
-<script src="ui.js?v=20260729"></script>
+<script src="ui.js?v=20260828"></script>
 <script src="home_npcs.js?v=20260729"></script>
-<script src="home_scene.js?v=20260729"></script>
+<script src="home_scene.js?v=20260828"></script>
 <script src="plaza_guide.js?v=20260809"></script>
 <script src="fishing.js?v=20260729"></script>
 <script src="cooking.js?v=20260729"></script>
 <script src="flower.js?v=20260729"></script>
-<script src="quest.js?v=20260729"></script>
-<script src="save.js?v=20260729"></script>
+<script src="quest.js?v=20260828"></script>
+<script src="save.js?v=20260828"></script>
 <script src="tutorial.js?v=20260809"></script>
 <script src="game.js?v=20260729"></script>
 <script src="admin.js?v=20260729"></script>

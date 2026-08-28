@@ -135,6 +135,10 @@ function initHomePlaza() {
     }
   }
 
+  // ★追加: ミライ図システム — 広場に入るたびに、貯まったカケラの分だけ
+  //         タワーの点灯本数を最新化する（バトルで稼いだ直後にも反映されるように）
+  updateMiraiTowers();
+
   plazaPlayer.x = 0;
   plazaPlayer.z = 0;
   if (plaza.playerMesh) plaza.playerMesh.position.set(0, 0, 0);
@@ -1450,57 +1454,10 @@ function buildFlowerField() {
 // 遠景の木々（境界を隠す林）★軽量化: 本数削減＋建物座標排除
 // ★追加: ネオン街化 — 遠景の木（makeFirTree）の代わりに使うネオンタワー。
 // 戦闘ステージ側（森）は既存のmakeFirTreeのままにし、広場だけ未来都市に変える。
-const NEON_TOWER_COLORS = [0x00e5ff, 0xff2fd1, 0xffcc33, 0x7a5cff, 0x00ffa2];
-
-function makeNeonTower(x, z, height = 10, withBeaconLight = false) {
-  const group = new THREE.Group();
-  const width = 2.2 + Math.random() * 1.8;
-  const depth = 1.8 + Math.random() * 1.6;
-
-  // ビル本体（暗いガラス/コンクリート）
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(width, height, depth),
-    new THREE.MeshStandardMaterial({ color: 0x14131c, roughness: 0.5, metalness: 0.4 })
-  );
-  body.position.y = height / 2;
-  body.castShadow = false; // ★変更: 負荷軽減 — 遠景の装飾物なのでシャドウ計算は不要
-  body.receiveShadow = true;
-  group.add(body);
-
-  // ネオン窓ストライプ（高さ方向にランダムな帯を発光させる）
-  // ★変更: 負荷軽減 — StandardMaterial(emissive)からBasicMaterialへ。見た目はほぼ変わらず軽くなる
-  const stripeCount = 3 + Math.floor(Math.random() * 4);
-  for (let i = 0; i < stripeCount; i++) {
-    const color = NEON_TOWER_COLORS[Math.floor(Math.random() * NEON_TOWER_COLORS.length)];
-    const stripeH = 0.3 + Math.random() * 0.3;
-    const stripe = new THREE.Mesh(
-      new THREE.BoxGeometry(width + 0.05, stripeH, depth + 0.05),
-      new THREE.MeshBasicMaterial({ color })
-    );
-    stripe.position.y = 1.0 + Math.random() * Math.max(0.5, height - 2.2);
-    group.add(stripe);
-  }
-
-  // 頂上の看板灯（一部のタワーだけPointLightを持たせて負荷を抑える）
-  const topColor = NEON_TOWER_COLORS[Math.floor(Math.random() * NEON_TOWER_COLORS.length)];
-  const beacon = new THREE.Mesh(
-    new THREE.SphereGeometry(0.22, 6, 6),
-    new THREE.MeshBasicMaterial({ color: topColor })
-  );
-  beacon.position.y = height + 0.5;
-  group.add(beacon);
-  if (withBeaconLight) {
-    // ★変更: 負荷軽減 — distanceを短くしてライトの影響範囲を絞り、計算コストを抑える
-    const light = new THREE.PointLight(topColor, 0.9, 9, 2);
-    light.position.y = height + 0.5;
-    group.add(light);
-  }
-
-  group.position.set(x, 0, z);
-  return group;
-}
-
-function buildDistantTrees() {
+// ★追加: ミライ図システム — タワー座標の計算を、実際のジオメトリ生成(makeNeonTower)から
+//         切り離して単独関数にした。これにより、広場のThree.jsシーンをまだ構築していない
+//         タイトル画面の時点でも「タワー総数」が分かるようになる(MIRAI_TOWER_POSITIONS.length)。
+function computeMiraiTowerPositions() {
   const WALL = PLAZA_FIELD_LIMIT;
 
   // ★修正: 以前は建物座標をここに手打ちで複製しており、PLAZA_BUILDINGSに
@@ -1512,14 +1469,14 @@ function buildDistantTrees() {
     return BUILDING_EXCLUSIONS.some(b => Math.hypot(x - b.x, z - b.z) < b.r);
   }
 
-  const treePositions = [];
+  const positions = [];
 
   // ★ 外周1リングのみ、間隔をさらに広げて本数削減（負荷軽減のため6.0→8.5）
   const dist = WALL + 3;
   const count = Math.round(dist * Math.PI * 2 / 8.5);
   for (let i = 0; i < count; i++) {
     const angle = (i / count) * Math.PI * 2;
-    treePositions.push([Math.cos(angle) * dist, Math.sin(angle) * dist]);
+    positions.push([Math.cos(angle) * dist, Math.sin(angle) * dist]);
   }
 
   // ★ 内側の木: 20本→14本にさらに削減、建物近くはスキップ
@@ -1532,18 +1489,165 @@ function buildDistantTrees() {
     const x = Math.cos(angle) * r;
     const z = Math.sin(angle) * r;
     if (!isTooClose(x, z)) {
-      treePositions.push([x, z]);
+      positions.push([x, z]);
       added++;
     }
   }
 
+  return positions;
+}
+// ページ読込時に1回だけ計算・確定（乱数を含むが、以降はこの配列を使い回すので
+// タイトル画面のカケラ進捗表示と実際に建つタワーの本数は必ず一致する）
+const MIRAI_TOWER_POSITIONS = computeMiraiTowerPositions();
+
+const NEON_TOWER_COLORS = [0x00e5ff, 0xff2fd1, 0xffcc33, 0x7a5cff, 0x00ffa2];
+
+// ★追加: ミライ図システム — タワーは「未点灯（暗いビルの躯体だけ）」と
+//         「点灯済み（ネオン窓＋看板灯）」の2状態を持つ。neonPartsをまとめて
+//         1つのグループにし、visibleを切り替えるだけで見た目を変えられるようにする。
+//         (ジオメトリの生成・破棄をしないので、進捗が増えるたびに軽く再描画できる)
+function makeNeonTower(x, z, height = 10, withBeaconLight = false, lit = true) {
+  const group = new THREE.Group();
+  const width = 2.2 + Math.random() * 1.8;
+  const depth = 1.8 + Math.random() * 1.6;
+
+  // ビル本体（暗いガラス/コンクリート）— 未点灯でもここは常に見える（建設中のシルエット）
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(width, height, depth),
+    new THREE.MeshStandardMaterial({ color: 0x14131c, roughness: 0.5, metalness: 0.4 })
+  );
+  body.position.y = height / 2;
+  body.castShadow = false; // ★変更: 負荷軽減 — 遠景の装飾物なのでシャドウ計算は不要
+  body.receiveShadow = true;
+  group.add(body);
+
+  // ネオン部分（窓ストライプ＋看板灯＋ビーコン光）をひとまとめにして
+  // ミライ図のカケラが貯まるまでは非表示にしておく
+  const neonParts = new THREE.Group();
+
+  // ネオン窓ストライプ（高さ方向にランダムな帯を発光させる）
+  // ★変更: 負荷軽減 — StandardMaterial(emissive)からBasicMaterialへ。見た目はほぼ変わらず軽くなる
+  const stripeCount = 3 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < stripeCount; i++) {
+    const color = NEON_TOWER_COLORS[Math.floor(Math.random() * NEON_TOWER_COLORS.length)];
+    const stripeH = 0.3 + Math.random() * 0.3;
+    const stripe = new THREE.Mesh(
+      new THREE.BoxGeometry(width + 0.05, stripeH, depth + 0.05),
+      new THREE.MeshBasicMaterial({ color, transparent: true })
+    );
+    stripe.position.y = 1.0 + Math.random() * Math.max(0.5, height - 2.2);
+    stripe.userData.twinklePhase = Math.random() * Math.PI * 2; // ★追加: ミライ図の未来感演出用
+    neonParts.add(stripe);
+  }
+
+  // 頂上の看板灯（一部のタワーだけPointLightを持たせて負荷を抑える）
+  const topColor = NEON_TOWER_COLORS[Math.floor(Math.random() * NEON_TOWER_COLORS.length)];
+  const beacon = new THREE.Mesh(
+    new THREE.SphereGeometry(0.22, 6, 6),
+    new THREE.MeshBasicMaterial({ color: topColor, transparent: true })
+  );
+  beacon.position.y = height + 0.5;
+  beacon.userData.twinklePhase = Math.random() * Math.PI * 2; // ★追加: ミライ図の未来感演出用
+  neonParts.add(beacon);
+  if (withBeaconLight) {
+    // ★変更: 負荷軽減 — distanceを短くしてライトの影響範囲を絞り、計算コストを抑える
+    const light = new THREE.PointLight(topColor, 0.9, 9, 2);
+    light.position.y = height + 0.5;
+    neonParts.add(light);
+  }
+
+  neonParts.visible = lit;
+  group.add(neonParts);
+  group.userData.neonParts = neonParts; // ★ updateMiraiTowers()から点灯/消灯を切り替えるための参照
+
+  group.position.set(x, 0, z);
+  return group;
+}
+
+function buildDistantTrees() {
   // ★変更: ネオン街化 — 森の木の代わりに、外周・内側にネオンタワーを立てる。
   //         PointLightは負荷抑制のため6本に1本のみ持たせる（体感カクつき対策で3→6に緩和）。
-  treePositions.forEach(([x, z], i) => {
+  // ★追加: ミライ図システム — 生成時点では全タワー未点灯にしておき、
+  //         plaza.miraiTowersに順番を保持。updateMiraiTowers()が
+  //         state.miraiPiecesに応じて手前から何本点灯させるか決める。
+  //         座標そのものは MIRAI_TOWER_POSITIONS（ページ読込時に1回だけ計算済み）を使う。
+  //         タイトル画面のテキスト（updateTitleMiraiText）が広場シーン構築前に
+  //         「タワー総数」を必要とするため、座標計算だけを先出しできるようにしてある。
+  plaza.miraiTowers = [];
+  MIRAI_TOWER_POSITIONS.forEach(([x, z], i) => {
     const h = 7 + Math.random() * 11;
-    const tower = makeNeonTower(x, z, h, i % 6 === 0);
+    const tower = makeNeonTower(x, z, h, i % 6 === 0, /* lit */ false);
     three.scene.add(tower);
     plaza.decorObjects.push(tower); // ★ setPlazaObjectsVisible管理下に追加
+    plaza.miraiTowers.push(tower);
+  });
+  updateMiraiTowers();
+}
+
+// ★追加: ミライ図システム — state.miraiPiecesに応じて、広場のネオンタワーを
+//         手前（生成順）から順番に点灯させる。ジオメトリは全て生成済みなので、
+//         visibleを切り替えるだけの軽い処理。ボス撃破・クエスト達成の直後や
+//         広場への再入場時(initHomePlaza)に呼び出す。
+// ★追加: ミライ図システム — 「今何本目まで点灯できるか」を返す共通ヘルパー。
+//         広場のタワー演出だけでなく、ステージ選択画面のテキスト表示など
+//         他画面からも同じ計算式を使い回すためにここへ切り出した。
+//         MIRAI_TOWER_POSITIONS はページ読込時に確定済みなので、
+//         広場シーンを構築していないタイミングでも呼び出せる。
+function getMiraiProgress() {
+  const total = MIRAI_TOWER_POSITIONS.length;
+  const unlocked = Math.min(
+    total,
+    Math.floor((state.miraiPieces ?? 0) / MIRAI_CONFIG.piecesPerTower)
+  );
+  return { unlocked, total };
+}
+
+function updateMiraiTowers() {
+  if (!plaza.miraiTowers || !plaza.miraiTowers.length) return;
+  const { unlocked, total } = getMiraiProgress();
+
+  // ★追加: 未来感演出 — 広場に居る間にタワーが新しく点灯した瞬間だけ、
+  //         SEと通知テキストで「街が育った」ことを実感できるようにする。
+  //         初回呼び出し（広場をまだ一度も表示していない状態でのシーン構築時）は
+  //         演出を出さず、基準値の記録だけ行う。
+  const isFirstCall = !_miraiBaselineSet;
+  if (!isFirstCall && unlocked > _prevMiraiUnlocked) {
+    celebrateMiraiTowerUnlock(unlocked - _prevMiraiUnlocked);
+  }
+  _prevMiraiUnlocked = unlocked;
+  _miraiBaselineSet = true;
+
+  plaza.miraiTowers.forEach((tower, i) => {
+    if (tower.userData.neonParts) tower.userData.neonParts.visible = i < unlocked;
+  });
+
+  // ★追加: 左上HUDの進捗テキストも同期
+  const label = document.getElementById("miraiProgressText");
+  if (label) label.textContent = `${unlocked} / ${total}`;
+}
+let _prevMiraiUnlocked = 0;
+let _miraiBaselineSet = false;
+
+// ★追加: 新しくタワーが点灯した瞬間の演出。
+//         クエスト達成時など、直後に別のstatusLineメッセージで上書きされる
+//         呼び出し元があるため、ここではテキスト表示はせずSEのみにする
+//         （テキストで伝えたい場合は呼び出し元のメッセージに含める）。
+function celebrateMiraiTowerUnlock(gainedCount) {
+  if (typeof SE !== "undefined" && SE.miraiTowerLight) SE.miraiTowerLight();
+}
+
+// ★追加: 未来感演出 — 点灯済みタワーのネオン部分をゆっくりまたたかせる。
+//         毎フレーム全タワーを回すと重いので、visible(=点灯済み)なものだけ処理する。
+function updateMiraiTowerTwinkle(dtScale = 1) {
+  if (!plaza.miraiTowers || !plaza.miraiTowers.length) return;
+  const t = Date.now() * 0.0015;
+  plaza.miraiTowers.forEach(tower => {
+    const neonParts = tower.userData.neonParts;
+    if (!neonParts || !neonParts.visible) return;
+    neonParts.children.forEach(mesh => {
+      if (!mesh.material || mesh.userData.twinklePhase === undefined) return;
+      mesh.material.opacity = 0.72 + Math.sin(t + mesh.userData.twinklePhase) * 0.28;
+    });
   });
 }
 
@@ -1618,6 +1722,7 @@ function updateHomePlazaLoop(dtScale = 1) {
   updateFlowers();
   updatePlazaCameraFollow();
   updateWindAnimation(dtScale);    // ★ 木々の風による揺れ
+  updateMiraiTowerTwinkle(dtScale); // ★追加: 未来感演出 — 点灯済みタワーのまたたき
   updatePlazaParticles(dtScale);   // ★ 水しぶき・花びらパーティクル
   updateBuildingAnimations();      // ★ ルーン・暖簾・湯気アニメ
   updateTimeOfDay();  // 時間帯チェック（変化時のみ描画更新）
@@ -2581,6 +2686,7 @@ function exitHomePlaza() {
   dom.gaugeArea?.classList.remove("hud-hidden");
   dom.statsArea?.classList.remove("hud-hidden");
   dom.playerHpArea?.classList.remove("hud-hidden");
+  dom.resetBtn?.classList.remove("hud-hidden");
   dom.controllerPanel?.classList.remove("plaza-mode");
   // ジョイスティックのノブ位置をリセット
   const jKnob = document.getElementById("joystickKnob");

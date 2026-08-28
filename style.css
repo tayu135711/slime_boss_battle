@@ -673,7 +673,13 @@ html, body {
 }
 #endingSub {
   font-size: 14px; color: #c8a870;
-  margin-bottom: 28px; line-height: 1.8;
+  margin-bottom: 12px; line-height: 1.8;
+}
+/* ★追加: ミライ図システム — エンディングでの集大成表示 */
+#endingMiraiText {
+  font-size: 13px; color: #7ff2ff;
+  margin-bottom: 24px; line-height: 1.7;
+  text-shadow: 0 0 8px rgba(127,242,255,0.5);
 }
 #endingRetryBtn {
   padding: 13px 34px; font-size: 16px; font-weight: 900;
@@ -794,15 +800,41 @@ html, body {
   font-size: 14px;
   font-weight: 700;
   padding: 10px 24px;
-  border-radius: 999px;
+  border-radius: 24px;
   border: 2.5px solid #C4A27A;
   box-shadow: 0 4px 14px rgba(90,60,20,0.2), inset 0 1px 0 rgba(255,255,255,0.8);
   pointer-events: none;
   z-index: 30;
-  white-space: nowrap;
+  /* ★修正: white-space:nowrap＋横幅指定なしのままだと、ガイドNPCの長いセリフ
+     （「南の『冒険の門』から…」等）が画面幅を超えて右端が見切れたり、
+     画面外まで伸びて他のUIと重なって見える「変な吹き出し」バグの原因になっていた。
+     スマホ用メディアクエリでは既にwhite-space:normalに直っていたが、
+     デスクトップ幅の基本ルールに反映し忘れていたので合わせる。 */
+  max-width: min(640px, 90vw);
+  white-space: normal;
+  text-align: center;
   letter-spacing: 0.04em;
 }
 #npcBubble.visible { display: block; }
+
+/* ★追加: ミライ図システム — 広場左上に街の点灯進捗を表示するHUD */
+#miraiProgress {
+  position: fixed;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  left: 14px;
+  background: rgba(20,18,30,0.72);
+  color: #7ff2ff;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1.5px solid #7ff2ff88;
+  box-shadow: 0 0 8px rgba(127,242,255,0.35);
+  letter-spacing: 0.04em;
+  z-index: 25;
+  pointer-events: none;
+}
+
 #npcBubble::after {
   content: "";
   position: absolute;
@@ -1007,6 +1039,13 @@ html, body {
 #stageSelectChapter {
   font-size: 12px; color: #5a9850;
   text-align: center; letter-spacing: 0.12em; font-weight: 700;
+}
+/* ★追加: ミライ図システム — ステージ選択画面での進捗表示 */
+#stageSelectMiraiProgress {
+  font-size: 11px; color: #7ff2ff;
+  text-align: center; letter-spacing: 0.08em; font-weight: 700;
+  margin-top: 2px; margin-bottom: 4px;
+  text-shadow: 0 0 6px rgba(127,242,255,0.5);
 }
 #stageList { display: flex; flex-direction: column; gap: 8px; }
 .stage-card {
@@ -2330,6 +2369,35 @@ button {
 #tutorialBtn:active { transform: scale(0.9); }
 #tutorialBtn {
   top: calc(64px + env(safe-area-inset-top, 0px));
+  right: calc(14px + env(safe-area-inset-right, 0px));
+}
+
+/* ★追加: ミュートボタン — タイトル/広場/戦闘のどの画面でも常時押せる独立ボタン。
+   tutorialBtn(top:64)のさらに下に配置し、hud-hidden等の影響を受けないようにする。 */
+#muteBtn {
+  position: fixed;
+  top: 116px;
+  right: 14px;
+  z-index: 120;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2.5px solid #C4A27A;
+  background: rgba(245, 237, 216, 0.95);
+  color: #3A2E20;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(30,60,90,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: transform 0.15s;
+  pointer-events: auto;
+}
+#muteBtn:active { transform: scale(0.9); }
+#muteBtn {
+  top: calc(116px + env(safe-area-inset-top, 0px));
   right: calc(14px + env(safe-area-inset-right, 0px));
 }
 

@@ -74,5 +74,12 @@ public class PlayerSave {
      */
     private Integer gachaTickets;
 
+    /** ミライ図のカケラ所持数（広場のネオンタワー点灯に使用）。
+     *  gachaTickets と同じ理由でボクシング型(Integer)にしておく:
+     *  既存プレイヤーの行はddl-auto=updateでカラム追加された直後はNULLになるため、
+     *  プリミティブint だとgetInt()でNULLが黙って0に丸められ、フロント側の
+     *  救済ロジック(data.miraiPieces ?? 0)と区別がつかなくなる問題を避ける。 */
+    private Integer miraiPieces;
+
     private LocalDateTime updatedAt;
 }

@@ -149,6 +149,10 @@ function dismissTitle() {
           renderCurrentCostume();
           refreshGachaTicketDisplay();
         }
+        // ★追加: ミライ図システム — ロード完了までタワーは未点灯(0本)のまま
+        //         構築されているため、セーブデータのカケラ数を反映して点灯し直す。
+        //         (ガチャ画面と同じ「ロード完了前に表示され得る画面の再描画漏れ」パターン)
+        if (typeof updateMiraiTowers === "function") updateMiraiTowers();
       }
     } catch (e) {
       console.warn("ロード失敗（続行）:", e);
@@ -169,7 +173,9 @@ function showHomePlaza() {
   dom.gaugeArea?.classList.add("hud-hidden");
   dom.statsArea?.classList.add("hud-hidden");
   dom.playerHpArea?.classList.add("hud-hidden");
+  dom.resetBtn?.classList.add("hud-hidden");
   dom.controllerPanel?.classList.add("plaza-mode");
+  dom.controllerPanel?.classList.remove("hud-hidden");
   // ★ バトル3Dオブジェクトを明示的に非表示（ステージ選択から戻ったときの残像防止）
   if (typeof setBattleObjectsVisible === "function") setBattleObjectsVisible(false);
   // 広場を表示
@@ -455,6 +461,23 @@ function showStageSelect(caller) {
   hideMenu();
   dom.stageSelectScreen.classList.add("visible");
   buildStageList();
+  // ★追加: ミライ図システム — 進捗テキストを最新化
+  updateStageSelectMiraiText();
+}
+
+// ★追加: ミライ図システム — ステージ選択画面の進捗テキストを更新。
+//         完成度に応じて文言を変え、単なる数字表示より達成感が出るようにする。
+function updateStageSelectMiraiText() {
+  const el = document.getElementById("stageSelectMiraiProgress");
+  if (!el || typeof getMiraiProgress !== "function") return;
+  const { unlocked, total } = getMiraiProgress();
+  if (unlocked <= 0) {
+    el.textContent = `🏙️ ミライ図: まだ見ぬミライへ（0 / ${total}）`;
+  } else if (unlocked >= total) {
+    el.textContent = `🏙️ ミライ図: 完成しました！（${total} / ${total}）`;
+  } else {
+    el.textContent = `🏙️ ミライ図の進み具合: ${unlocked} / ${total}`;
+  }
 }
 
 function backFromStageSelect() {
@@ -654,6 +677,9 @@ function handleBossDefeated() {
   // ★ ガチャ石（チケット）をクリア報酬として付与。図鑑のガチャ機能を実際に回せるようにする。
   const gachaGain = stg.chapter >= 3 ? 3 : stg.chapter >= 2 ? 2 : 1;
   state.gachaTickets = (state.gachaTickets ?? 0) + gachaGain;
+  // ★追加: ミライ図のカケラ。ボスを倒すたびに広場のネオンタワーが1本ずつ育っていく。
+  const miraiGain = MIRAI_CONFIG.bossPieceGain(stg.chapter);
+  state.miraiPieces = (state.miraiPieces ?? 0) + miraiGain;
   const stageKey = String(stg.stageNo);
   if (!state.bestTimes[stageKey] || elapsed < state.bestTimes[stageKey]) {
     state.bestTimes[stageKey] = elapsed;
@@ -666,6 +692,18 @@ function handleBossDefeated() {
     if (!state.cleared || state.stageIndex !== clearedStageIndex) return;
     if (state.stageIndex >= STAGES.length - 1) {
       dom.endingScreen.classList.add("visible");
+      // ★修正: エンディング文言が固定(Stage6ボス名)だったため、実際に倒した
+      //         最終ステージ(stg)の名前を差し込むように変更
+      const endingSubEl = document.getElementById("endingSub");
+      if (endingSubEl) endingSubEl.textContent = `${stg.name}を討伐した！`;
+      // ★追加: ミライ図システム — ここまで育てた街の完成度を集大成として表示
+      const endingMiraiEl = document.getElementById("endingMiraiText");
+      if (endingMiraiEl && typeof getMiraiProgress === "function") {
+        const { unlocked, total } = getMiraiProgress();
+        endingMiraiEl.textContent = (unlocked >= total)
+          ? `🏙️ 広場の街は、あなたと一緒に完成した「ミライ図」になりました。（${total} / ${total}）`
+          : `🏙️ ここまで育てたミライ図: ${unlocked} / ${total}　― 広場に戻ればまだ育てられるよ`;
+      }
     } else {
       dom.resultTitle.textContent = `✨ Stage ${stg.stageNo} CLEAR! ✨`;
       dom.resultStats.innerHTML   = `
@@ -683,7 +721,7 @@ function handleBossDefeated() {
 
       // ★変更: コスチュームは完全にガチャ入手のみにするため、3択報酬は廃止。
       //         代わりに獲得したガチャ石の枚数を表示する。
-      dom.rewardTitle.textContent = `🎟️ ガチャ石 +${gachaGain} 獲得！広場のガチャでコスチュームを手に入れよう`;
+      dom.rewardTitle.textContent = `🎟️ ガチャ石 +${gachaGain}　🏙️ ミライ図のカケラ +${miraiGain}　広場の街がまた育ったよ`;
       saveToServer();
 
       dom.nextStageBtn.style.display = "";

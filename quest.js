@@ -55,8 +55,13 @@ function completeQuest(questId) {
   else if (reward.type === "bento_slot") state.maxBento += reward.slotCount;
   else if (reward.type === "accessory") state.accessories.push(reward.accessoryId);
 
+  // ★追加: クエスト達成でもミライ図のカケラを獲得（広場の街づくりに使う）
+  state.miraiPieces = (state.miraiPieces ?? 0) + MIRAI_CONFIG.questPieceGain;
+  // ★追加: 広場に居るその場でタワーが光る演出を出すため、即座に反映する
+  if (typeof updateMiraiTowers === "function") updateMiraiTowers();
+
   SE.questComplete();
-  dom.statusLine.textContent = `✨ クエスト「${QUESTS[questId].name}」達成！ ${QUESTS[questId].rewardText}`;
+  dom.statusLine.textContent = `✨ クエスト「${QUESTS[questId].name}」達成！ ${QUESTS[questId].rewardText}（🏙️ミライ図のカケラ+${MIRAI_CONFIG.questPieceGain}）`;
   setTimeout(() => dom.statusLine.textContent = "", 3000);
 }
 

@@ -402,13 +402,22 @@
     sync('adminPlayerMax',   'adminPlayerMaxVal',   CONFIG.battle.maxDamage,    500);
   }
 
+  // ★追加: コンテスト応募版対応 — 管理者パネルは開発中のデバッグ用機能で、
+  //         誰でも触れるステージ全解放・HP改ざん等が可能なため、公開URLで
+  //         一般プレイヤーや審査員がそのまま開けるのは事故のもと。
+  //         URLに ?debug=1 が付いている時だけ有効化する（通常アクセスでは
+  //         トリガー要素自体を生成しないので、長押ししても何も起きない）。
+  const DEBUG_MODE = new URLSearchParams(location.search).get("debug") === "1";
+
   // DOMContentLoaded後にマウント
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', mount);
-  } else {
-    mount();
+  if (DEBUG_MODE) {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", mount);
+    } else {
+      mount();
+    }
+    // その他ボタンからも開けるようにグローバル公開
+    window.__adminOpenPanel = openPanel;
   }
-  // その他ボタンからも開けるようにグローバル公開
-  window.__adminOpenPanel = openPanel;
 
 })();
