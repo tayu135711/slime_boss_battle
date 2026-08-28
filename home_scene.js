@@ -171,7 +171,7 @@ const TIME_OF_DAY_SETTINGS = {
     sunPos: [8, 12, 18],
     ambColor:   0xb8844a,  // ★ さらに暖色・暗め
     ambIntensity: 0.28,    // ★ 0.30→0.28
-    groundColor: 0x4e9a48, // 少し濃いめの緑
+    groundColor: 0x3a3648, // ★変更: ネオン街化 — アスファルトに合わせた暗い紫グレー
   },
   noon: {
     label: "☀️ 昼",
@@ -185,35 +185,37 @@ const TIME_OF_DAY_SETTINGS = {
     sunPos: [10, 20, 10],
     ambColor:   0x6a9ab8,  // ★ 青みを抑えたグレー寄り
     ambIntensity: 0.28,    // ★ さらに下げる（0.32→0.28）
-    groundColor: 0x3d8c3a, // 濃いめの緑
+    groundColor: 0x35323f, // ★変更: ネオン街化 — アスファルトに合わせた暗いグレー
   },
   evening: {
+    // ★変更: ネオン街化 — 夕焼けオレンジからサイバーパンク寄りのマゼンタ/紫へ
     label: "🌆 夕方",
-    skyColor:   0xe05a30,
-    skyTop:     0x47214f,  // ★追加: 上空(深い紫)
-    skyHorizon: 0xff7b3d,  // ★追加: 地平線(燃えるオレンジ)
-    fogColor:   0xd06040,
+    skyColor:   0x7a2f6e,
+    skyTop:     0x2a1240,  // 上空(深い紫)
+    skyHorizon: 0xff4fa0,  // 地平線(ネオンマゼンタ)
+    fogColor:   0x6a2a5c,
     fogDensity: 0.010,
-    sunColor:   0xff6600,
-    sunIntensity: 0.65,    // 1.0 → 0.65
+    sunColor:   0xff5fc0,
+    sunIntensity: 0.55,
     sunPos: [-12, 6, 10],
-    ambColor:   0xcc8855,  // 暗めの橙
-    ambIntensity: 0.28,    // 0.5 → 0.28
-    groundColor: 0x6b4e2a, // 夕方らしい茶みどり
+    ambColor:   0x8a4fa0,  // 紫みの環境光
+    ambIntensity: 0.30,
+    groundColor: 0x2e2438, // ネオン街の路面(暗紫)
   },
   night: {
+    // ★変更: ネオン街化 — 濃紺の夜空からシアン/インディゴのネオン夜景へ
     label: "🌙 夜",
-    skyColor:   0x0a1530,
-    skyTop:     0x04060f,  // ★追加: 上空(ほぼ黒に近い紺)
-    skyHorizon: 0x232c55,  // ★追加: 地平線(深いインディゴ)
-    fogColor:   0x0a1530,
-    fogDensity: 0.015,
-    sunColor:   0x3355aa,
-    sunIntensity: 0.25,    // 0.4 → 0.25
+    skyColor:   0x0a0a20,
+    skyTop:     0x05050f,  // 上空(ほぼ黒)
+    skyHorizon: 0x1a2a55,  // 地平線(ネオン反射のインディゴ)
+    fogColor:   0x0c1030,
+    fogDensity: 0.016,
+    sunColor:   0x39e6ff,  // 主光をシアンのネオンに
+    sunIntensity: 0.30,
     sunPos: [5, 18, 5],
-    ambColor:   0x1e2d55,
-    ambIntensity: 0.22,    // 0.35 → 0.22
-    groundColor: 0x223318,
+    ambColor:   0x2a1e55,
+    ambIntensity: 0.26,
+    groundColor: 0x1c1a2a, // ネオン街の路面(ほぼ黒に近い紫)
   },
 };
 
@@ -406,16 +408,19 @@ plaza.ambientLight = new THREE.AmbientLight(0x8ab4cc, 0.32);
 
   buildSkyDome(); // ★追加: グラデーション空ドーム（他の描画物より先に追加）
 
+  // ★変更: ネオン街化 — 芝生の地面からアスファルト地面へ（にいがたデジコン
+  //         「ミライ図」テーマ対応。roughnessを下げてわずかに反射させ、
+  //         ネオン発光が路面に映り込む「濡れたアスファルト」感を出す）
   plaza.ground = new THREE.Mesh(
     new THREE.PlaneGeometry(200, 200, 1, 1),
-    new THREE.MeshStandardMaterial({ color: 0x3d8c3a, roughness: 0.9, map: _makeGrassTexture() })
+    new THREE.MeshStandardMaterial({ color: 0x2a2a38, roughness: 0.55, metalness: 0.15, map: _makeAsphaltTexture() })
   );
   plaza.ground.rotation.x = -Math.PI / 2;
   plaza.ground.receiveShadow = true;
   three.scene.add(plaza.ground);
 
   const cobble = new THREE.Mesh(new THREE.CircleGeometry(12, 32), new THREE.MeshStandardMaterial({
-    color: 0xffffff, roughness: 0.95, map: _makeCobbleTexture(),
+    color: 0xffffff, roughness: 0.6, metalness: 0.2, map: _makeCobbleTexture(),
     polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
   }));
   cobble.rotation.x = -Math.PI / 2;
@@ -536,27 +541,82 @@ function _makeGrassTexture() {
   return tex;
 }
 
-function _makeCobbleTexture() {
+// ★追加: ネオン街化 — アスファルト地面テクスチャ（グラス地面の置き換え）
+// 暗いアスファルト地に、シアン/マゼンタの発光ライン（道路の縁石灯・配線イメージ）を
+// ランダムに散らして、夜のネオン都市らしい質感を出す。
+function _makeAsphaltTexture() {
   const size = 256;
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#4a3f34"; // 目地（石と石の間の溝）の色
+  ctx.fillStyle = "#15151c";
   ctx.fillRect(0, 0, size, size);
 
-  const cell = 30;
+  // 粒状のムラでアスファルルらしいノイズを追加
+  const shades = ["#1c1c26", "#101014", "#20202c", "#0c0c10"];
+  for (let i = 0; i < 900; i++) {
+    ctx.fillStyle = shades[Math.floor(Math.random() * shades.length)];
+    ctx.globalAlpha = 0.3 + Math.random() * 0.3;
+    const x = Math.random() * size, y = Math.random() * size;
+    const r = 1 + Math.random() * 3;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // ネオン配線ライン（シアン/マゼンタ）
+  ctx.globalAlpha = 0.55;
+  ctx.lineWidth = 1.5;
+  const neonLineColors = ["#39e6ff", "#ff3fd8"];
+  for (let i = 0; i < 10; i++) {
+    ctx.strokeStyle = neonLineColors[i % 2];
+    const y = (i / 10) * size + (Math.random() - 0.5) * 8;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    for (let x = 0; x <= size; x += 32) {
+      ctx.lineTo(x, y + (Math.random() - 0.5) * 6);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.encoding = THREE.sRGBEncoding;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(50, 50);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function _makeCobbleTexture() {
+  // ★変更: ネオン街化 — 中世風の石畳から、発光ラインの入った近未来パネル床へ
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#1c1a26"; // パネルの目地（暗い紫グレー）
+  ctx.fillRect(0, 0, size, size);
+
+  const cell = 32;
   for (let gy = -cell; gy < size + cell; gy += cell) {
     for (let gx = -cell; gx < size + cell; gx += cell) {
-      const jx = gx + (Math.random() - 0.5) * 8;
-      const jy = gy + (Math.random() - 0.5) * 8;
-      const w = cell - 5 + Math.random() * 4;
-      const h = cell - 5 + Math.random() * 4;
-      const base = 150 + Math.floor(Math.random() * 55); // 明るさのばらつき
-      ctx.fillStyle = `rgb(${base + 15},${base},${base - 20})`;
+      const w = cell - 3;
+      const h = cell - 3;
+      const base = 34 + Math.floor(Math.random() * 14); // パネルごとの明るさのばらつき
+      ctx.fillStyle = `rgb(${base + 4},${base + 2},${base + 10})`;
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(jx, jy, w, h, 5);
-      else ctx.rect(jx, jy, w, h);
+      if (ctx.roundRect) ctx.roundRect(gx, gy, w, h, 3);
+      else ctx.rect(gx, gy, w, h);
       ctx.fill();
+      // パネルの角にごく小さいネオンの点灯（全パネルではなく一部だけ）
+      if (Math.random() < 0.18) {
+        ctx.fillStyle = Math.random() > 0.5 ? "#39e6ff" : "#ff3fd8";
+        ctx.globalAlpha = 0.85;
+        ctx.beginPath();
+        ctx.arc(gx + 4, gy + 4, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
     }
   }
 
@@ -634,22 +694,24 @@ function _makeSandTexture() {
 
 function buildFountain() {
   const group = new THREE.Group();
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.0, 0.4, 16), new THREE.MeshStandardMaterial({ color: 0x9a8878, roughness: 0.85 }));
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.0, 0.4, 16), new THREE.MeshStandardMaterial({ color: 0x2a2838, roughness: 0.5, metalness: 0.35 }));
   base.position.y = 0.2;
   group.add(base);
-  const basin = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.25, 8, 24), new THREE.MeshStandardMaterial({ color: 0x90c0e0, roughness: 0.3, metalness: 0.2 }));
+  // ★変更: ネオン街化 — 石の水盤からシアン発光のホログラム水盤へ
+  const basin = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.25, 8, 24), new THREE.MeshStandardMaterial({ color: 0x39e6ff, emissive: 0x39e6ff, emissiveIntensity: 0.9, roughness: 0.3, metalness: 0.2 }));
   basin.rotation.x = -Math.PI / 2;
   basin.position.y = 0.5;
   group.add(basin);
-  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.4, 8), new THREE.MeshStandardMaterial({ color: 0x8a7868, roughness: 0.75 }));
+  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.4, 8), new THREE.MeshStandardMaterial({ color: 0x24222e, roughness: 0.5, metalness: 0.4 }));
   pillar.position.y = 1.1;
   group.add(pillar);
-  const topDish = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.4, 0.15, 12), new THREE.MeshStandardMaterial({ color: 0x9a8878, roughness: 0.85 }));
+  const topDish = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.4, 0.15, 12), new THREE.MeshStandardMaterial({ color: 0x2a2838, emissive: 0xff3fd8, emissiveIntensity: 0.5, roughness: 0.5, metalness: 0.35 }));
   topDish.position.y = 1.85;
   group.add(topDish);
   plaza.waterDrops = [];
   for (let i = 0; i < 8; i++) {
-    const drop = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6), new THREE.MeshStandardMaterial({ color: 0x88ccff, transparent: true, opacity: 0.75 }));
+    // ★変更: ネオン街化 — 水滴もシアン発光の「データ粒子」風に
+    const drop = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6), new THREE.MeshStandardMaterial({ color: 0x39e6ff, emissive: 0x39e6ff, emissiveIntensity: 1.2, transparent: true, opacity: 0.85 }));
     const angle = (i / 8) * Math.PI * 2;
     drop.userData.angle = angle;
     drop.userData.phase = (i / 8) * Math.PI * 2;
@@ -660,6 +722,69 @@ function buildFountain() {
   group.position.set(0, 0, 0);
   three.scene.add(group);
   plaza.fountain = group;
+}
+
+// ★追加: ネオン街化 — 建物ラベル(絵文字+名称)をネオン発光風のcanvasテクスチャにして
+// 建物の頭上にホログラム看板として掲げる。建物本体の形状(既存デザイン)は改造せず、
+// 追加オブジェクトだけで未来都市の雰囲気を足すための軽量な仕組み。
+function _makeNeonSignTexture(text, colorHex) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 128;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const color = `#${new THREE.Color(colorHex).getHexString()}`;
+  ctx.font = "bold 64px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  // 発光っぽく見せるため、ぼかしを掛けた文字を数回重ねて描く
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 24;
+  ctx.fillStyle = color;
+  for (let i = 0; i < 3; i++) {
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+  }
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.encoding = THREE.sRGBEncoding;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+// 建物カラーからネオンサインの発光色を決める（暗い原色寄りの色は明るいネオン色に変換）
+const NEON_SIGN_PALETTE = [0x39e6ff, 0xff3fd8, 0xffd23f, 0x8a5cff, 0x39ff9e];
+function _pickNeonSignColor(def) {
+  // typeごとに固定色を割り当て、同じ建物は毎回同じ色になるようにする
+  const idx = PLAZA_BUILDINGS.findIndex(b => b.type === def.type);
+  return NEON_SIGN_PALETTE[idx % NEON_SIGN_PALETTE.length];
+}
+
+function addNeonSignage(group, def) {
+  const signColor = _pickNeonSignColor(def);
+
+  // ホログラム看板（建物の上に浮かせる。Spriteなので常にカメラを向く）
+  const tex = _makeNeonSignTexture(def.label, signColor);
+  const signMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+  const sign = new THREE.Sprite(signMat);
+  sign.scale.set(3.2, 0.8, 1);
+  sign.position.set(0, 6.2, 0);
+  group.add(sign);
+
+  // 足元のネオン発光リング（建物の存在感を路面から照らす縁取り）
+  // ★変更: 負荷軽減 — PBR計算が要るStandardMaterialではなく、発光色をそのまま
+  //         描画するBasicMaterialに変更（光源計算が不要になり軽い）
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(2.3, 2.6, 24),
+    new THREE.MeshBasicMaterial({
+      color: signColor, transparent: true, opacity: 0.85, side: THREE.DoubleSide,
+    })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.03;
+  group.add(ring);
 }
 
 function buildPlazaBuildings() {
@@ -1020,6 +1145,11 @@ function buildPlazaBuildings() {
     group.position.set(def.x, 0, def.z);
     three.scene.add(group);
     plaza.buildings.push({ mesh: group, ...def });
+
+    // ★追加: ネオン街化 — 建物本体の形状はそのまま活かしつつ、
+    //         頭上にホログラム風ネオン看板（絵文字ラベル入り）を追加し、
+    //         足元にネオン発光の縁取りリングを敷いて未来都市感を足す。
+    addNeonSignage(group, def);
   });
 
   // ── 街灯（ポイントライト廃止→emissiveで軽量化） ──────────
@@ -1318,6 +1448,58 @@ function buildFlowerField() {
 
 
 // 遠景の木々（境界を隠す林）★軽量化: 本数削減＋建物座標排除
+// ★追加: ネオン街化 — 遠景の木（makeFirTree）の代わりに使うネオンタワー。
+// 戦闘ステージ側（森）は既存のmakeFirTreeのままにし、広場だけ未来都市に変える。
+const NEON_TOWER_COLORS = [0x00e5ff, 0xff2fd1, 0xffcc33, 0x7a5cff, 0x00ffa2];
+
+function makeNeonTower(x, z, height = 10, withBeaconLight = false) {
+  const group = new THREE.Group();
+  const width = 2.2 + Math.random() * 1.8;
+  const depth = 1.8 + Math.random() * 1.6;
+
+  // ビル本体（暗いガラス/コンクリート）
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(width, height, depth),
+    new THREE.MeshStandardMaterial({ color: 0x14131c, roughness: 0.5, metalness: 0.4 })
+  );
+  body.position.y = height / 2;
+  body.castShadow = false; // ★変更: 負荷軽減 — 遠景の装飾物なのでシャドウ計算は不要
+  body.receiveShadow = true;
+  group.add(body);
+
+  // ネオン窓ストライプ（高さ方向にランダムな帯を発光させる）
+  // ★変更: 負荷軽減 — StandardMaterial(emissive)からBasicMaterialへ。見た目はほぼ変わらず軽くなる
+  const stripeCount = 3 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < stripeCount; i++) {
+    const color = NEON_TOWER_COLORS[Math.floor(Math.random() * NEON_TOWER_COLORS.length)];
+    const stripeH = 0.3 + Math.random() * 0.3;
+    const stripe = new THREE.Mesh(
+      new THREE.BoxGeometry(width + 0.05, stripeH, depth + 0.05),
+      new THREE.MeshBasicMaterial({ color })
+    );
+    stripe.position.y = 1.0 + Math.random() * Math.max(0.5, height - 2.2);
+    group.add(stripe);
+  }
+
+  // 頂上の看板灯（一部のタワーだけPointLightを持たせて負荷を抑える）
+  const topColor = NEON_TOWER_COLORS[Math.floor(Math.random() * NEON_TOWER_COLORS.length)];
+  const beacon = new THREE.Mesh(
+    new THREE.SphereGeometry(0.22, 6, 6),
+    new THREE.MeshBasicMaterial({ color: topColor })
+  );
+  beacon.position.y = height + 0.5;
+  group.add(beacon);
+  if (withBeaconLight) {
+    // ★変更: 負荷軽減 — distanceを短くしてライトの影響範囲を絞り、計算コストを抑える
+    const light = new THREE.PointLight(topColor, 0.9, 9, 2);
+    light.position.y = height + 0.5;
+    group.add(light);
+  }
+
+  group.position.set(x, 0, z);
+  return group;
+}
+
 function buildDistantTrees() {
   const WALL = PLAZA_FIELD_LIMIT;
 
@@ -1332,18 +1514,18 @@ function buildDistantTrees() {
 
   const treePositions = [];
 
-  // ★ 外周1リングのみ（3リング→1リング）、間隔を広くして本数削減
+  // ★ 外周1リングのみ、間隔をさらに広げて本数削減（負荷軽減のため6.0→8.5）
   const dist = WALL + 3;
-  const count = Math.round(dist * Math.PI * 2 / 6.0); // 間隔6u（旧3.5u）
+  const count = Math.round(dist * Math.PI * 2 / 8.5);
   for (let i = 0; i < count; i++) {
     const angle = (i / count) * Math.PI * 2;
     treePositions.push([Math.cos(angle) * dist, Math.sin(angle) * dist]);
   }
 
-  // ★ 内側の木: 60本→20本に削減、建物近くはスキップ
+  // ★ 内側の木: 20本→14本にさらに削減、建物近くはスキップ
   let attempts = 0;
   let added = 0;
-  while (added < 20 && attempts < 200) {
+  while (added < 14 && attempts < 200) {
     attempts++;
     const angle = Math.random() * Math.PI * 2;
     const r = WALL - 5 + Math.random() * 4;
@@ -1355,11 +1537,13 @@ function buildDistantTrees() {
     }
   }
 
-  treePositions.forEach(([x, z]) => {
-    const h = 4.0 + Math.random() * 5;
-    const tree = makeFirTree(x, z, h);
-    three.scene.add(tree);
-    plaza.decorObjects.push(tree); // ★ setPlazaObjectsVisible管理下に追加
+  // ★変更: ネオン街化 — 森の木の代わりに、外周・内側にネオンタワーを立てる。
+  //         PointLightは負荷抑制のため6本に1本のみ持たせる（体感カクつき対策で3→6に緩和）。
+  treePositions.forEach(([x, z], i) => {
+    const h = 7 + Math.random() * 11;
+    const tower = makeNeonTower(x, z, h, i % 6 === 0);
+    three.scene.add(tower);
+    plaza.decorObjects.push(tower); // ★ setPlazaObjectsVisible管理下に追加
   });
 }
 
