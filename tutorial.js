@@ -24,64 +24,32 @@ const Tutorial = {
   _highlightEl: null,
   _toastTimer: null,
 
-  // ── 初期化：広場表示中だけボタンを出す／初回は誘導トーストを出す ──
+  // ── 初期化：広場表示中だけボタンを出す ──────────────────────
+  // ★修正: 以前は初回訪問時にトースト(🎓「チュートリアルはじめる？」)を
+  //         自動ポップアップさせていたが、案内役NPC(ガイドスライム)の
+  //         会話文の中で既に「🎓ボタンからチュートリアルバトルが受けられるよ」
+  //         と案内済みのため、同じ内容の告知が広場に来た直後に二重で
+  //         出てしまっていた。ガイドの案内と役割が重複するため、
+  //         自動トーストは廃止し、常時表示の🎓ボタンからの導線のみに一本化する。
   init() {
     const bindBtn = () => {
       const btn = document.getElementById("tutorialBtn");
       if (btn && !btn._bound) {
         btn._bound = true;
         btn.addEventListener("click", () => {
-          document.getElementById("tutorialToast")?.remove();
           this.start();
         });
       }
     };
     bindBtn();
 
-    let toastShown = false;
     this._watchTimer = setInterval(() => {
       bindBtn();
       const btn = document.getElementById("tutorialBtn");
       if (typeof dom === "undefined" || !dom.homePlazaScreen) return;
       const plazaVisible = dom.homePlazaScreen.classList.contains("visible");
       if (btn) btn.style.display = plazaVisible && !this.active ? "flex" : "none";
-
-      if (
-        plazaVisible && !this.active && !toastShown &&
-        !localStorage.getItem(this.SEEN_KEY) &&
-        !dom.npcDialog?.classList.contains("visible")
-      ) {
-        toastShown = true;
-        this._showFirstTimeToast();
-      }
     }, 400);
-  },
-
-  _showFirstTimeToast() {
-    if (document.getElementById("tutorialToast")) return;
-    const toast = document.createElement("div");
-    toast.id = "tutorialToast";
-    toast.innerHTML = `
-      <div class="tt-body">
-        <div class="tt-icon">🎓</div>
-        <div class="tt-text">はじめての方はチュートリアルがおすすめ！<br>実際に操作しながら遊び方を覚えよう。</div>
-      </div>
-      <div class="tt-btns">
-        <button id="tutorialToastStart">はじめる</button>
-        <button id="tutorialToastLater">あとで</button>
-      </div>
-    `;
-    document.body.appendChild(toast);
-    requestAnimationFrame(() => toast.classList.add("show"));
-    document.getElementById("tutorialToastStart").addEventListener("click", () => {
-      toast.remove();
-      this.start();
-    });
-    document.getElementById("tutorialToastLater").addEventListener("click", () => {
-      localStorage.setItem(this.SEEN_KEY, "1");
-      toast.classList.remove("show");
-      setTimeout(() => toast.remove(), 300);
-    });
   },
 
   // ── チュートリアル開始 ──────────────────────────────────────

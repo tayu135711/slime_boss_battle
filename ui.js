@@ -102,6 +102,36 @@ function updateAttackButtonState() {
 }
 
 // ── タイトル・メニュー ────────────────────────────────────────
+const PROLOGUE_SEEN_KEY = "slimeBossBattle_prologueSeen";
+
+// ★追加: タイトルの「冒険を始める」押下時の入口。
+//         初回のみプロローグ（導入ストーリー）を挟み、2回目以降は
+//         これまで通り即座に広場へ遷移する。
+function handleTitleStart() {
+  if (dom.prologueScreen?.classList.contains("visible")) { finishPrologue(); return; }
+  if (!state.titleShown) return;
+  let seen = false;
+  try { seen = localStorage.getItem(PROLOGUE_SEEN_KEY) === "1"; } catch (e) {}
+  if (seen) {
+    dismissTitle();
+  } else {
+    showPrologue();
+  }
+}
+
+function showPrologue() {
+  dom.prologueScreen?.classList.add("visible");
+}
+
+// ★追加: プロローグの「スキップ」「冒険へ出発！」共通の終了処理。
+//         画面タップ／Enter・Space／Escapeのどれからでもここに来る。
+function finishPrologue() {
+  if (!dom.prologueScreen?.classList.contains("visible")) return;
+  dom.prologueScreen.classList.remove("visible");
+  try { localStorage.setItem(PROLOGUE_SEEN_KEY, "1"); } catch (e) {}
+  dismissTitle();
+}
+
 function dismissTitle() {
   if (!state.titleShown) return;
   state.titleShown = false;

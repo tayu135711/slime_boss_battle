@@ -1875,6 +1875,7 @@ function updateHomePlazaLoop(dtScale = 1) {
             dom.plazaActionPrompt.classList.remove("visible");
             plazaNearPond = false;
           }
+        }
       } else if (currentSubArea === "cooking") {
         // ★ 食堂エリア内：カウンター付近で料理プロンプトを表示
         if (plaza.cookingCounterPos) {

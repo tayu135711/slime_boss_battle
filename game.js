@@ -153,7 +153,8 @@ function setupInput() {
     }
     if (k === " " || k === "enter") {
       e.preventDefault();
-      if (state.titleShown) { SE.resume(); SE.titleStart(); dismissTitle(); return; }
+      if (dom.prologueScreen?.classList.contains("visible")) { finishPrologue(); return; }
+      if (state.titleShown) { SE.resume(); SE.titleStart(); handleTitleStart(); return; }
       if (fishingActive) fishingAction();
       else if (dom.homePlazaScreen.classList.contains("visible")) handlePlazaAction();
       else attackBoss();
@@ -162,6 +163,8 @@ function setupInput() {
     //         各種オーバーレイ画面（商店/ガチャ/着替え/ステージ選択/釣り場等の
     //         サブエリア）を、Escキー1つでまとめて閉じられるようにする。
     if (k === "escape") {
+      // ★追加: プロローグ画面表示中はEscキーで一発スキップできるようにする
+      if (dom.prologueScreen?.classList.contains("visible")) { finishPrologue(); return; }
       // ★追加: NPCダイアログが開いていればEscキーで途中キャンセルできるようにする
       if (typeof plazaDialog !== "undefined" && plazaDialog) { closeNpcDialog(); return; }
       const shopScreen = document.getElementById("shopScreen");
@@ -202,8 +205,13 @@ function setupInput() {
     showHomePlaza();
   });
   dom.stageStartBtn.addEventListener("click", startStage);
-  dom.titleStartBtn.addEventListener("click", () => { SE.resume(); SE.titleStart(); dismissTitle(); });
-  dom.titleStartBtn.addEventListener("touchend", e => { e.preventDefault(); SE.resume(); SE.titleStart(); dismissTitle(); }, { passive: false });
+  dom.titleStartBtn.addEventListener("click", () => { SE.resume(); SE.titleStart(); handleTitleStart(); });
+  dom.titleStartBtn.addEventListener("touchend", e => { e.preventDefault(); SE.resume(); SE.titleStart(); handleTitleStart(); }, { passive: false });
+  // ★追加: プロローグ画面のスキップ/次へボタン。タップで一発スキップできるよう
+  //         カード外の背景クリックでも進めるようにする（screen自体にも同じハンドラー）
+  dom.prologueSkipBtn?.addEventListener("click", (e) => { e.stopPropagation(); SE.button(); finishPrologue(); });
+  dom.prologueNextBtn?.addEventListener("click", (e) => { e.stopPropagation(); SE.button(); finishPrologue(); });
+  dom.prologueScreen?.addEventListener("click", () => { finishPrologue(); });
   dom.menuStageBtn.addEventListener("click", () => { SE.button(); showStageSelect("menu"); });
   dom.menuGachaBtn.addEventListener("click", () => { SE.button(); showGacha("menu"); });
   // ★修正: 「その他」ボタン（管理者パネルへの表示上の入口）を廃止。
