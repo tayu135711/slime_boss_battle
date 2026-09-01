@@ -2355,7 +2355,11 @@ button:focus-visible {
     width: 54px; height: 54px;
   }
   #statusLine {
-    bottom: calc(182px + env(safe-area-inset-bottom, 0px)) !important;
+    /* ★修正: playerHpArea(bottom:178px)とわずか4px差の182pxに置かれており、
+       複数行に折り返す長めのメッセージ(例:「ボスが突進を準備中！横へ回避してください」)
+       だと確実にプレイヤーHP表示と重なって隠してしまうバグがあった(実機シミュレーターで確認)。
+       同じ理由で調整済みのplazaActionPrompt(242px)と同じ間隔に揃える。 */
+    bottom: calc(242px + env(safe-area-inset-bottom, 0px)) !important;
     font-size: 13px !important;
     max-width: 88vw;
   }
@@ -2526,6 +2530,8 @@ button {
   transform: translateX(-50%);
   z-index: 900;
   width: min(92vw, 420px);
+  max-height: min(300px, 48vh);
+  overflow-y: auto;
   background: rgba(20, 14, 34, 0.92);
   border: 2px solid #8ec6ff;
   border-radius: 18px;
@@ -2535,7 +2541,12 @@ button {
   pointer-events: auto;
   text-align: center;
 }
-#tutorialCard.show { bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
+/* ★修正: 以前は150pxだったため、iPhone SE等の縦が短い端末では
+   カードの下端がプレイヤーHP表示(#playerHpArea, bottom側で最大約229px)
+   に被り、「左下の緑のバーがキミのHPだよ」という説明文と同時にその
+   本人のHP表示が隠れてしまうバグがあった(実機シミュレーターで確認)。
+   プレイヤーHP表示より確実に上へ来るよう間隔を広げる。 */
+#tutorialCard.show { bottom: calc(250px + env(safe-area-inset-bottom, 0px)); }
 #tutorialCard .tc-dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 8px; }
 #tutorialCard .tt-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.25); }
 #tutorialCard .tt-dot.cur { background: #8ec6ff; box-shadow: 0 0 6px #8ec6ff; }
