@@ -259,7 +259,7 @@ const COSTUMES = [
   { id:"c21", no:"No.21", name:"キングスライム",       stars:3, color:0x38bdf8, weapon:"none",  hat:"crown",   skillId:"wave",    rarity:0.05 },
   { id:"c22", no:"No.22", name:"ライリンスライム",     stars:3, color:0xa5f3fc, weapon:"none",  hat:"ice",     skillId:"ice",     rarity:0.05 },
   { id:"c23", no:"No.23", name:"イカズチスライム",     stars:3, color:0xfde047, weapon:"none",  hat:"thunder", skillId:"thunder", rarity:0.05 },
-  { id:"c24", no:"No.24", name:"スライムスピア",       stars:3, color:0x818cf8, weapon:"spear", hat:null,      skillId:null,      rarity:0.05 },
+  { id:"c24", no:"No.24", name:"スライムスピア",       stars:3, color:0x818cf8, weapon:"spear", hat:null,      skillId:"spear",   rarity:0.05 },
 ];
 
 // skillId → 表示用の名前・説明（着替え画面で使用）
@@ -285,6 +285,14 @@ const SKILL_INFO = {
     icon: "⚡", color: "#fde047",
     bonusDamageRate: 0.95,     // ★ 雷は連射型なので単発はやや控えめ
     skillCooldownMult: 0.8,    // ★ 雷スキルはクールダウンが20%短い(5秒→4秒)
+  },
+  spear:   {
+    name: "スピアラッシュ",
+    desc: "高速連突で貫通乱撃！",
+    detail: "紫電をまとった槍の5段高速突き。防御を貫く鋭い連撃技。",
+    icon: "🔱", color: "#818cf8",
+    bonusDamageRate: 1.08,     // ★ 槍は物理連撃で1.08倍
+    skillCooldownMult: 0.9,    // ★ クールダウン10%短縮(5秒→4.5秒)
   },
 };
 

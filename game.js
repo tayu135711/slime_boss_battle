@@ -162,6 +162,8 @@ function setupInput() {
     //         各種オーバーレイ画面（商店/ガチャ/着替え/ステージ選択/釣り場等の
     //         サブエリア）を、Escキー1つでまとめて閉じられるようにする。
     if (k === "escape") {
+      // ★追加: NPCダイアログが開いていればEscキーで途中キャンセルできるようにする
+      if (typeof plazaDialog !== "undefined" && plazaDialog) { closeNpcDialog(); return; }
       const shopScreen = document.getElementById("shopScreen");
       const dressingScreen = document.getElementById("dressingScreen");
       if (shopScreen && shopScreen.style.display !== "none") { closeShop(); return; }

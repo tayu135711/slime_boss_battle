@@ -203,68 +203,230 @@ function updateSpearThrust(dtScale = 1) {
 // エフェクト（魔法陣・波・氷柱・雷）だけが動く見た目になっており、通常攻撃には
 // 武器ごとの専用モーション（ダッシュ・剣・槍）があるのに必殺技だけ手を抜いたような
 // 印象になっていた。ここに専用のジャンプ＆スピンモーションを追加する。
-function startSpecialCast() {
+// ★追加: 必殺技モーション（スキル・コスチューム固有のアニメーション）
+// キング=大ジャンプ巨大ボディプレス、ライリン=氷華高速トルネード、イカズチ=放電ジグザグ天罰、スピア=前進3段乱突きステップ
+function startSpecialCast(skillId = null) {
   if (!three.playerGroup) return;
   three.specialCast.active   = true;
   three.specialCast.progress = 0;
-  // ボスの方を向いた状態を基準に回転させる（通常移動時のrotation.y計算と同じ式）
+  three.specialCast.skillId  = skillId;
+  three.specialCast.origX    = state.player.x;
+  three.specialCast.origZ    = state.player.z;
+  // ボスの方を向いた状態を基準に回転させる
   const dx = state.boss.x - state.player.x;
   const dz = state.boss.z - state.player.z;
   three.specialCast.baseRotY = Math.atan2(dx, dz);
+  three.specialCast.distToBoss = Math.hypot(dx, dz);
 }
 
 function updateSpecialCast(dtScale = 1) {
   if (!three.specialCast?.active) return;
-  three.specialCast.progress += 0.045 * dtScale;
+  const skillId = three.specialCast.skillId;
+  const origX = three.specialCast.origX;
+  const origZ = three.specialCast.origZ;
+  const baseRot = three.specialCast.baseRotY;
+
+  three.specialCast.progress += 0.042 * dtScale;
   const t = three.specialCast.progress;
 
-  let posY, scaleX, scaleY, scaleZ, spin = 0;
+  let posX = origX, posZ = origZ, posY = 0;
+  let scaleX = 1, scaleY = 1, scaleZ = 1;
+  let spin = 0, rotX = 0;
 
-  if (t < 0.22) {
-    // ① 力を溜める：ぐっとしゃがみ込む
-    const s = t / 0.22;
-    posY    = -s * 0.16;
-    scaleX  = 1 + s * 0.28;
-    scaleY  = 1 - s * 0.34;
-    scaleZ  = 1 + s * 0.28;
-  } else if (t < 0.55) {
-    // ② 一気に飛び上がりながら1回転して力を解放
-    const s = (t - 0.22) / 0.33;
-    const ease = s < 0.5 ? 4*s*s*s : 1 - Math.pow(-2*s + 2, 3) / 2;
-    posY   = -0.16 + ease * 1.05;
-    scaleX = 1.28 - ease * 0.55;
-    scaleY = 0.66 + ease * 0.7;
-    scaleZ = 1.28 - ease * 0.55;
-    spin   = ease * Math.PI * 2;
-  } else if (t < 0.78) {
-    // ③ 頂点でキメポーズ（ふわっと伸び上がりながらキラっと静止）
-    const s = (t - 0.55) / 0.23;
-    posY   = 0.89 + Math.sin(s * Math.PI) * 0.10;
-    scaleX = 0.73 + s * 0.12;
-    scaleY = 1.36 - s * 0.10;
-    scaleZ = 0.73 + s * 0.12;
-    spin   = Math.PI * 2;
+  if (skillId === "wave") {
+    // 🌊 キングスライム: 【王者のドスン・巨大ボディプレス】
+    if (t < 0.25) {
+      // ① ぐーっとしゃがみ込み力を溜める
+      const s = t / 0.25;
+      posY   = -s * 0.18;
+      scaleX = 1 + s * 0.45;
+      scaleY = 1 - s * 0.42;
+      scaleZ = 1 + s * 0.45;
+    } else if (t < 0.58) {
+      // ② 王冠を掲げ巨大化しながら天高く大ジャンプ！
+      const s = (t - 0.25) / 0.33;
+      const ease = s < 0.5 ? 4*s*s*s : 1 - Math.pow(-2*s + 2, 3) / 2;
+      posY   = -0.18 + ease * 1.65;
+      scaleX = 1.45 - ease * 0.15;
+      scaleY = 0.58 + ease * 0.85;
+      scaleZ = 1.45 - ease * 0.15;
+      spin   = ease * Math.PI * 2;
+    } else if (t < 0.76) {
+      // ③ 地面にドッシーーン！と急降下プレス着地（衝撃波放出と同期）
+      const s = (t - 0.58) / 0.18;
+      const ease = s * s;
+      posY   = 1.47 * (1 - ease);
+      scaleX = 1.3 + ease * 0.45;
+      scaleY = 1.43 - ease * 0.95;
+      scaleZ = 1.3 + ease * 0.45;
+      spin   = Math.PI * 2;
+    } else {
+      // ④ ぷるんぷるんと弾んで復帰
+      const s = (t - 0.76) / 0.24;
+      const bounce = Math.sin(s * Math.PI * 2) * Math.exp(-s * 3);
+      posY   = Math.max(0, bounce * 0.12);
+      scaleX = 1 + bounce * 0.25;
+      scaleY = 1 - bounce * 0.22;
+      scaleZ = 1 + bounce * 0.25;
+      spin   = Math.PI * 2;
+    }
+
+  } else if (skillId === "ice") {
+    // 🧊 ライリンスライム: 【氷華トルネード・高速スピン】
+    if (t < 0.18) {
+      // ① スピン準備
+      const s = t / 0.18;
+      posY   = -s * 0.10;
+      scaleX = 1 + s * 0.15;
+      scaleY = 1 - s * 0.20;
+      scaleZ = 1 + s * 0.15;
+    } else if (t < 0.65) {
+      // ② 細長く伸び上がりながら超高速5回転スピン！
+      const s = (t - 0.18) / 0.47;
+      const ease = 1 - Math.pow(1 - s, 2);
+      posY   = -0.10 + ease * 1.35;
+      scaleX = 1.15 - ease * 0.45;
+      scaleY = 0.80 + ease * 0.75;
+      scaleZ = 1.15 - ease * 0.45;
+      spin   = s * Math.PI * 10;
+    } else if (t < 0.82) {
+      // ③ 頂点でピタッとキメポーズ静止（氷柱突き上げに同調）
+      const s = (t - 0.65) / 0.17;
+      posY   = 1.25 + Math.sin(s * Math.PI) * 0.08;
+      scaleX = 0.75 + s * 0.2;
+      scaleY = 1.50 - s * 0.2;
+      scaleZ = 0.75 + s * 0.2;
+      spin   = Math.PI * 10;
+    } else {
+      // ④ ひらりと軽やかに舞い降りる
+      const s = (t - 0.82) / 0.18;
+      posY   = 1.25 * (1 - s * s);
+      const land = Math.sin(Math.min(1, s * 1.3) * Math.PI);
+      scaleX = 1 + land * 0.15;
+      scaleY = 1 - land * 0.12;
+      scaleZ = 1 + land * 0.15;
+      spin   = Math.PI * 10;
+    }
+
+  } else if (skillId === "thunder") {
+    // ⚡ イカズチスライム: 【放電ジグザグ・天罰コーリング】
+    if (t < 0.40) {
+      // ① 地面でビリビリと左右にジグザグ放電ステップ
+      const s = t / 0.40;
+      const zap = Math.sin(s * Math.PI * 14) * 0.22;
+      posX   = origX + Math.cos(baseRot + Math.PI/2) * zap;
+      posZ   = origZ + Math.sin(baseRot + Math.PI/2) * zap;
+      scaleX = 1 + Math.sin(s * Math.PI * 16) * 0.18;
+      scaleY = 1 - Math.sin(s * Math.PI * 16) * 0.15;
+      scaleZ = 1 + Math.sin(s * Math.PI * 16) * 0.18;
+    } else if (t < 0.70) {
+      // ② ぐぐっと天に向かって体を反らせて雷を招来（落雷瞬間に同調）
+      const s = (t - 0.40) / 0.30;
+      posY   = Math.sin(s * Math.PI) * 0.45;
+      scaleX = 0.75;
+      scaleY = 1.45;
+      scaleZ = 0.75;
+      rotX   = -0.35;
+    } else if (t < 0.85) {
+      // ③ 落雷の衝撃でドカンとスカッシュ
+      const s = (t - 0.70) / 0.15;
+      scaleX = 1.35 - s * 0.25;
+      scaleY = 0.65 + s * 0.30;
+      scaleZ = 1.35 - s * 0.25;
+      rotX   = -0.35 * (1 - s);
+    } else {
+      // ④ 元に戻る
+      const s = (t - 0.85) / 0.15;
+      scaleX = 1.10 - s * 0.10;
+      scaleY = 0.95 + s * 0.05;
+      scaleZ = 1.10 - s * 0.10;
+    }
+
+  } else if (skillId === "spear") {
+    // 🔱 スライムスピア: 【前進3段乱突きステップ】
+    const fwdX = Math.sin(baseRot);
+    const fwdZ = Math.cos(baseRot);
+
+    if (t < 0.15) {
+      // ① 槍を構えて前傾姿勢
+      const s = t / 0.15;
+      rotX   = s * 0.25;
+      scaleZ = 1 + s * 0.20;
+      scaleY = 1 - s * 0.15;
+    } else if (t < 0.75) {
+      // ② 槍の突きに合わせてボス方向へシュッ・シュッ・シュッと3段前進！
+      const s = (t - 0.15) / 0.60;
+      const stepPhase = s * 3; // 0〜3
+      const stepFrac = stepPhase % 1;
+      const stepIdx = Math.floor(stepPhase);
+      const totalDist = (stepIdx + Math.min(1, stepFrac * 1.8)) * 0.45;
+
+      posX   = origX + fwdX * totalDist;
+      posZ   = origZ + fwdZ * totalDist;
+      posY   = Math.sin(stepFrac * Math.PI) * 0.18;
+      rotX   = 0.25 + Math.sin(stepFrac * Math.PI) * 0.15;
+      scaleZ = 1.25 + Math.sin(stepFrac * Math.PI) * 0.20;
+      scaleY = 0.85;
+    } else {
+      // ③ サッと元の位置へ華麗にバックステップ復帰！
+      const s = (t - 0.75) / 0.25;
+      const ease = 1 - Math.pow(1 - s, 2);
+      const currentDist = 1.35 * (1 - ease);
+      posX   = origX + fwdX * currentDist;
+      posZ   = origZ + fwdZ * currentDist;
+      posY   = Math.sin(s * Math.PI) * 0.25;
+      rotX   = 0.25 * (1 - s);
+      scaleX = 1 + Math.sin(s * Math.PI) * 0.12;
+      scaleY = 1 - Math.sin(s * Math.PI) * 0.10;
+      scaleZ = 1;
+    }
+
   } else {
-    // ④ 着地（ぷにっと弾む）
-    const s = (t - 0.78) / 0.22;
-    const ease = 1 - (1 - s) * (1 - s);
-    posY   = 0.89 * (1 - ease);
-    const land = Math.sin(Math.min(1, s * 1.4) * Math.PI);
-    scaleX = 1 + land * 0.18;
-    scaleY = 1 - land * 0.16;
-    scaleZ = 1 + land * 0.18;
-    spin   = Math.PI * 2;
+    // ✨ 通常必殺技（デフォルト）
+    if (t < 0.22) {
+      const s = t / 0.22;
+      posY    = -s * 0.16;
+      scaleX  = 1 + s * 0.28;
+      scaleY  = 1 - s * 0.34;
+      scaleZ  = 1 + s * 0.28;
+    } else if (t < 0.55) {
+      const s = (t - 0.22) / 0.33;
+      const ease = s < 0.5 ? 4*s*s*s : 1 - Math.pow(-2*s + 2, 3) / 2;
+      posY   = -0.16 + ease * 1.05;
+      scaleX = 1.28 - ease * 0.55;
+      scaleY = 0.66 + ease * 0.7;
+      scaleZ = 1.28 - ease * 0.55;
+      spin   = ease * Math.PI * 2;
+    } else if (t < 0.78) {
+      const s = (t - 0.55) / 0.23;
+      posY   = 0.89 + Math.sin(s * Math.PI) * 0.10;
+      scaleX = 0.73 + s * 0.12;
+      scaleY = 1.36 - s * 0.10;
+      scaleZ = 0.73 + s * 0.12;
+      spin   = Math.PI * 2;
+    } else {
+      const s = (t - 0.78) / 0.22;
+      const ease = 1 - (1 - s) * (1 - s);
+      posY   = 0.89 * (1 - ease);
+      const land = Math.sin(Math.min(1, s * 1.4) * Math.PI);
+      scaleX = 1 + land * 0.18;
+      scaleY = 1 - land * 0.16;
+      scaleZ = 1 + land * 0.18;
+      spin   = Math.PI * 2;
+    }
   }
 
-  three.playerGroup.position.set(state.player.x, posY, state.player.z);
+  three.playerGroup.position.set(posX, posY, posZ);
   three.playerGroup.scale.set(scaleX, scaleY, scaleZ);
-  three.playerGroup.rotation.y = three.specialCast.baseRotY + spin;
+  three.playerGroup.rotation.y = baseRot + spin;
+  three.playerGroup.rotation.x = rotX;
 
   if (t >= 1.0) {
     three.specialCast.active = false;
-    three.playerGroup.position.set(state.player.x, 0, state.player.z);
+    three.playerGroup.position.set(origX, 0, origZ);
     three.playerGroup.scale.set(1, 1, 1);
-    three.playerGroup.rotation.y = three.specialCast.baseRotY;
+    three.playerGroup.rotation.y = baseRot;
+    three.playerGroup.rotation.x = 0;
   }
 }
 
@@ -443,56 +605,9 @@ function attackBoss() {
 //         使わないため、この演出関連コード一式を削除。
 
 function showSkillCinematic(skillId, skillName, onDone) {
-  const cfg = SKILL_CINEMATIC[skillId] || SKILL_CINEMATIC.default;
-  const el = document.createElement("div");
-  el.id = "skillCinematic";
-  el.style.cssText = `
-    position:fixed;inset:0;z-index:9999;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    background:${cfg.bg};
-    opacity:0;transition:opacity 0.18s ease;
-    pointer-events:none;
-  `;
-  el.innerHTML = `
-    <div style="font-size:72px;animation:skillIconPop 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.1s both">${cfg.icon}</div>
-    <div style="font-size:28px;font-weight:900;color:${cfg.color};
-      text-shadow:0 0 20px rgba(255,255,255,0.8),0 2px 4px rgba(0,0,0,0.3);
-      letter-spacing:0.08em;margin-top:12px;
-      animation:skillNameSlide 0.35s cubic-bezier(0.34,1.56,0.64,1) 0.2s both">
-      ${skillName}
-    </div>
-    <div style="font-size:14px;color:rgba(255,255,255,0.85);margin-top:8px;letter-spacing:0.12em;
-      animation:skillNameSlide 0.35s ease 0.3s both">
-      SKILL ACTIVATED
-    </div>
-  `;
-  // アニメ定義（一度だけ追加）
-  if (!document.getElementById("skillCinematicStyle")) {
-    const st = document.createElement("style");
-    st.id = "skillCinematicStyle";
-    st.textContent = `
-      @keyframes skillIconPop {
-        from { opacity:0; transform:scale(0.3) rotate(-20deg); }
-        to   { opacity:1; transform:scale(1)   rotate(0deg);   }
-      }
-      @keyframes skillNameSlide {
-        from { opacity:0; transform:translateY(20px); }
-        to   { opacity:1; transform:translateY(0);    }
-      }
-    `;
-    document.head.appendChild(st);
-  }
-  document.body.appendChild(el);
-  requestAnimationFrame(() => { el.style.opacity = "1"; });
-
-  // 0.7秒表示してフェードアウト後にスキル発動
-  setTimeout(() => {
-    el.style.opacity = "0";
-    setTimeout(() => {
-      el.remove();
-      if (onDone) onDone();
-    }, 180);
-  }, 700);
+  // ★修正: SKILL_CINEMATIC定数は既に削除済み(テンポ改善のため撤去)のため、
+  //         カットイン演出をスキップして即座にコールバックを呼ぶ。
+  if (onDone) onDone();
 }
 
 function useSkill() {
@@ -520,7 +635,7 @@ function useSkill() {
   showSkillCinematic(skillId, skillName, () => {
     // ★追加: 画面演出が明けてボス側エフェクトが始まるのに合わせてプレイヤーの
     //         必殺技モーション（力溜め→回転ジャンプ→キメポーズ→着地）も再生する。
-    startSpecialCast();
+    startSpecialCast(skillId);
     if (skillId === "wave") {
       SE.specialWave();
       spawnWaveSkill(damage);
@@ -530,6 +645,9 @@ function useSkill() {
     } else if (skillId === "thunder") {
       SE.specialThunder();
       spawnThunderSkill(damage);
+    } else if (skillId === "spear") {
+      SE.specialSpear();
+      spawnSpearSkill(damage);
     } else {
       SE.specialDefault();
       spawnMagicCircle();
@@ -734,6 +852,123 @@ function spawnThunderSkill(baseDamage) {
   setTimeout(() => { if (!state.cleared) three.bossGroup.scale.set(1, 1, 1); }, 200);
 
   dom.statusLine.textContent = `⚡ サンダーボルト！ 天罰一撃！ ${damage} ダメージ！！`;
+}
+
+function spawnSpearSkill(baseDamage) {
+  // ★ スピアは連撃ボーナス
+  const spearRate = SKILL_INFO["spear"]?.bonusDamageRate ?? 1.0;
+  let damage = spearRate !== 1.0 ? Math.floor(baseDamage * spearRate) : baseDamage;
+  if (damage !== baseDamage) {
+    state.currentHp   = Math.max(0, state.currentHp - (damage - baseDamage));
+    state.totalDamage += (damage - baseDamage);
+  }
+  triggerCameraShake();
+  spawnDamageNumber(damage, true);
+
+  const px = state.player.x;
+  const pz = state.player.z;
+  const bx = state.boss.x;
+  const bz = state.boss.z;
+  const angleToBoss = Math.atan2(bx - px, bz - pz);
+
+  // 5連発の槍突進
+  for (let i = 0; i < 5; i++) {
+    setTimeout(() => {
+      if (state.cleared) return;
+      const spearGroup = new THREE.Group();
+
+      // 槍頭（細長いコーン）
+      const headMat = new THREE.MeshBasicMaterial({ color: 0xc084fc, transparent: true, opacity: 0.95 });
+      const head = new THREE.Mesh(new THREE.ConeGeometry(0.16, 1.2, 8), headMat);
+      head.rotation.x = Math.PI / 2;
+      head.position.z = 0.6;
+      spearGroup.add(head);
+
+      // 槍柄（シリンダー）
+      const shaftMat = new THREE.MeshBasicMaterial({ color: 0x818cf8, transparent: true, opacity: 0.9 });
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.0, 6), shaftMat);
+      shaft.rotation.x = Math.PI / 2;
+      shaft.position.z = -0.5;
+      spearGroup.add(shaft);
+
+      // 紫電のグロー輪
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0xe879f9, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.4, 16), ringMat);
+      ring.position.z = 0.2;
+      spearGroup.add(ring);
+
+      // 散らばりオフセット
+      const spreadAng = (i - 2) * 0.12;
+      const totalAngle = angleToBoss + spreadAng;
+      spearGroup.rotation.y = totalAngle;
+
+      const startX = px + Math.sin(totalAngle) * 0.5 + (Math.random() - 0.5) * 0.4;
+      const startZ = pz + Math.cos(totalAngle) * 0.5 + (Math.random() - 0.5) * 0.4;
+      spearGroup.position.set(startX, 0.6 + (Math.random() - 0.5) * 0.3, startZ);
+      three.scene.add(spearGroup);
+
+      const targetX = bx + (Math.random() - 0.5) * 0.4;
+      const targetZ = bz + (Math.random() - 0.5) * 0.4;
+      const targetY = 0.6;
+
+      const N = 20;
+      const DURATION_MS = N * (1000 / 60);
+      const startTime = performance.now();
+
+      (function tick(now) {
+        const t = Math.min(1, ((typeof now === "number" ? now : performance.now()) - startTime) / DURATION_MS);
+        // 高速突進（イージング）
+        const ease = t * t * (3 - 2 * t);
+        spearGroup.position.x = startX + (targetX - startX) * ease;
+        spearGroup.position.y = (0.6) + (targetY - 0.6) * ease;
+        spearGroup.position.z = startZ + (targetZ - startZ) * ease;
+
+        if (t >= 1) {
+          three.scene.remove(spearGroup);
+          head.geometry.dispose(); headMat.dispose();
+          shaft.geometry.dispose(); shaftMat.dispose();
+          ring.geometry.dispose(); ringMat.dispose();
+
+          // 着弾インパクトリング
+          const hitMat = new THREE.MeshBasicMaterial({ color: 0xc084fc, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
+          const hitRing = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.8, 16), hitMat);
+          hitRing.position.set(targetX, 0.6, targetZ);
+          hitRing.rotation.y = totalAngle;
+          three.scene.add(hitRing);
+
+          const HIT_MS = 250;
+          const hitStart = performance.now();
+          (function tickHit(hnow) {
+            const ht = Math.min(1, ((typeof hnow === "number" ? hnow : performance.now()) - hitStart) / HIT_MS);
+            hitRing.scale.set(1 + ht * 2.5, 1 + ht * 2.5, 1 + ht * 2.5);
+            hitMat.opacity = 0.9 * (1 - ht);
+            if (ht < 1) requestAnimationFrame(tickHit);
+            else { three.scene.remove(hitRing); hitRing.geometry.dispose(); hitMat.dispose(); }
+          })();
+
+          // ボスの被弾リアクション
+          three.bossMat.color.set(0x818cf8);
+          three.bossGroup.scale.set(0.7, 0.7, 0.7);
+          setTimeout(() => { if (!state.cleared) three.bossGroup.scale.set(1, 1, 1); }, 100);
+        } else {
+          requestAnimationFrame(tick);
+        }
+      })();
+    }, i * 70);
+  }
+
+  // 最終段フィニッシュ
+  setTimeout(() => {
+    if (!state.cleared) {
+      three.bossMat.color.set(0xc084fc);
+      const idx = state.stageIndex;
+      setTimeout(() => { if (!state.cleared) three.bossMat.color.set(getCurrentStage(idx).color); }, 400);
+      three.bossGroup.scale.set(0.5, 1.4, 0.5);
+      setTimeout(() => { if (!state.cleared) three.bossGroup.scale.set(1, 1, 1); }, 220);
+    }
+  }, 380);
+
+  dom.statusLine.textContent = `🔱 スピアラッシュ！ 貫通乱撃！ ${damage} ダメージ！！`;
 }
 
 // ── ボスAI ────────────────────────────────────────────────────

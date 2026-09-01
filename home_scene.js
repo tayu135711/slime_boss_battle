@@ -1374,6 +1374,79 @@ function buildFishingSpot() {
   }
 }
 
+// ★追加: 5枚の花びら・花芯・茎・葉っぱを持つ可愛いお花メッシュを生成する共通ヘルパー
+function createFlowerMesh(flowerType) {
+  const group = new THREE.Group();
+
+  // ① 茎
+  const stemMat = new THREE.MeshStandardMaterial({ color: 0x43a047, roughness: 0.8 });
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.045, 0.45, 6), stemMat);
+  stem.position.y = 0.225;
+  stem.castShadow = false;
+  group.add(stem);
+
+  // ② 葉っぱ（茎の左右に小さな緑の葉）
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.8, side: THREE.DoubleSide });
+  const leafGeo = new THREE.SphereGeometry(0.08, 5, 4);
+
+  const leaf1 = new THREE.Mesh(leafGeo, leafMat);
+  leaf1.scale.set(1.4, 0.25, 0.6);
+  leaf1.rotation.z = Math.PI / 4;
+  leaf1.position.set(0.06, 0.16, 0);
+  group.add(leaf1);
+
+  const leaf2 = new THREE.Mesh(leafGeo, leafMat);
+  leaf2.scale.set(1.4, 0.25, 0.6);
+  leaf2.rotation.z = -Math.PI / 4;
+  leaf2.rotation.y = Math.PI * 0.8;
+  leaf2.position.set(-0.06, 0.22, 0);
+  group.add(leaf2);
+
+  // ③ 花冠（5枚の花びらを円状に放射配置）
+  const flowerHead = new THREE.Group();
+  flowerHead.position.y = 0.45;
+
+  const petalMat = new THREE.MeshStandardMaterial({
+    color: flowerType.color,
+    roughness: 0.5,
+    metalness: 0.1
+  });
+  const petalGeo = new THREE.SphereGeometry(0.09, 6, 5);
+
+  const numPetals = 5;
+  for (let p = 0; p < numPetals; p++) {
+    const pAng = (p / numPetals) * Math.PI * 2;
+    const petal = new THREE.Mesh(petalGeo, petalMat);
+    petal.scale.set(0.9, 0.45, 1.4);
+    petal.rotation.y = -pAng;
+    petal.rotation.x = 0.25; // わずかに上向きに開く
+    petal.position.set(Math.cos(pAng) * 0.11, 0.02, Math.sin(pAng) * 0.11);
+    flowerHead.add(petal);
+  }
+
+  // ④ 花芯（中央の黄色いおしべ）
+  const centerMat = new THREE.MeshStandardMaterial({
+    color: 0xffd54f,
+    roughness: 0.4,
+    emissive: 0xffb300,
+    emissiveIntensity: 0.25
+  });
+  const center = new THREE.Mesh(new THREE.SphereGeometry(0.075, 7, 7), centerMat);
+  center.scale.set(1, 0.65, 1);
+  center.position.y = 0.04;
+  flowerHead.add(center);
+
+  group.add(flowerHead);
+  group.userData = {
+    flowerType,
+    picked: false,
+    respawnTime: 0,
+    phase: Math.random() * Math.PI * 2,
+    originalY: 0.01
+  };
+  return group;
+}
+
 function buildFlowerField() {
   const fieldCenter = { x: -16, z: 14 };
   const fieldRadius = 5;
@@ -1385,7 +1458,7 @@ function buildFlowerField() {
   );
   signPost.position.set(fieldCenter.x + 5.5, 0.75, fieldCenter.z - 1);
   three.scene.add(signPost);
-  plaza.decorObjects.push(signPost); // ★修正: シーン切替で消えないよう管理下に
+  plaza.decorObjects.push(signPost);
 
   const signBoard = new THREE.Mesh(
     new THREE.BoxGeometry(1.8, 0.7, 0.1),
@@ -1393,7 +1466,7 @@ function buildFlowerField() {
   );
   signBoard.position.set(fieldCenter.x + 5.5, 1.6, fieldCenter.z - 1);
   three.scene.add(signBoard);
-  plaza.decorObjects.push(signBoard); // ★修正
+  plaza.decorObjects.push(signBoard);
 
   // 柵（花畑のまわり）
   for (let i = 0; i < 8; i++) {
@@ -1408,7 +1481,7 @@ function buildFlowerField() {
       fieldCenter.z + Math.sin(angle) * (fieldRadius + 0.5)
     );
     three.scene.add(fence);
-    plaza.decorObjects.push(fence); // ★修正
+    plaza.decorObjects.push(fence);
   }
 
   // 地面（花畑エリアを緑で強調）
@@ -1419,7 +1492,7 @@ function buildFlowerField() {
   fieldGround.rotation.x = -Math.PI / 2;
   fieldGround.position.set(fieldCenter.x, 0.01, fieldCenter.z);
   three.scene.add(fieldGround);
-  plaza.decorObjects.push(fieldGround); // ★修正
+  plaza.decorObjects.push(fieldGround);
 
   for (let i = 0; i < 25; i++) {
     const angle = Math.random() * Math.PI * 2;
@@ -1433,20 +1506,10 @@ function buildFlowerField() {
       cumulative += ft.rarity;
       if (r < cumulative) { flowerType = ft; break; }
     }
-    const group = new THREE.Group();
-    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.5, 4), new THREE.MeshStandardMaterial({ color: 0x4CAF50, roughness: 0.9 }));
-    stem.position.y = 0.25;
-    group.add(stem);
-    const petals = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 4), new THREE.MeshStandardMaterial({ color: flowerType.color, roughness: 0.7 }));
-    petals.position.y = 0.55;
-    group.add(petals);
-    const center = new THREE.Mesh(new THREE.SphereGeometry(0.08, 4, 4), new THREE.MeshStandardMaterial({ color: 0xFFFF88, roughness: 0.5, emissive: 0xFFFF88, emissiveIntensity: 0.3 }));
-    center.position.y = 0.55;
-    group.add(center);
-    group.position.set(x, 0.01, z);
-    group.userData = { flowerType, picked: false, respawnTime: 0, phase: Math.random()*Math.PI*2 };
-    three.scene.add(group);
-    plaza.flowerField.push(group);
+    const flower = createFlowerMesh(flowerType);
+    flower.position.set(x, 0.01, z);
+    three.scene.add(flower);
+    plaza.flowerField.push(flower);
   }
 }
 
@@ -1500,12 +1563,11 @@ function computeMiraiTowerPositions() {
 // タイトル画面のカケラ進捗表示と実際に建つタワーの本数は必ず一致する）
 const MIRAI_TOWER_POSITIONS = computeMiraiTowerPositions();
 
-const NEON_TOWER_COLORS = [0x00e5ff, 0xff2fd1, 0xffcc33, 0x7a5cff, 0x00ffa2];
+const NEON_TOWER_COLORS = [0x00f0ff, 0xff007f, 0x00ff88, 0xbf00ff, 0xffd000, 0x38bdf8];
 
 // ★追加: ミライ図システム — タワーは「未点灯（暗いビルの躯体だけ）」と
-//         「点灯済み（ネオン窓＋看板灯）」の2状態を持つ。neonPartsをまとめて
-//         1つのグループにし、visibleを切り替えるだけで見た目を変えられるようにする。
-//         (ジオメトリの生成・破棄をしないので、進捗が増えるたびに軽く再描画できる)
+//         「点灯済み（ネオン窓＋看板灯＋グロー）」の2状態を持つ。
+//         neonPartsをまとめて1つのグループにし、visibleを切り替えるだけで見た目を変えられる。
 function makeNeonTower(x, z, height = 10, withBeaconLight = false, lit = true) {
   const group = new THREE.Group();
   const width = 2.2 + Math.random() * 1.8;
@@ -1517,82 +1579,89 @@ function makeNeonTower(x, z, height = 10, withBeaconLight = false, lit = true) {
     new THREE.MeshStandardMaterial({ color: 0x14131c, roughness: 0.5, metalness: 0.4 })
   );
   body.position.y = height / 2;
-  body.castShadow = false; // ★変更: 負荷軽減 — 遠景の装飾物なのでシャドウ計算は不要
+  body.castShadow = false;
   body.receiveShadow = true;
   group.add(body);
 
-  // ネオン部分（窓ストライプ＋看板灯＋ビーコン光）をひとまとめにして
-  // ミライ図のカケラが貯まるまでは非表示にしておく
+  // ネオン部分（窓ストライプ＋看板灯＋ビーコン光＋グロー）
   const neonParts = new THREE.Group();
 
-  // ネオン窓ストライプ（高さ方向にランダムな帯を発光させる）
-  // ★変更: 負荷軽減 — StandardMaterial(emissive)からBasicMaterialへ。見た目はほぼ変わらず軽くなる
+  // ネオン窓ストライプ（太く明るく、グローメッシュを重ねて発光感を強調）
   const stripeCount = 3 + Math.floor(Math.random() * 4);
   for (let i = 0; i < stripeCount; i++) {
     const color = NEON_TOWER_COLORS[Math.floor(Math.random() * NEON_TOWER_COLORS.length)];
-    const stripeH = 0.3 + Math.random() * 0.3;
+    const stripeH = 0.45 + Math.random() * 0.4;
+    const posY = 1.0 + Math.random() * Math.max(0.5, height - 2.2);
+    const twinklePhase = Math.random() * Math.PI * 2;
+
+    // ① コア発光ストライプ
     const stripe = new THREE.Mesh(
-      new THREE.BoxGeometry(width + 0.05, stripeH, depth + 0.05),
-      new THREE.MeshBasicMaterial({ color, transparent: true })
+      new THREE.BoxGeometry(width + 0.08, stripeH, depth + 0.08),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 })
     );
-    stripe.position.y = 1.0 + Math.random() * Math.max(0.5, height - 2.2);
-    stripe.userData.twinklePhase = Math.random() * Math.PI * 2; // ★追加: ミライ図の未来感演出用
+    stripe.position.y = posY;
+    stripe.userData.twinklePhase = twinklePhase;
     neonParts.add(stripe);
+
+    // ② 外周グロー（光のにじみ出し）
+    const glowStripe = new THREE.Mesh(
+      new THREE.BoxGeometry(width + 0.28, stripeH + 0.18, depth + 0.28),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, side: THREE.DoubleSide })
+    );
+    glowStripe.position.y = posY;
+    glowStripe.userData.twinklePhase = twinklePhase;
+    glowStripe.userData.isGlow = true;
+    neonParts.add(glowStripe);
   }
 
-  // 頂上の看板灯（一部のタワーだけPointLightを持たせて負荷を抑える）
+  // 頂上の看板灯（ビーコン）
   const topColor = NEON_TOWER_COLORS[Math.floor(Math.random() * NEON_TOWER_COLORS.length)];
   const beacon = new THREE.Mesh(
-    new THREE.SphereGeometry(0.22, 6, 6),
-    new THREE.MeshBasicMaterial({ color: topColor, transparent: true })
+    new THREE.SphereGeometry(0.38, 8, 8),
+    new THREE.MeshBasicMaterial({ color: topColor, transparent: true, opacity: 0.95 })
   );
   beacon.position.y = height + 0.5;
-  beacon.userData.twinklePhase = Math.random() * Math.PI * 2; // ★追加: ミライ図の未来感演出用
+  beacon.userData.twinklePhase = Math.random() * Math.PI * 2;
   neonParts.add(beacon);
+
+  // ビーコン外周グロー
+  const beaconGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.65, 8, 8),
+    new THREE.MeshBasicMaterial({ color: topColor, transparent: true, opacity: 0.3 })
+  );
+  beaconGlow.position.y = height + 0.5;
+  beaconGlow.userData.twinklePhase = beacon.userData.twinklePhase;
+  beaconGlow.userData.isGlow = true;
+  neonParts.add(beaconGlow);
+
   if (withBeaconLight) {
-    // ★変更: 負荷軽減 — distanceを短くしてライトの影響範囲を絞り、計算コストを抑える
-    const light = new THREE.PointLight(topColor, 0.9, 9, 2);
+    const light = new THREE.PointLight(topColor, 1.2, 12, 2);
     light.position.y = height + 0.5;
     neonParts.add(light);
   }
 
   neonParts.visible = lit;
   group.add(neonParts);
-  group.userData.neonParts = neonParts; // ★ updateMiraiTowers()から点灯/消灯を切り替えるための参照
+  group.userData.neonParts = neonParts;
+  group.userData.towerHeight = height;
+  group.userData.topColor = topColor;
 
   group.position.set(x, 0, z);
   return group;
 }
 
 function buildDistantTrees() {
-  // ★変更: ネオン街化 — 森の木の代わりに、外周・内側にネオンタワーを立てる。
-  //         PointLightは負荷抑制のため6本に1本のみ持たせる（体感カクつき対策で3→6に緩和）。
-  // ★追加: ミライ図システム — 生成時点では全タワー未点灯にしておき、
-  //         plaza.miraiTowersに順番を保持。updateMiraiTowers()が
-  //         state.miraiPiecesに応じて手前から何本点灯させるか決める。
-  //         座標そのものは MIRAI_TOWER_POSITIONS（ページ読込時に1回だけ計算済み）を使う。
-  //         タイトル画面のテキスト（updateTitleMiraiText）が広場シーン構築前に
-  //         「タワー総数」を必要とするため、座標計算だけを先出しできるようにしてある。
   plaza.miraiTowers = [];
   MIRAI_TOWER_POSITIONS.forEach(([x, z], i) => {
     const h = 7 + Math.random() * 11;
     const tower = makeNeonTower(x, z, h, i % 6 === 0, /* lit */ false);
     three.scene.add(tower);
-    plaza.decorObjects.push(tower); // ★ setPlazaObjectsVisible管理下に追加
+    plaza.decorObjects.push(tower);
     plaza.miraiTowers.push(tower);
   });
   updateMiraiTowers();
 }
 
-// ★追加: ミライ図システム — state.miraiPiecesに応じて、広場のネオンタワーを
-//         手前（生成順）から順番に点灯させる。ジオメトリは全て生成済みなので、
-//         visibleを切り替えるだけの軽い処理。ボス撃破・クエスト達成の直後や
-//         広場への再入場時(initHomePlaza)に呼び出す。
-// ★追加: ミライ図システム — 「今何本目まで点灯できるか」を返す共通ヘルパー。
-//         広場のタワー演出だけでなく、ステージ選択画面のテキスト表示など
-//         他画面からも同じ計算式を使い回すためにここへ切り出した。
-//         MIRAI_TOWER_POSITIONS はページ読込時に確定済みなので、
-//         広場シーンを構築していないタイミングでも呼び出せる。
 function getMiraiProgress() {
   const total = MIRAI_TOWER_POSITIONS.length;
   const unlocked = Math.min(
@@ -1606,13 +1675,9 @@ function updateMiraiTowers() {
   if (!plaza.miraiTowers || !plaza.miraiTowers.length) return;
   const { unlocked, total } = getMiraiProgress();
 
-  // ★追加: 未来感演出 — 広場に居る間にタワーが新しく点灯した瞬間だけ、
-  //         SEと通知テキストで「街が育った」ことを実感できるようにする。
-  //         初回呼び出し（広場をまだ一度も表示していない状態でのシーン構築時）は
-  //         演出を出さず、基準値の記録だけ行う。
   const isFirstCall = !_miraiBaselineSet;
   if (!isFirstCall && unlocked > _prevMiraiUnlocked) {
-    celebrateMiraiTowerUnlock(unlocked - _prevMiraiUnlocked);
+    celebrateMiraiTowerUnlock(unlocked - _prevMiraiUnlocked, _prevMiraiUnlocked, unlocked);
   }
   _prevMiraiUnlocked = unlocked;
   _miraiBaselineSet = true;
@@ -1621,32 +1686,135 @@ function updateMiraiTowers() {
     if (tower.userData.neonParts) tower.userData.neonParts.visible = i < unlocked;
   });
 
-  // ★追加: 左上HUDの進捗テキストも同期
   const label = document.getElementById("miraiProgressText");
   if (label) label.textContent = `${unlocked} / ${total}`;
 }
 let _prevMiraiUnlocked = 0;
 let _miraiBaselineSet = false;
 
-// ★追加: 新しくタワーが点灯した瞬間の演出。
-//         クエスト達成時など、直後に別のstatusLineメッセージで上書きされる
-//         呼び出し元があるため、ここではテキスト表示はせずSEのみにする
-//         （テキストで伝えたい場合は呼び出し元のメッセージに含める）。
-function celebrateMiraiTowerUnlock(gainedCount) {
+// ★追加: 新しくタワーが点灯した瞬間の豪華演出（光の柱＋パーティクル＋HUDフラッシュ＋SE）
+function celebrateMiraiTowerUnlock(gainedCount, fromIndex = 0, toIndex = 0) {
   if (typeof SE !== "undefined" && SE.miraiTowerLight) SE.miraiTowerLight();
+
+  // ① HUD進捗表示のフラッシュ
+  const hud = document.getElementById("miraiProgress");
+  if (hud) {
+    hud.classList.remove("mirai-flash");
+    void hud.offsetWidth; // リフロー
+    hud.classList.add("mirai-flash");
+  }
+
+  // ② ステータス通知
+  const { unlocked, total } = getMiraiProgress();
+  dom.statusLine.textContent = `🏙️ ミライ図が広がった！ (${unlocked} / ${total})`;
+  setTimeout(() => {
+    if (dom.statusLine.textContent.includes("ミライ図が広がった")) dom.statusLine.textContent = "";
+  }, 3500);
+
+  // ③ 新規点灯タワーでの視覚演出（光の柱＋パーティクル＋一時強発光）
+  if (plaza.miraiTowers && plaza.miraiTowers.length) {
+    const startIndex = Math.max(0, fromIndex || (toIndex - gainedCount));
+    const endIndex = Math.min(plaza.miraiTowers.length, toIndex || (startIndex + gainedCount));
+
+    for (let i = startIndex; i < endIndex; i++) {
+      const tower = plaza.miraiTowers[i];
+      if (!tower) continue;
+
+      const tx = tower.position.x;
+      const tz = tower.position.z;
+      const th = tower.userData.towerHeight || 10;
+      const color = tower.userData.topColor || 0x00ffff;
+
+      // (A) 天に向かって立ち上る光の柱（シリンダー）
+      const beamGeo = new THREE.CylinderGeometry(0.6, 2.2, 32, 16, 1, true);
+      const beamMat = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.85,
+        side: THREE.DoubleSide
+      });
+      const beam = new THREE.Mesh(beamGeo, beamMat);
+      beam.position.set(tx, 16, tz);
+      three.scene.add(beam);
+
+      const DURATION_MS = 1600;
+      const startTime = performance.now();
+      (function tickBeam(now) {
+        const t = Math.min(1, ((typeof now === "number" ? now : performance.now()) - startTime) / DURATION_MS);
+        // 上昇・拡縮とフェード
+        const s = 1 + t * 0.8;
+        beam.scale.set(s, 1 + t * 0.5, s);
+        beam.position.y = 16 + t * 6;
+        beamMat.opacity = t < 0.25 ? (t / 0.25) * 0.85 : 0.85 * (1 - (t - 0.25) / 0.75);
+        if (t < 1) {
+          requestAnimationFrame(tickBeam);
+        } else {
+          three.scene.remove(beam);
+          beamGeo.dispose();
+          beamMat.dispose();
+        }
+      })();
+
+      // (B) タワー頂上からのキラキラパーティクル噴出
+      if (plaza.particles) {
+        const pCount = 24;
+        const pGeo = new THREE.SphereGeometry(0.16, 5, 5);
+        const pColors = [0x00ffff, 0xff2fd1, 0xffe600, 0xffffff, color];
+        for (let p = 0; p < pCount; p++) {
+          const mat = new THREE.MeshBasicMaterial({
+            color: pColors[Math.floor(Math.random() * pColors.length)],
+            transparent: true,
+            opacity: 0.95
+          });
+          const mesh = new THREE.Mesh(pGeo, mat);
+          mesh.position.set(tx + (Math.random() - 0.5) * 1.5, th + 0.5, tz + (Math.random() - 0.5) * 1.5);
+          const ang = Math.random() * Math.PI * 2;
+          const spd = 0.06 + Math.random() * 0.12;
+          mesh.userData = {
+            vx: Math.cos(ang) * spd,
+            vy: 0.10 + Math.random() * 0.16,
+            vz: Math.sin(ang) * spd,
+            gravity: -0.004,
+            life: 1.0,
+            decay: 0.015 + Math.random() * 0.015,
+            material: mat
+          };
+          three.scene.add(mesh);
+          plaza.particles.push(mesh);
+        }
+      }
+
+      // (C) 点灯直後の一時強発光 PointLight
+      const burstLight = new THREE.PointLight(color, 2.8, 18, 2);
+      burstLight.position.set(tx, th + 1, tz);
+      three.scene.add(burstLight);
+      const lightStartTime = performance.now();
+      const LIGHT_DURATION = 2200;
+      (function tickLight(now) {
+        const lt = Math.min(1, ((typeof now === "number" ? now : performance.now()) - lightStartTime) / LIGHT_DURATION);
+        burstLight.intensity = 2.8 * (1 - lt);
+        if (lt < 1) {
+          requestAnimationFrame(tickLight);
+        } else {
+          three.scene.remove(burstLight);
+        }
+      })();
+    }
+  }
 }
 
-// ★追加: 未来感演出 — 点灯済みタワーのネオン部分をゆっくりまたたかせる。
-//         毎フレーム全タワーを回すと重いので、visible(=点灯済み)なものだけ処理する。
+// ★追加: 未来感演出 — 点灯済みタワーのネオン部分を滑らかに明滅させる
 function updateMiraiTowerTwinkle(dtScale = 1) {
   if (!plaza.miraiTowers || !plaza.miraiTowers.length) return;
-  const t = Date.now() * 0.0015;
+  const t = Date.now() * 0.0018;
   plaza.miraiTowers.forEach(tower => {
     const neonParts = tower.userData.neonParts;
     if (!neonParts || !neonParts.visible) return;
     neonParts.children.forEach(mesh => {
       if (!mesh.material || mesh.userData.twinklePhase === undefined) return;
-      mesh.material.opacity = 0.72 + Math.sin(t + mesh.userData.twinklePhase) * 0.28;
+      const baseOp = mesh.userData.isGlow ? 0.32 : 0.85;
+      const amp = mesh.userData.isGlow ? 0.18 : 0.35;
+      mesh.material.opacity = baseOp + Math.sin(t + mesh.userData.twinklePhase) * amp;
     });
   });
 }
@@ -1707,8 +1875,17 @@ function updateHomePlazaLoop(dtScale = 1) {
             dom.plazaActionPrompt.classList.remove("visible");
             plazaNearPond = false;
           }
-        } else {
-          dom.plazaActionPrompt.classList.remove("visible");
+      } else if (currentSubArea === "cooking") {
+        // ★ 食堂エリア内：カウンター付近で料理プロンプトを表示
+        if (plaza.cookingCounterPos) {
+          const distToCounter = Math.hypot(plazaPlayer.x - plaza.cookingCounterPos.x, plazaPlayer.z - plaza.cookingCounterPos.z);
+          plazaNearCookingCounter = distToCounter < 3.8;
+          if (plazaNearCookingCounter) {
+            dom.plazaActionPrompt.textContent = "Ａ で料理する";
+            dom.plazaActionPrompt.classList.add("visible");
+          } else {
+            dom.plazaActionPrompt.classList.remove("visible");
+          }
         }
       }
     }
@@ -3220,19 +3397,12 @@ function buildFlowerScene() {
         if (rType < cumulative) { type = ft; break; }
       }
     }
-    const c = type.color;
-    
-    const geo = new THREE.SphereGeometry(0.35, 6, 6);
-    const mat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.6 });
-    const fl = new THREE.Mesh(geo, mat);
-    // 花畑エリアの中心付近に散らす（★修正: flowerAreaPosを加算してワールド座標に合わせる）
+    const flower = createFlowerMesh(type);
     const r = Math.random() * 20;
     const angle = Math.random() * Math.PI * 2;
-    fl.position.set(plaza.flowerAreaPos.x + Math.cos(angle) * r, 0.35, plaza.flowerAreaPos.z + Math.sin(angle) * r);
-    fl.castShadow = false;
-    fl.userData = { picked: false, baseColor: c, originalY: 0.35, flowerType: type, respawnTime: 0, phase: Math.random() * Math.PI * 2 };
-    plaza.flowerSceneGroup.add(fl);
-    plaza.flowerSceneField.push(fl); // サブエリア専用配列に登録
+    flower.position.set(plaza.flowerAreaPos.x + Math.cos(angle) * r, 0.01, plaza.flowerAreaPos.z + Math.sin(angle) * r);
+    plaza.flowerSceneGroup.add(flower);
+    plaza.flowerSceneField.push(flower); // サブエリア専用配列に登録
   }
 
   // 休憩ベンチ

@@ -283,6 +283,45 @@ const SE = (() => {
   }
 
   /**
+   * 必殺技Spear（スピアラッシュ）: 「シュッ！シュッ！シュッ！ズバァン！」連続突き＋フィニッシュ
+   */
+  function playSpecialSpear() {
+    if (!ctx || !enabled) return;
+    const t = now();
+
+    // 4連高速突き（風切り＋鋭い金属音）
+    for (let i = 0; i < 4; i++) {
+      const dt = i * 0.08;
+      // 風切りスウィープ
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(600 + i * 100, t + dt);
+      osc.frequency.exponentialRampToValueAtTime(180, t + dt + 0.06);
+      g.gain.setValueAtTime(0.35, t + dt);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dt + 0.07);
+      osc.connect(g); g.connect(masterGain);
+      osc.start(t + dt); osc.stop(t + dt + 0.08);
+
+      createNoise(t + dt, 0.05, 0.25, 4500);
+    }
+
+    // 5段目フィニッシュ突き（ズバァン！）
+    const fTime = t + 0.36;
+    const fOsc = ctx.createOscillator();
+    const fG = ctx.createGain();
+    fOsc.type = "triangle";
+    fOsc.frequency.setValueAtTime(280, fTime);
+    fOsc.frequency.exponentialRampToValueAtTime(50, fTime + 0.25);
+    fG.gain.setValueAtTime(0.65, fTime);
+    fG.gain.exponentialRampToValueAtTime(0.001, fTime + 0.3);
+    fOsc.connect(fG); fG.connect(masterGain);
+    fOsc.start(fTime); fOsc.stop(fTime + 0.35);
+
+    createNoise(fTime, 0.25, 0.5, 2200);
+  }
+
+  /**
    * ボス被ダメージ: スライムらしい「ぷにっ」
    */
   function playBossHit() {
@@ -642,6 +681,7 @@ const SE = (() => {
     specialWave:    playSpecialWave,
     specialIce:     playSpecialIce,
     specialThunder: playSpecialThunder,
+    specialSpear:   playSpecialSpear,
 
     // 被弾系
     bossHit:        playBossHit,

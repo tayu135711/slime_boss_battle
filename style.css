@@ -1629,6 +1629,13 @@ html, body {
 /* 広場モード：Dパッドを非表示、ジョイスティックを表示 */
 #controllerPanel.plaza-mode .dpad-cross { display: none; }
 #controllerPanel.plaza-mode #joystickBase { display: block; }
+/* 広場モードではバトル専用ボタン（回避・スキル・必殺技）を非表示にし、誤動作・見た目の混乱を防ぐ */
+#controllerPanel.plaza-mode .btn-dodge,
+#controllerPanel.plaza-mode .btn-y,
+#controllerPanel.plaza-mode .btn-x { display: none !important; }
+/* 広場モードでは攻撃ボタンの文言を汎用アクション感に */
+#controllerPanel.plaza-mode #attackBtn .btn-text { font-size: 13px; }
+
 /* バトルモード：Dパッドを非表示にしてジョイスティックで統一 */
 #controllerPanel:not(.plaza-mode) .dpad-cross { display: none; }
 #controllerPanel:not(.plaza-mode) #joystickBase { display: block; }
@@ -2300,15 +2307,39 @@ button:focus-visible {
   }
 }
 
-/* subAreaBackBtn のコントローラー被り防止（JSで生成されるため !important） */
-/* home_scene.jsの bottom:90px をCSS側で上書き */
+/* subAreaBackBtn の配置：画面中央下に置くとstatusLineやプロンプトと被るため、画面上部中央に配置 */
 #subAreaBackBtn {
-  bottom: calc(210px + env(safe-area-inset-bottom, 0px)) !important;
-  padding: 14px 32px !important;
-  min-height: 52px !important;
-  font-size: 16px !important;
+  position: fixed !important;
+  top: calc(16px + env(safe-area-inset-top, 0px)) !important;
+  bottom: auto !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  padding: 10px 24px !important;
+  min-height: 44px !important;
+  font-size: 15px !important;
+  z-index: 105 !important;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25) !important;
+}
+
+/* 料理・花・釣りなどのモーダルが開いている時は「広場に戻る」ボタンを隠す */
+body:has(#cookingUI[style*="display: flex"]) #subAreaBackBtn,
+body:has(#cookingUI:not([style*="display: none"]):not(:empty)) #subAreaBackBtn,
+body:has(#flowerUI[style*="display: block"]) #subAreaBackBtn,
+body:has(#fishingUI[style*="display: block"]) #subAreaBackBtn {
+  display: none !important;
+}
+
+/* ── ミライ図点灯時のHUDフラッシュ演出 ── */
+@keyframes miraiFlash {
+  0%   { transform: scale(1);   filter: brightness(1); }
+  25%  { transform: scale(1.22); filter: brightness(2.2) drop-shadow(0 0 16px #00ffff); color: #00ffff; }
+  50%  { transform: scale(1.15); filter: brightness(1.8) drop-shadow(0 0 10px #7a5cff); color: #ff2fd1; }
+  100% { transform: scale(1);   filter: brightness(1); color: inherit; }
+}
+.mirai-flash {
+  animation: miraiFlash 1.0s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
 /* 全ボタン共通：ダブルタップズーム防止 */
