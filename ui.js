@@ -1155,6 +1155,12 @@ function closeDressingRoom() {
   const ds = document.getElementById("dressingScreen");
   if (ds) ds.classList.remove("visible");
   _dressingTargetCostume = null;
+  // ★修正: 「やめる」でキャンセルした際にwindow._dressingConfirmHookがクリアされておらず、
+  //         商店のきせかえカードをクリック→キャンセルを経由すると、後で全く別の画面
+  //         (ガチャ図鑑など)からきせかえを確定した際に、開いてもいない商店タブの
+  //         再描画が裏で実行されてしまうバグがあった。確定していないフックは
+  //         キャンセル時に必ず破棄する。
+  window._dressingConfirmHook = null;
 }
 
 function confirmDressing() {

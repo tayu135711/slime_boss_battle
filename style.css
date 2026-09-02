@@ -2363,6 +2363,17 @@ button:focus-visible {
     font-size: 13px !important;
     max-width: 88vw;
   }
+  /* ★修正: チュートリアルの「攻撃予兆の説明」ステップ(#tutorialCard)は実際のStage1バトル中
+     に表示されるため、ボスの攻撃予兆メッセージ(#statusLine)と同時に出ることがある。
+     tutorialCardの下端(250px)とstatusLineの上端がわずか8pxしか離れておらず、
+     複数行に折り返すと約17px重なって説明文の一部が隠れてしまうバグがあった
+     (実機シミュレーターで確認)。tutorialCardをさらに上へ引き上げて間隔を確保する。 */
+  #tutorialCard.show {
+    /* ★修正: 同名セレクタの無条件ルール(#tutorialCard.show、bottom:250px)が
+       このメディアクエリより後のソース順に定義されており、詳細度が同じため
+       そちらが優先されて上書きされてしまっていた。!importantで確実に適用する。 */
+    bottom: calc(300px + env(safe-area-inset-bottom, 0px)) !important;
+  }
   #playerHpArea {
     bottom: calc(178px + env(safe-area-inset-bottom, 0px));
   }
@@ -2394,6 +2405,76 @@ button:focus-visible {
   #cookingBox {
     padding: 16px 12px !important;
   }
+}
+
+/* ============================================================
+   横向き・縦幅が短い端末向け調整（iPhone SE横向き等）
+   ★修正: これまでの調整は画面「幅」基準(max-width:420px)のみで、
+   画面「高さ」が短い横向き端末は対象外だった。しかしコントローラーパネル
+   (高さ190px固定)が画面高さの半分近くを占めてしまうため、
+   実機シミュレーターで検証したところ以下のバグが見つかった：
+   ① プレイヤーHP表示(#playerHpArea)とステータスライン(#statusLine)が
+      ほぼ同じ高さに配置され重なって表示される
+   ② NPC吹き出し(#npcBubble)が画面上端からはみ出して一部読めなくなる
+   ③ チュートリアルカード(#tutorialCard)も同様に画面上端で見切れる
+   コントローラーパネルを少しコンパクトにして空きスペースを確保しつつ、
+   各UI要素を「HP/プロンプト → ステータス/吹き出し → チュートリアル」の
+   3段階に積み上げて重ならないよう再配置する。
+   ============================================================ */
+@media (max-height: 430px) {
+  #controllerPanel {
+    height: 130px;
+  }
+  #joystickBase {
+    width: 92px; height: 92px;
+  }
+  #joystickKnob {
+    width: 38px; height: 38px;
+  }
+  #dpadWrap {
+    width: 110px; height: 110px;
+  }
+  #actionPad {
+    width: 110px; height: 110px;
+  }
+  .action-btn {
+    width: 48px; height: 48px;
+  }
+
+  /* 1段目：プレイヤーHP／広場アクションプロンプト（コントローラー直上） */
+  #playerHpArea {
+    bottom: calc(145px + env(safe-area-inset-bottom, 0px));
+  }
+  #plazaActionPrompt {
+    bottom: calc(145px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* 2段目：ステータスライン／NPC吹き出し */
+  #statusLine {
+    bottom: calc(205px + env(safe-area-inset-bottom, 0px)) !important;
+    font-size: 12px !important;
+  }
+  #npcBubble {
+    bottom: calc(205px + env(safe-area-inset-bottom, 0px)) !important;
+    font-size: 13px !important;
+  }
+
+  /* 3段目：チュートリアルカード（コンパクト化して画面上端の見切れも防止）
+     ★注記: #tutorialCardの無条件ルールがこのメディアクエリより後のソース順に
+     定義されており詳細度も同じため、全プロパティに!importantを付けて確実に適用する。 */
+  #tutorialCard {
+    max-height: min(100px, 34vh) !important;
+    padding: 6px 12px 8px !important;
+  }
+  #tutorialCard.show {
+    bottom: calc(262px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  #tutorialCard .tc-dots { margin-bottom: 3px !important; }
+  #tutorialCard .tc-title { font-size: 12px !important; margin-bottom: 2px !important; }
+  #tutorialCard .tc-text { font-size: 10px !important; line-height: 1.35 !important; }
+  #tutorialCard .tc-btnrow { margin-top: 4px !important; gap: 4px !important; }
+  #tutorialCard .tc-next { padding: 5px 14px !important; font-size: 11px !important; }
+  #tutorialCard .tc-skip { padding: 3px 8px !important; font-size: 9px !important; }
 }
 
 /* subAreaBackBtn の配置：画面中央下に置くとstatusLineやプロンプトと被るため、画面上部中央に配置 */
