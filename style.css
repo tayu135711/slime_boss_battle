@@ -158,6 +158,21 @@ html, body {
   white-space: normal;
   text-align: center;
 }
+/* ★修正: #statusLineはplazaActionPrompt/npcBubbleと違い「visibleクラスを付けた時だけ表示」
+   ではなく常にDOM上に存在する作りだったため、メッセージが何も無い時間帯でも
+   背景・緑の枠・min-height分の高さだけが残った空の錠剤型UIが画面中央に常時
+   映ってしまっていた（textContentを空文字列にリセットする箇所がbattle.js/fishing.js/
+   quest.js/ui.jsなど各所に多数あるが、どこも「消す」つもりで空にしていただけで、
+   実際には枠と背景だけ残っていた）。テキストが空の時は:emptyで背景・枠・影を消し、
+   見た目上も完全に非表示にする。呼び出し側を一つずつ直す必要がないよう、
+   CSS側のこの1箇所だけで対応する。 */
+#statusLine:empty {
+  background: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+}
 
 /* ===== リセットボタン ===== */
 .reset-btn {
