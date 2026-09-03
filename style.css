@@ -2527,6 +2527,30 @@ body:has(#fishingUI[style*="display: block"]) #subAreaBackBtn {
   animation: miraiFlash 1.0s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
+/* ── ミライ図「街の活気」段階演出 ── カケラが集まるほどHUDバッジ自体の常時発光が強くなる */
+#miraiProgress {
+  transition: box-shadow 0.8s ease, border-color 0.8s ease;
+}
+#miraiProgress.mirai-stage-1 {
+  box-shadow: 0 0 10px rgba(127,242,255,0.5);
+}
+#miraiProgress.mirai-stage-2 {
+  box-shadow: 0 0 16px rgba(127,242,255,0.7), 0 0 30px rgba(255,47,209,0.25);
+}
+#miraiProgress.mirai-stage-3 {
+  box-shadow: 0 0 22px rgba(127,242,255,0.85), 0 0 40px rgba(255,47,209,0.4);
+  border-color: #ffe600cc;
+}
+#miraiProgress.mirai-stage-4 {
+  box-shadow: 0 0 30px rgba(127,242,255,1), 0 0 55px rgba(255,47,209,0.55), 0 0 75px rgba(255,230,0,0.35);
+  border-color: #ffe600;
+  animation: miraiVitalityPulse 2.4s ease-in-out infinite;
+}
+@keyframes miraiVitalityPulse {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.4); }
+}
+
 /* 全ボタン共通：ダブルタップズーム防止 */
 button {
   touch-action: manipulation;

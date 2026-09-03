@@ -1688,9 +1688,91 @@ function updateMiraiTowers() {
 
   const label = document.getElementById("miraiProgressText");
   if (label) label.textContent = `${unlocked} / ${total}`;
+
+  // ★追加: カケラを集めるほど広場そのものが賑やかになる「街の活気」演出を更新
+  applyMiraiVitalityStage(unlocked, total);
 }
 let _prevMiraiUnlocked = 0;
 let _miraiBaselineSet = false;
+
+// ★追加: ミライ図の進捗（0〜4段階）に応じて、HUDバッジの発光・環境光の明るさ・
+//         舞う光の粒の密度を変える。「タワーが1本ずつ増える」だけでなく、
+//         広場全体がじわじわ賑やかになっていく感覚を出すための仕組み。
+const MIRAI_VITALITY_STAGES = 4;
+let _miraiVitalityStage = -1; // 未初期化。0〜4のいずれかに更新される
+let _miraiAmbLightBase = null; // 時間帯演出とバッティングしないよう、素のambientLight強度を覚えておく
+
+function getMiraiVitalityStage(unlocked, total) {
+  if (total <= 0) return 0;
+  const ratio = unlocked / total;
+  return Math.min(MIRAI_VITALITY_STAGES, Math.floor(ratio * MIRAI_VITALITY_STAGES + 1e-6));
+}
+
+function applyMiraiVitalityStage(unlocked, total) {
+  const stage = getMiraiVitalityStage(unlocked, total);
+  if (stage === _miraiVitalityStage) return; // 変化なし
+  _miraiVitalityStage = stage;
+
+  // ① HUDバッジの常時発光を段階的に強くする
+  const hud = document.getElementById("miraiProgress");
+  if (hud) {
+    for (let s = 0; s <= MIRAI_VITALITY_STAGES; s++) hud.classList.remove(`mirai-stage-${s}`);
+    hud.classList.add(`mirai-stage-${stage}`);
+  }
+
+  // ② 環境光をほんの少しずつ明るく・暖かく（applyTimeOfDayが上書きする素の強度に対して
+  //    段階分だけ加算するので、時間帯演出とは競合しない）
+  if (plaza.ambientLight) {
+    if (_miraiAmbLightBase === null) _miraiAmbLightBase = plaza.ambientLight.intensity;
+    plaza.ambientLight.intensity = _miraiAmbLightBase + stage * 0.05;
+  }
+}
+
+// ★追加: ミライ図の進捗段階に応じて、広場にゆっくり舞い上がる光の粒を一定間隔で発生させる
+let _miraiMoteTimer = 0;
+const MIRAI_MOTE_MAX_CONCURRENT = 70; // 他の演出パーティクルも含めた画面上の総数の上限（安全弁）
+function updateMiraiAmbientMotes(dtScale = 1) {
+  if (_miraiVitalityStage <= 0) return; // まだカケラ0本の段階では出さない
+  if (currentSubArea) return; // 釣り場・花畑など別エリアにいる間は出さない
+  // ★安全策: 他の演出(水しぶき・花びら・タワー点灯バースト等)と合算しても
+  //         画面上のパーティクル総数が際限なく増えないよう上限を設ける。
+  //         これを超えている間は新規スポーンをスキップするだけで、常時湧き続ける
+  //         ことはない（負荷が積み上がらない設計）。
+  if (plaza.particles && plaza.particles.length >= MIRAI_MOTE_MAX_CONCURRENT) return;
+
+  _miraiMoteTimer -= dtScale;
+  if (_miraiMoteTimer > 0) return;
+
+  // 段階が進むほど発生間隔を短く（密度を高く）する
+  const interval = Math.max(18, 70 - _miraiVitalityStage * 14);
+  _miraiMoteTimer = interval;
+
+  const colors = [0x7ff2ff, 0xffe600, 0xff2fd1, 0xffffff];
+  const geom = new THREE.SphereGeometry(0.09, 5, 5);
+  const mat = new THREE.MeshBasicMaterial({
+    color: colors[Math.floor(Math.random() * colors.length)],
+    transparent: true, opacity: 0.85
+  });
+  const mesh = new THREE.Mesh(geom, mat);
+  const ang = Math.random() * Math.PI * 2;
+  const dist = 3 + Math.random() * 14;
+  mesh.position.set(
+    plazaPlayer.x + Math.cos(ang) * dist,
+    0.3,
+    plazaPlayer.z + Math.sin(ang) * dist
+  );
+  mesh.userData = {
+    vx: (Math.random() - 0.5) * 0.008,
+    vy: 0.012 + Math.random() * 0.014,
+    vz: (Math.random() - 0.5) * 0.008,
+    gravity: 0, // ふわふわ上昇するだけ（水しぶき等と違い落下しない）
+    life: 1.0,
+    decay: 0.0035 + Math.random() * 0.002,
+    material: mat
+  };
+  three.scene.add(mesh);
+  plaza.particles.push(mesh);
+}
 
 // ★追加: 新しくタワーが点灯した瞬間の豪華演出（光の柱＋パーティクル＋HUDフラッシュ＋SE）
 function celebrateMiraiTowerUnlock(gainedCount, fromIndex = 0, toIndex = 0) {
@@ -1755,9 +1837,9 @@ function celebrateMiraiTowerUnlock(gainedCount, fromIndex = 0, toIndex = 0) {
         }
       })();
 
-      // (B) タワー頂上からのキラキラパーティクル噴出
+      // (B) タワー頂上からのキラキラパーティクル噴出（★強化: 24→40個に増量してより賑やかに）
       if (plaza.particles) {
-        const pCount = 24;
+        const pCount = 32; // ★負荷対策: 複数タワーが同時に点灯するケースを考慮し、24→40ではなく控えめに32へ
         const pGeo = new THREE.SphereGeometry(0.16, 5, 5);
         const pColors = [0x00ffff, 0xff2fd1, 0xffe600, 0xffffff, color];
         for (let p = 0; p < pCount; p++) {
@@ -1799,6 +1881,41 @@ function celebrateMiraiTowerUnlock(gainedCount, fromIndex = 0, toIndex = 0) {
           three.scene.remove(burstLight);
         }
       })();
+
+      // (D) ★追加: 空高く打ち上がる花火のような二段バースト（点灯を一段と華やかに見せる）
+      const fwDelay = 250 + Math.random() * 300;
+      setTimeout(() => {
+        // ★安全策: 複数タワーがほぼ同時に点灯する瞬間に画面上のパーティクルが
+        //         積み上がりすぎないよう、既に多い場合はこの追加バーストを省略する。
+        if (plaza.particles && plaza.particles.length >= MIRAI_MOTE_MAX_CONCURRENT) return;
+        const fwY = th + 6 + Math.random() * 3;
+        const fwGeo = new THREE.SphereGeometry(0.14, 5, 5);
+        const fwColors = [0xffe600, 0xff2fd1, 0x00ffff, 0xffffff, color];
+        const fwCount = 18; // ★負荷対策: 花火バーストも複数タワー同時点灯を考慮して控えめに
+        for (let f = 0; f < fwCount; f++) {
+          const mat = new THREE.MeshBasicMaterial({
+            color: fwColors[Math.floor(Math.random() * fwColors.length)],
+            transparent: true, opacity: 1
+          });
+          const mesh = new THREE.Mesh(fwGeo, mat);
+          mesh.position.set(tx, fwY, tz);
+          const ang = Math.random() * Math.PI * 2;
+          const elev = (Math.random() - 0.3) * Math.PI * 0.6;
+          const spd = 0.10 + Math.random() * 0.14;
+          mesh.userData = {
+            vx: Math.cos(ang) * Math.cos(elev) * spd,
+            vy: Math.sin(elev) * spd + 0.05,
+            vz: Math.sin(ang) * Math.cos(elev) * spd,
+            gravity: -0.006,
+            life: 1.0,
+            decay: 0.02 + Math.random() * 0.018,
+            material: mat
+          };
+          three.scene.add(mesh);
+          if (plaza.particles) plaza.particles.push(mesh);
+        }
+        if (typeof SE !== "undefined" && SE.reward) SE.reward();
+      }, fwDelay);
     }
   }
 }
@@ -1902,6 +2019,7 @@ function updateHomePlazaLoop(dtScale = 1) {
   updateWindAnimation(dtScale);    // ★ 木々の風による揺れ
   updateMiraiTowerTwinkle(dtScale); // ★追加: 未来感演出 — 点灯済みタワーのまたたき
   updatePlazaParticles(dtScale);   // ★ 水しぶき・花びらパーティクル
+  updateMiraiAmbientMotes(dtScale); // ★追加: ミライ図の進捗に応じて舞う光の粒（街の活気演出）
   updateBuildingAnimations();      // ★ ルーン・暖簾・湯気アニメ
   updateTimeOfDay();  // 時間帯チェック（変化時のみ描画更新）
 }

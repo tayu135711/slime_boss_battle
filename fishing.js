@@ -125,6 +125,10 @@ function endFishing(success, reason = "miss") {
     state.dailyFishCount++;
     SE.fishingSuccess();
 
+    // ★追加: 釣りでも少量のミライ図カケラを獲得（1日の釣り上限があるので乱獲の心配なし）
+    state.miraiPieces = (state.miraiPieces ?? 0) + MIRAI_CONFIG.fishPieceGain;
+    if (typeof updateMiraiTowers === "function") updateMiraiTowers();
+
     document.getElementById("fishingPrompt").textContent = `${fish.icon} ${fish.name} をそっと釣り上げた。`;
     document.getElementById("fishingAction").style.display = "none";
 

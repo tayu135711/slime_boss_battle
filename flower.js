@@ -142,6 +142,10 @@ function resolvePickFlower(success) {
   state.inventory.ingredients[flowerType.id]++;
   state.dailyFlowerCount++;
 
+  // ★追加: 花摘みでも少量のミライ図カケラを獲得（1日の花摘み上限があるので乱獲の心配なし）
+  state.miraiPieces = (state.miraiPieces ?? 0) + MIRAI_CONFIG.flowerPieceGain;
+  if (typeof updateMiraiTowers === "function") updateMiraiTowers();
+
   document.getElementById("flowerPrompt").textContent = `${flowerType.icon} ${flowerType.name} をそっと摘んだ。`;
   document.getElementById("flowerAction").style.display = "none";
   setTimeout(() => {
