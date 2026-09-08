@@ -770,6 +770,15 @@ html, body {
   opacity: 0.9;
   margin-top: -4px;
 }
+#bgmCredit {
+  position: absolute;
+  left: 0; right: 0; bottom: 10px;
+  text-align: center;
+  font-size: 10px;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
 #titleStartBtn {
   margin-top: 4px;
   padding: 15px 42px;
@@ -2490,6 +2499,67 @@ button:focus-visible {
   #tutorialCard .tc-btnrow { margin-top: 4px !important; gap: 4px !important; }
   #tutorialCard .tc-next { padding: 5px 14px !important; font-size: 11px !important; }
   #tutorialCard .tc-skip { padding: 3px 8px !important; font-size: 9px !important; }
+  #tutorialStepToast {
+    bottom: calc(262px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* ============================================================
+   高さ431px〜900px程度（PCブラウザを縦に短いウィンドウ幅で開いた場合など）向け調整
+   ★追加: コントローラーパネル(190px固定)＋会話ウィンドウ/チュートリアルカード等の
+   スタックは、縦長スマホでの表示を基準に固定pxで積み上げているため、縦幅の短い
+   PCブラウザウィンドウで開くと、このスタックが画面高さに占める割合が大きくなり、
+   結果として会話ウィンドウやチュートリアルカードがキャラクターの立つ画面中央付近と
+   重なって「画面中央にうるさく表示される」ように見える問題が報告された。
+   このレンジではコントローラーパネルと各種UIを少しコンパクトにして、
+   会話系UIの上端をできるだけコントローラー寄り（画面下側）に収める。
+   ※Three.js部分はサンドボックス制約で実描画を確認できていないため、
+   実機・実ブラウザでの見え方を確認のうえフィードバックをお願いします。 */
+@media (min-height: 431px) and (max-height: 900px) {
+  #controllerPanel {
+    height: 150px;
+  }
+  #joystickBase {
+    width: 108px; height: 108px;
+  }
+  #joystickKnob {
+    width: 44px; height: 44px;
+  }
+  #dpadWrap {
+    width: 118px; height: 118px;
+  }
+  #actionPad {
+    width: 118px; height: 118px;
+  }
+  .action-btn {
+    width: 52px; height: 52px;
+  }
+  #playerHpArea {
+    bottom: calc(160px + env(safe-area-inset-bottom, 0px));
+  }
+  #statusLine {
+    bottom: calc(160px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  #plazaActionPrompt {
+    bottom: calc(160px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  #npcBubble {
+    bottom: calc(220px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  #npcDialog {
+    bottom: calc(160px + env(safe-area-inset-bottom, 0px));
+    max-height: min(240px, 40vh);
+    overflow-y: auto;
+  }
+  #tutorialCard.show {
+    bottom: calc(160px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  #tutorialCard {
+    max-height: min(180px, 40vh);
+  }
+  #tutorialStepToast {
+    bottom: calc(220px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* subAreaBackBtn の配置：画面中央下に置くとstatusLineやプロンプトと被るため、画面上部中央に配置 */
@@ -2678,12 +2748,16 @@ button {
 #tutorialCard .tc-next:active { transform: translateY(2px); box-shadow: 0 1px 0 #4a86bb; }
 #tutorialCard .tc-skip { background: none; border: 1px solid rgba(255,255,255,0.35); color: #ccc; border-radius: 10px; padding: 5px 12px; font-size: 11px; cursor: pointer; }
 
-/* ステップ達成トースト */
+/* ステップ達成トースト
+   ★修正: 元は top:42% で画面のほぼ中央に固定表示されており、キャラクターや3D背景と
+   重なって「画面中央にうるさく表示される」原因のひとつになっていた。他のチュートリアル系UI
+   （#tutorialCard等）と同じくコントローラー直上の下側エリアに寄せる。 */
 #tutorialStepToast {
   position: fixed;
-  top: 42%;
+  top: auto;
+  bottom: calc(300px + env(safe-area-inset-bottom, 0px));
   left: 50%;
-  transform: translate(-50%, -50%) scale(0.85);
+  transform: translateX(-50%) scale(0.85);
   z-index: 960;
   background: rgba(0,0,0,0.75);
   color: #fff;
@@ -2696,7 +2770,7 @@ button {
   transition: opacity 0.2s, transform 0.2s;
   white-space: nowrap;
 }
-#tutorialStepToast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+#tutorialStepToast.show { opacity: 1; transform: translateX(-50%) scale(1); }
 
 /* 操作対象のハイライト演出 */
 .tutorial-glow {
