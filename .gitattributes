@@ -1,0 +1,15 @@
+# 改行コードをLFに統一する設定
+# これを置いてから 1) commit しておくと、以降はCRLFで保存しても
+# コミット時に自動でLFに変換されるので、差分が全行変更になる問題を防げる
+* text=auto eol=lf
+
+# バイナリ扱いにしておくべきもの（誤ってテキスト変換されないように）
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.mp3 binary
+*.wav binary
+*.ogg binary
+*.ttf binary
+*.class binary
