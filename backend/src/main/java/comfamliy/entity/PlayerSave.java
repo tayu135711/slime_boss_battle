@@ -6,6 +6,11 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Size;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import lombok.Data;
 
@@ -16,28 +21,41 @@ public class PlayerSave {
 
     @Id
     @Column(name = "player_id")
+    @NotBlank
+    @Size(max = 64)
     private String playerId;
 
+    @Min(0)
     private int stageIndex;
+    @Min(0)
     private int unlockedStages;
+    @Size(max = 64)
     private String equippedCostumeId;
 
     @Column(columnDefinition = "TEXT")
+    @Size(max = 200000)
     private String ownedCostumes;
 
     @Column(columnDefinition = "TEXT")
+    @Size(max = 200000)
     private String inventory;
 
     @Column(columnDefinition = "TEXT")
+    @Size(max = 200000)
     private String bento;
 
+    @Min(0)
     private int dailyFishCount;
+    @Size(max = 32)
     private String lastFishDate;
+    @Min(0)
     private int dailyFlowerCount;
+    @Size(max = 32)
     private String lastFlowerDate;
 
     /** クエスト進捗（JSON文字列） */
     @Column(columnDefinition = "TEXT")
+    @Size(max = 200000)
     private String quests;
 
     /** お弁当最大数 */
@@ -45,17 +63,21 @@ public class PlayerSave {
 
     /** 解放済みレシピ（JSON文字列） */
     @Column(columnDefinition = "TEXT")
+    @Size(max = 200000)
     private String unlockedRecipes;
 
     /** アクセサリー（JSON文字列） ★ 追加 */
     @Column(columnDefinition = "TEXT")
+    @Size(max = 200000)
     private String accessories;
 
     /** ステージ別ベストタイム（JSON文字列） ★ 追加 */
     @Column(columnDefinition = "TEXT")
+    @Size(max = 200000)
     private String bestTimes;
 
     /** 累計クリア数 ★ 追加 */
+    @Min(0)
     private int totalClears;
 
     /** ガチャ石（チケット）所持数
@@ -72,6 +94,8 @@ public class PlayerSave {
      *          Integer（ボクシング型）にすることで DB の NULL を JSON の null としてそのまま
      *          フロントへ伝え、救済ロジックを正しく機能させる。
      */
+    @Min(0)
+    @Max(1000000)
     private Integer gachaTickets;
 
     /** ミライ図のカケラ所持数（広場のネオンタワー点灯に使用）。
@@ -79,7 +103,13 @@ public class PlayerSave {
      *  既存プレイヤーの行はddl-auto=updateでカラム追加された直後はNULLになるため、
      *  プリミティブint だとgetInt()でNULLが黙って0に丸められ、フロント側の
      *  救済ロジック(data.miraiPieces ?? 0)と区別がつかなくなる問題を避ける。 */
+    @Min(0)
+    @Max(1000000)
     private Integer miraiPieces;
+
+    @JsonIgnore
+    @Column(name = "token_hash", length = 64)
+    private String tokenHash;
 
     private LocalDateTime updatedAt;
 }

@@ -4,6 +4,8 @@
  */
 
 const SAVE_API = "https://slime-boss-battle.onrender.com/api/save";
+let _memoryPlayerId = null;
+let _memoryPlayerToken = null;
 
 // ── Renderのコールドスタート対策：アプリ起動時にウォームアップリクエストを送る ──
 (function warmUpServer() {
@@ -22,8 +24,33 @@ function getPlayerId() {
     }
     return id;
   } catch (e) {
-    // ★修正: プライベートブラウズ等でlocalStorageが使えない場合のクラッシュ対策
-    return "player_guest_" + Math.random().toString(36).slice(2, 10);
+    if (!_memoryPlayerId) _memoryPlayerId = "player_guest_" + Math.random().toString(36).slice(2, 10);
+    return _memoryPlayerId;
+  }
+}
+
+function getPlayerToken() {
+  try { return localStorage.getItem("slime_player_token") || _memoryPlayerToken; }
+  catch (e) { return _memoryPlayerToken; }
+}
+
+async function ensureSession() {
+  if (getPlayerToken()) return true;
+  try {
+    const res = await fetchWithTimeout(`${SAVE_API}/session`, { method: "POST" }, 15000);
+    if (!res.ok) return false;
+    const session = await res.json();
+    if (!session.playerId || !session.token) return false;
+    _memoryPlayerId = session.playerId;
+    _memoryPlayerToken = session.token;
+    try {
+      localStorage.setItem("slime_player_id", session.playerId);
+      localStorage.setItem("slime_player_token", session.token);
+    } catch (e) { /* メモリ上のセッションを継続 */ }
+    return true;
+  } catch (e) {
+    console.warn("[save] セッション発行に失敗しました:", e);
+    return false;
   }
 }
 
@@ -67,6 +94,11 @@ async function saveToServer() {
 
 // stateをAPIに保存（実際の通信処理・常に呼び出し時点の最新stateを送る）
 async function _saveToServerOnce() {
+  if (!(await ensureSession())) {
+    dom.statusLine.textContent = "⚠️ セッションを作成できませんでした";
+    setTimeout(() => dom.statusLine.textContent = "", 3000);
+    return;
+  }
   const playerId = getPlayerId();
   const body = {
     playerId,
@@ -92,12 +124,16 @@ async function _saveToServerOnce() {
 
   const reqOptions = {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-Player-Token": getPlayerToken(),
+    },
     body: JSON.stringify(body),
   };
 
   // ★ サーバーエラー時用にローカルにバックアップを保存
-  localStorage.setItem("slime_boss_save_fallback", JSON.stringify(body));
+  try { localStorage.setItem("slime_boss_save_fallback", JSON.stringify(body)); }
+  catch (e) { console.warn("[save] ローカルバックアップを保存できません:", e); }
 
   // ★ 最大3回リトライ（コールドスタートで1回目が失敗してもリトライで成功させる）
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -131,6 +167,7 @@ async function _saveToServerOnce() {
 
 // APIからstateを復元
 async function loadFromServer() {
+  const hasSession = await ensureSession();
   const playerId = getPlayerId();
   // ★修正: 以前は fetchWithTimeout が例外を投げると（タイムアウト・オフライン等）
   //         関数全体のcatchに飛んで即座に return false していたため、
@@ -143,7 +180,10 @@ async function loadFromServer() {
   //         失敗してもローカルバックアップの復元まで必ず到達するようにする。
   let data = null;
   try {
-    const res = await fetchWithTimeout(`${SAVE_API}/${playerId}`, {}, 30000);
+    if (!hasSession) throw new Error("save session unavailable");
+    const res = await fetchWithTimeout(`${SAVE_API}/${playerId}`, {
+      headers: { "X-Player-Token": getPlayerToken() },
+    }, 30000);
     if (!res.ok) {
       console.log("[load] セーブデータなし（新規プレイまたは通信エラー）", res.status);
     } else {
